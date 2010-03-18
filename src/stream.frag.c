@@ -1,7 +1,7 @@
 #version 130
 
 uniform sampler1D sampStream;
-in vec2 pos;
+in vec2 tex;
 
 vec4 streamTexel;
 int streamIndex;
@@ -78,7 +78,7 @@ int quadWinding (vec2 p0, vec2 p1, vec2 p2, vec2 p)
 void main (void)
 {
   float colr = 0.0, colb = 0.0;
-  vec2 p = pos; 
+  vec2 p = tex; 
 
   //Init samples
   vec2 samples[16];
@@ -158,7 +158,8 @@ void main (void)
   for (int s=0; s<16; ++s)
     if (w[s] % 2 == 1) alpha += 0.0625;
 
-  gl_FragColor = vec4( 1.0 - alpha, 1.0 - alpha, 1.0 - alpha, 1.0 );
+  gl_FragColor = vec4( 0,0,0, alpha );
+  //gl_FragColor = vec4( 1.0 - alpha, 1.0 - alpha, 1.0 - alpha, 1.0 );
   //if (numLines == 2.0) r = 1.0;
   //if (numQuads == 2.0) b = 1.0;
   //if (p3.x == 100.0 && p3.y == 80.0) b = 1.0;

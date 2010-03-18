@@ -34,3 +34,20 @@ typedef float           Float;
 #define COS(x)          std::cosf(x)
 #define SIN(x)          std::sinf(x)
 #define ACOS(x)         std::acosf(x)
+
+//Tiger
+#define VG_MOVE_TO_ABS     0
+#define VG_LINE_TO_ABS     1
+#define VG_QUAD_TO_ABS     2
+#define VG_CUBIC_TO_ABS    3
+#define VG_CLOSE_PATH      4
+
+typedef Uint8 VGubyte;
+typedef Float VGfloat;
+typedef Int32 VGint;
+
+extern const VGint     pathCount;
+extern const VGint     commandCounts[];
+extern const VGubyte*  commandArrays[];
+extern const VGfloat*  dataArrays[];
+extern const VGfloat*  styleArrays[];

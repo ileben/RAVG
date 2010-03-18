@@ -42,37 +42,37 @@ namespace SegType {
 
 struct Line
 {
+  Vec2 p0;
   Vec2 p1;
-  Vec2 p2;
 
   Line() {};
   Line( Float x1, Float y1, Float x2, Float y2 ) {
-    p1.set( x1,y1 ); p2.set( x2,y2 );
+    p0.set( x1,y1 ); p1.set( x2,y2 );
   }
 };
 
 struct Quad
 {
+  Vec2 p0;
   Vec2 p1;
   Vec2 p2;
-  Vec2 p3;
 
   Quad() {};
   Quad( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3 ) {
-    p1.set( x1,y1 ); p2.set( x2,y2 ); p3.set( x3,y3 );
+    p0.set( x1,y1 ); p1.set( x2,y2 ); p2.set( x3,y3 );
   }
 };
 
 struct Cubic
 {
+  Vec2 p0;
   Vec2 p1;
   Vec2 p2;
   Vec2 p3;
-  Vec2 p4;
 
   Cubic() {};
   Cubic( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3, Float x4, Float y4 ) {
-    p1.set( x1,y1 ); p2.set( x2,y2 ); p3.set( x3,y3 ); p4.set( x4,y4 );
+    p0.set( x1,y1 ); p1.set( x2,y2 ); p2.set( x3,y3 ); p3.set( x4,y4 );
   }
 };
 
@@ -132,8 +132,9 @@ public:
 
   void close();
 
-  void updateBuffers();
+  void cubicsToQuads();
   void updateBounds();
+  void updateBuffers();
 };
 
 class Shader
@@ -267,6 +268,84 @@ void Object::updateBounds()
   }
 }
 
+Vec2 intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 &p2)
+{
+  Vec2 v1 = p1 - o1;
+  Vec2 v2 = p2 - o2;
+
+  Float rightU = o2.x - o1.x;
+  Float rightD = o2.y - o1.y;
+  
+  Float D  = v1.x   * (-v2.y) - v1.y   * (-v2.x);
+  Float DX = rightU * (-v2.y) - rightD * (-v2.x);
+//Float DY = v1.x   * rightD  - v1.y   * rightU;
+  
+  Float t1 = DX / D;
+  return Vec2 (o1.x + t1*v1.x,
+               o1.y + t1*v1.y);
+}
+/*
+Vec2 intersectLines (Vec2 p0, Vec2 p1, Vec2 p2, Vec2 p3)
+{
+  float a0 = (p0.y - p1.y) / (p0.x - p1.x);
+  float b0 = p0.y - a0 * p0.x;
+
+  float a1 = (p2.y - p3.y) / (p2.x - p3.x);
+  float b1 = (p2.y - a1 * p3.x);
+
+  Vec2 p;
+  p.x = (a0 - a1) / (b1 - b0);
+  p.y = a0 * p.x + b0;
+  return p;
+}*/
+
+void subdivCubic (const Cubic &c, Cubic &c1, Cubic &c2)
+{
+  Vec2 p01 = (c.p0 + c.p1) * 0.5f;
+  Vec2 p12 = (c.p1 + c.p2) * 0.5f;
+  Vec2 p23 = (c.p2 + c.p3) * 0.5f;
+  Vec2 pa = (p01 + p12) * 0.5f;
+  Vec2 pb = (p12 + p23) * 0.5f;
+  Vec2 pc = (pa + pb) * 0.5f;
+
+  c1.p0 = c.p0;
+  c1.p1 = p01;
+  c1.p2 = pa;
+  c1.p3 = pc;
+
+  c2.p0 = pc;
+  c2.p1 = pb;
+  c2.p2 = p23;
+  c2.p3 = c.p3;
+}
+
+void Object::cubicsToQuads()
+{
+  for (Uint32 i=0; i<cubics.size(); ++i)
+  {
+    Cubic c = cubics[i];
+    
+    Cubic c1,c2;
+    subdivCubic( c, c1,c2 );
+    
+    Cubic cubics[4];
+    subdivCubic( c1, cubics[0], cubics[1] );
+    subdivCubic( c2, cubics[2], cubics[3] );
+
+    for (int j=0; j<4; ++j)
+    {
+      Cubic cj = cubics[j];
+      
+      Quad quad;
+      quad.p0 = cj.p0;
+      quad.p1 = intersectLines( cj.p0, cj.p1, cj.p2, cj.p3 ); 
+      quad.p2 = cj.p3;
+
+      quads.push_back( quad );
+    }
+  }
+}
+
 void Object::updateBuffers()
 {
   if (!buffersInit)
@@ -290,31 +369,31 @@ void Object::updateBuffers()
   for (Uint32 q=0; q<quads.size(); ++q)
   {
     //Implicit-equation-space coordinates
-    float u1 = 0.0f, u2 = 0.5f, u3 = 1.0f;
-    float v1 = 0.0f, v2 = 0.0f, v3 = 1.0f;
+    float u0 = 0.0f, u1 = 0.5f, u2 = 1.0f;
+    float v0 = 0.0f, v1 = 0.0f, v2 = 1.0f;
 
     float P,Q,R,S,T,U,det,idet;
     Vec3 ABCu, ABCv;
 
     Quad &quad = quads[q];
-    P = quad.p1.x - quad.p2.x;
-    Q = quad.p1.y - quad.p2.y;
-    R = quad.p1.x - quad.p3.x;
-    S = quad.p1.y - quad.p3.y;
+    P = quad.p0.x - quad.p1.x;
+    Q = quad.p0.y - quad.p1.y;
+    R = quad.p0.x - quad.p2.x;
+    S = quad.p0.y - quad.p2.y;
     det = P*S - R*Q;
     idet = 1.0f / det;
 
-    T = u1 - u2;
-    U = u1 - u3;
+    T = u0 - u1;
+    U = u0 - u2;
     ABCu.x = (T*S - U*Q) * idet;
     ABCu.y = (P*U - R*T) * idet;
-    ABCu.z = u1 - ABCu.x * quad.p1.x - ABCu.y * quad.p1.y;
+    ABCu.z = u0 - ABCu.x * quad.p0.x - ABCu.y * quad.p0.y;
 
-    T = v1 - v2;
-    U = v1 - v3;
+    T = v0 - v1;
+    U = v0 - v2;
     ABCv.x = (T*S - U*Q) * idet;
     ABCv.y = (P*U - R*T) * idet;
-    ABCv.z = v1 - ABCv.x * quad.p1.x - ABCv.y * quad.p1.y;
+    ABCv.z = v0 - ABCv.x * quad.p0.x - ABCv.y * quad.p0.y;
 
     abcData[ q*6+0 ] = ABCu;
     abcData[ q*6+1 ] = ABCv;
@@ -334,27 +413,25 @@ void Object::updateBuffers()
   std::vector< Float > stream;
   stream.push_back( (Float) lines.size() );
   stream.push_back( (Float) quads.size() );
-  //stream.push_back( 0.0f );
-  //stream.push_back( 0.0f );
 
   for (Uint32 l=0; l<lines.size(); ++l)
   {
     Line &line = lines[l];
+    stream.push_back( line.p0.x );
+    stream.push_back( line.p0.y );
     stream.push_back( line.p1.x );
     stream.push_back( line.p1.y );
-    stream.push_back( line.p2.x );
-    stream.push_back( line.p2.y );
   }
 
   for (Uint32 q=0; q<quads.size(); ++q)
   {
     Quad &quad = quads[q];
+    stream.push_back( quad.p0.x );
+    stream.push_back( quad.p0.y );
     stream.push_back( quad.p1.x );
     stream.push_back( quad.p1.y );
     stream.push_back( quad.p2.x );
     stream.push_back( quad.p2.y );
-    stream.push_back( quad.p3.x );
-    stream.push_back( quad.p3.y );
   }
 
   Uint32 pad = 4 - (stream.size() % 4);
@@ -506,22 +583,39 @@ void renderObject (Object *o)
 
   glEnable( GL_TEXTURE_1D );
   glBindTexture( GL_TEXTURE_1D, o->texStream );
-
   
-  Float verts[] = {
+  glEnable( GL_BLEND );
+  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
+  Vec2 sz = o->max - o->min;
+
+  Float coords[] = {
+    10, 10,
+    10 + sz.x, 10,
+    10 + sz.x, 10 + sz.y,
+    10, 10 + sz.y
+  };
+
+  Float texcoords[] = {
     o->min.x, o->min.y,
     o->max.x, o->min.y,
     o->max.x, o->max.y,
     o->min.x, o->max.y
   };
-
+  
   Int32 pos = shader->program->getAttribute( "in_pos" );
   glBindBuffer( GL_ARRAY_BUFFER, 0 );
-  glVertexAttribPointer( pos, 2, GL_FLOAT, false, 2 * sizeof( Float ), verts );
+  glVertexAttribPointer( pos, 2, GL_FLOAT, false, 2 * sizeof( Float ), coords );
+
+  Int32 tex = shader->program->getAttribute( "in_tex" );
+  glBindBuffer( GL_ARRAY_BUFFER, 0 );
+  glVertexAttribPointer( tex, 2, GL_FLOAT, false, 2 * sizeof( Float ), texcoords );
   
   glEnableVertexAttribArray( pos );
+  glEnableVertexAttribArray( tex );
   glDrawArrays( GL_QUADS, 0, 4 );
   glDisableVertexAttribArray( pos );
+  glDisableVertexAttribArray( tex );
   
   /*
   glBegin( GL_QUADS );
@@ -709,6 +803,50 @@ void calcSamples()
   file.close();
 }
 
+void processCommands (Object *o, int i)
+{
+  int numCommands = commandCounts[ i ];
+  const VGfloat *data = dataArrays[ i ];
+  const VGubyte *commands = commandArrays[ i ];
+ 
+  int d = 0;
+  for (int c=0; c<numCommands; c++)
+  {
+    VGubyte cmd = commands[ c ];
+    switch (cmd)
+    {
+    case VG_MOVE_TO_ABS:
+      {
+      float x = data[ d++ ];
+      float y = data[ d++ ];
+      o->moveTo( x, y );
+      break;
+      }
+    case VG_LINE_TO_ABS:
+      {
+      float x0 = data[ d++ ];
+      float y0 = data[ d++ ];
+      o->lineTo( x0, y0 );
+      break;
+      }
+    case VG_CUBIC_TO_ABS:
+      {
+      float x0 = data[ d++ ];
+      float y0 = data[ d++ ];
+      float x1 = data[ d++ ];
+      float y1 = data[ d++ ];
+      float x2 = data[ d++ ];
+      float y2 = data[ d++ ];
+      o->cubicTo( x0,y0, x1,y1, x2,y2 );
+      break;
+      }
+    case VG_CLOSE_PATH:
+      o->close();
+      break;
+    }
+  }
+}
+
 int main (int argc, char **argv)
 {
   rvgGlutInit( argc, argv );
@@ -725,13 +863,22 @@ int main (int argc, char **argv)
   shaderStream->load();
 
   object1 = new Object();
+  /*
   object1->moveTo( 100,100 );
   object1->quadTo( 150,140, 200,100 );
   object1->lineTo( 220,200 );
   object1->quadTo( 170,220, 120,200 );
+  */
+  /*
+  object1->moveTo( 100,100 );
+  object1->cubicTo( 100,200, 200,200, 200,100 );
   object1->close();
-  object1->updateBuffers();
+  */
+  processCommands( object1, 20 );
+
+  object1->cubicsToQuads();
   object1->updateBounds();
+  object1->updateBuffers();
 
   glutMainLoop();
 }

@@ -1,9 +1,10 @@
 #version 130
 in vec2 in_pos;
-out vec2 pos;
+in vec2 in_tex;
+out vec2 tex;
 
 void main (void)
 {
-  pos = in_pos;
+  tex = in_tex;
   gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4( in_pos, 0,1 );
 }
