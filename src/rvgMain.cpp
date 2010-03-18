@@ -57,7 +57,11 @@ struct Quad
   Vec2 p1;
   Vec2 p2;
 
-  Quad() {};
+  Quad() {}
+
+  Quad( const Vec2 &pp0, const Vec2 &pp1, const Vec2 &pp2 ) {
+    p0 = pp0; p1 = pp1; p2 = pp2;
+  }
   Quad( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3 ) {
     p0.set( x1,y1 ); p1.set( x2,y2 ); p2.set( x3,y3 );
   }
@@ -160,8 +164,8 @@ public:
 ////////////////////////////////////////////////////////////////////
 // Global vars
 
-int resX = 400;
-int resY = 400;
+int resX = 500;
+int resY = 500;
 Shader *shader1;
 Shader *shaderQuad;
 Shader *shaderStream;
@@ -268,7 +272,7 @@ void Object::updateBounds()
   }
 }
 
-Vec2 intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 &p2)
+bool intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 &p2, Vec2 &pout)
 {
   Vec2 v1 = p1 - o1;
   Vec2 v2 = p2 - o2;
@@ -280,9 +284,14 @@ Vec2 intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 
   Float DX = rightU * (-v2.y) - rightD * (-v2.x);
 //Float DY = v1.x   * rightD  - v1.y   * rightU;
   
+  if (D == 0.0f)
+    return false;
+
   Float t1 = DX / D;
-  return Vec2 (o1.x + t1*v1.x,
-               o1.y + t1*v1.y);
+  pout.set(
+    o1.x + t1*v1.x,
+    o1.y + t1*v1.y);
+  return true;
 }
 /*
 Vec2 intersectLines (Vec2 p0, Vec2 p1, Vec2 p2, Vec2 p3)
@@ -320,7 +329,7 @@ void subdivCubic (const Cubic &c, Cubic &c1, Cubic &c2)
 }
 
 void Object::cubicsToQuads()
-{
+{/*
   for (Uint32 i=0; i<cubics.size(); ++i)
   {
     Cubic c = cubics[i];
@@ -338,12 +347,49 @@ void Object::cubicsToQuads()
       
       Quad quad;
       quad.p0 = cj.p0;
-      quad.p1 = intersectLines( cj.p0, cj.p1, cj.p2, cj.p3 ); 
       quad.p2 = cj.p3;
+
+      if (! intersectLines( cj.p0, cj.p1, cj.p2, cj.p3, quad.p1 ))
+        quad.p1 = (cj.p1 + cj.p2) * 0.5f;
 
       quads.push_back( quad );
     }
+  }*/
+
+  for (Uint32 i=0; i<cubics.size(); ++i)
+  {
+    Cubic cu = cubics[i];
+
+    Vec2 p01 = (cu.p0 + cu.p1) * 0.5f;
+    Vec2 p12 = (cu.p1 + cu.p2) * 0.5f;
+    Vec2 p23 = (cu.p2 + cu.p3) * 0.5f;
+
+    Vec2 p001 = (cu.p0 + p01) * 0.5f;
+    Vec2 a = (p001 + p01) * 0.5f;
+
+    Vec2 p233 = (p23 + cu.p3) * 0.5f;
+    Vec2 d = (p23 + p233) * 0.5f;
+
+    Vec2 p0112 = (p01 + p12) * 0.5f;
+    Vec2 p1223 = (p12 + p23) * 0.5f;
+    Vec2 B = (p0112 + p1223) * 0.5f;
+
+    Vec2 p0112B = (p0112 + B) * 0.5f;
+    Vec2 b = (p0112 + p0112B) * 0.5f;
+
+    Vec2 pB1223 = (B + p1223) * 0.5f;
+    Vec2 c = (pB1223 + p1223) * 0.5f;
+
+    Vec2 A = (a + b) * 0.5f;
+    Vec2 C = (c + d) * 0.5f;
+
+    quads.push_back( Quad( cu.p0, a, A ) );
+    quads.push_back( Quad( A, b, B ) );
+    quads.push_back( Quad( B, c, C ) );
+    quads.push_back( Quad( C, d, cu.p3 ) );
   }
+
+  cubics.clear();
 }
 
 void Object::updateBuffers()
@@ -360,7 +406,7 @@ void Object::updateBuffers()
   //Quadratic control points
 
   glBindBuffer( GL_ARRAY_BUFFER, quadBuffer );
-  glBufferData( GL_ARRAY_BUFFER, quads.size() * sizeof( Quad ), &quads[0], GL_STATIC_DRAW );
+  //glBufferData( GL_ARRAY_BUFFER, quads.size() * sizeof( Quad ), &quads[0], GL_STATIC_DRAW );
 
   //////////////////////////////////////
   //Quadratic interpolation ABC values
@@ -410,9 +456,14 @@ void Object::updateBuffers()
   //////////////////////////////////////
   //Encode contour into stream
 
+  std::cout << "Encoding " << lines.size() << " lines, "
+    << quads.size() << " quads, " << std::endl
+    << cubics.size() << " cubics" << std::endl;
+
   std::vector< Float > stream;
   stream.push_back( (Float) lines.size() );
   stream.push_back( (Float) quads.size() );
+  stream.push_back( (Float) cubics.size() );
 
   for (Uint32 l=0; l<lines.size(); ++l)
   {
@@ -432,6 +483,19 @@ void Object::updateBuffers()
     stream.push_back( quad.p1.y );
     stream.push_back( quad.p2.x );
     stream.push_back( quad.p2.y );
+  }
+
+  for (Uint32 c=0; c<cubics.size(); ++c)
+  {
+    Cubic &cubic = cubics[c];
+    stream.push_back( cubic.p0.x );
+    stream.push_back( cubic.p0.y );
+    stream.push_back( cubic.p1.x );
+    stream.push_back( cubic.p1.y );
+    stream.push_back( cubic.p2.x );
+    stream.push_back( cubic.p2.y );
+    stream.push_back( cubic.p3.x );
+    stream.push_back( cubic.p3.y );
   }
 
   Uint32 pad = 4 - (stream.size() % 4);
@@ -731,8 +795,8 @@ void reshape (int w, int h)
 
   glMatrixMode( GL_PROJECTION );
   glLoadIdentity();
-  //gluOrtho2D( 0, w, 0, h );
-  gluOrtho2D( 0,400,0,400 );
+  gluOrtho2D( 0, w, 0, h );
+  //gluOrtho2D( 0,400,0,400 );
 
   glMatrixMode( GL_MODELVIEW );
   glLoadIdentity();
@@ -869,11 +933,15 @@ int main (int argc, char **argv)
   object1->lineTo( 220,200 );
   object1->quadTo( 170,220, 120,200 );
   */
+  
   /*
-  object1->moveTo( 100,100 );
-  object1->cubicTo( 100,200, 200,200, 200,100 );
+  object1->moveTo( 140,100 );
+  //object1->cubicTo( 100,200, 200,200, 200,100 );
+  object1->cubicTo( 200,200, 100,200, 160,100 );
+  //object1->cubicTo( 200,0, 100,0, 100,100 );
   object1->close();
   */
+
   processCommands( object1, 20 );
 
   object1->cubicsToQuads();

@@ -61,7 +61,7 @@ int quadWinding (vec2 p0, vec2 p1, vec2 p2, vec2 p)
       if (p.x < x) w++;
     }
   }
-  else if (d == 0.0)
+  /*else if (d == 0.0)
   {
     float t = -b / (2*a);
 
@@ -70,7 +70,7 @@ int quadWinding (vec2 p0, vec2 p1, vec2 p2, vec2 p)
       float x = one_t*one_t * p0.x + 2*t*one_t * p1.x + t*t * p2.x;
       if (p.x < x) w++;
     }
-  }
+  }*/
 
   return w;
 }
@@ -124,6 +124,7 @@ void main (void)
   //Get number of lines and number of quadratics
   float numLines = nextStreamToken();
   float numQuads = nextStreamToken();
+  float numCubics = nextStreamToken();
 /*
   //Debug
   vec2 p0 = vec2( nextStreamToken(), nextStreamToken() );
@@ -152,6 +153,49 @@ void main (void)
     for (int s=0; s<16; ++s)
       w[s] += quadWinding( p0,p1,p2, p+samples[s] );
   }
+
+  for (int i=0; i<numCubics; ++i)
+  {
+  }
+/*
+  for (int i=0; i<numCubics; ++i)
+  {
+    vec2 p0 = vec2( nextStreamToken(), nextStreamToken() );
+    vec2 p1 = vec2( nextStreamToken(), nextStreamToken() );
+    vec2 p2 = vec2( nextStreamToken(), nextStreamToken() );
+    vec2 p3 = vec2( nextStreamToken(), nextStreamToken() );
+
+    vec2 p01 = (p0 + p1) * 0.5;
+    vec2 p12 = (p1 + p2) * 0.5;
+    vec2 p23 = (p2 + p3) * 0.5;
+
+    vec2 p001 = (p0 + p01) * 0.5;
+    vec2 a = (p001 + p01) * 0.5;
+
+    vec2 p233 = (p23 + p3) * 0.5;
+    vec2 d = (p23 + p233) * 0.5;
+
+    vec2 p0112 = (p01 + p12) * 0.5;
+    vec2 p1223 = (p12 + p23) * 0.5;
+    vec2 B = (p0112 + p1223) * 0.5;
+
+    vec2 p0112B = (p0112 + B) * 0.5;
+    vec2 b = (p0112 + p0112B) * 0.5;
+
+    vec2 pB1223 = (B + p1223) * 0.5;
+    vec2 c = (pB1223 + p1223) * 0.5;
+
+    vec2 A = (a + b) * 0.5;
+    vec2 C = (c + d) * 0.5;
+
+    for (int s=0; s<16; ++s)
+    {
+      w[s] += quadWinding( p0,a,A, p+samples[s] );
+      w[s] += quadWinding( A,b,B, p+samples[s] );
+      w[s] += quadWinding( B,c,C, p+samples[s] );
+      w[s] += quadWinding( C,d,p3, p+samples[s] );
+    }
+  }*/
 
   //Check winding number parity
   float alpha = 0.0;
