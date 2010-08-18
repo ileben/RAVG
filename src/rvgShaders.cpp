@@ -28,6 +28,9 @@ void GLShader::create (ShaderType::Enum type)
   case ShaderType::Vertex:
     handle = glCreateShader( GL_VERTEX_SHADER );
     break;
+  case ShaderType::Geometry:
+    handle = glCreateShader( GL_GEOMETRY_SHADER );
+    break;
   case ShaderType::Fragment:
     handle = glCreateShader( GL_FRAGMENT_SHADER );
     break;
@@ -84,30 +87,12 @@ void GLProgram::create ()
 
 void GLProgram::attach (GLShader *s)
 {
-  switch (s->type)
-  {
-  case ShaderType::Vertex:
-    glAttachShader( handle, s->handle );
-    break;
-
-  case ShaderType::Fragment:
-    glAttachShader( handle, s->handle );
-    break;
-  }
+  glAttachShader( handle, s->handle );
 }
 
 void GLProgram::detach (GLShader *s)
 {
-  switch (s->type)
-  {
-  case ShaderType::Vertex:
-    glDetachShader( handle, s->handle );
-    break;
-    
-  case ShaderType::Fragment:
-    glDetachShader( handle, s->handle );
-    break;
-  }
+  glDetachShader( handle, s->handle );
 }
 
 bool GLProgram::link ()

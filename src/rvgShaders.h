@@ -15,8 +15,9 @@ namespace ShaderType {
   enum Enum
   {
     Vertex     =  0,
-    Fragment   =  1,
-    Any        =  2
+    Geometry   =  1,
+    Fragment   =  2,
+    Any        =  3
   };};
 
 class GLShader

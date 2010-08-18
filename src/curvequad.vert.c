@@ -1,4 +1,6 @@
 #version 130
+uniform mat4 modelview;
+uniform mat4 projection;
 
 in vec2 in_uv;
 in vec3 in_abcU;
@@ -27,5 +29,5 @@ void main (void)
   cs[ 2 ] = vec4( 0, 0, 1, 1 );
   c = cs[ gl_VertexID % 3 ];
   
-  gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * vec4( in_pos, 0,1 );
+  gl_Position = projection * modelview * vec4( in_pos, 0,1 );
 }

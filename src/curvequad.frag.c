@@ -1,7 +1,10 @@
+#version 150
+
 in vec2 uv;
 in vec4 c;
 in vec3 abcU;
 in vec3 abcV;
+out vec4 out_color;
 
 void main (void)
 {
@@ -36,23 +39,23 @@ void main (void)
   if (alpha == 0.0)
     discard;
   
-  gl_FragColor = vec4( 1.0 - alpha, 1.0 - alpha, 1.0 - alpha, 1.0 );
+  out_color = vec4( 1.0 - alpha, 1.0 - alpha, 1.0 - alpha, 1.0 );
   
   /*
   vec2 p = gl_FragCoord.xy;
   float u = abcU.x * p.x + abcU.y * p.y + abcU.z;
   float v = abcV.x * p.x + abcV.y * p.y + abcV.z;
   if (u * u - v < 0.0)
-    gl_FragColor = c;
+    out_color = c;
   else discard;
   */
   
   /*
   if (uv.x * uv.x - uv.y < 0.0)
-    gl_FragColor = c;
+    out_color = c;
   else discard;
   */
 
-  //gl_FragColor = c;
-  //gl_FragColor = vec4( uv.x, 0, uv.y, 1 );
+  //out_color = c;
+  //out_color = vec4( uv.x, 0, uv.y, 1 );
 }

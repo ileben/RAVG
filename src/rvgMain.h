@@ -33,7 +33,10 @@ typedef float           Float;
 #define SQRT(x)         std::sqrtf(x)
 #define COS(x)          std::cosf(x)
 #define SIN(x)          std::sinf(x)
+#define TAN(x)          std::tanf(x)
 #define ACOS(x)         std::acosf(x)
+#define FLOOR(x)        std::floorf(x)
+#define CEIL(x)         std::ceilf(x)
 
 //Tiger
 #define VG_MOVE_TO_ABS     0

@@ -1,0 +1,18 @@
+40x40 grid
+============
+Drawing:
+
+Encoding:
+
+Drawing + Encoding:
+
+60x60 grid
+============
+Drawing:
+268 (1xMS) / 284 (front-to-back)
+
+Encoding:
+100 / 98 (back-to-front)
+
+Drawing + Encoding:
+75 (1xMS)

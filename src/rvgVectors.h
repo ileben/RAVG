@@ -6,18 +6,23 @@
 Forward declarations
 ------------------------------------*/
 
-struct Vec3;
-struct Vec4;
+class Vec3;
+class Vec4;
+class Matrix4x4;
 
 /*
 =============================================
 2, 3, and 4-dimensional vectors
 =============================================*/
 
-struct Vec2
+class Vec2
 {
+public:
+
   Float x, y;
   
+  Vec2 yx () const;
+
   Vec3 xy (Float z) const;
   Vec4 xy (Float z, Float w) const;
   
@@ -36,6 +41,8 @@ struct Vec2
   
   Vec2 operator+ (const Vec2 &v) const;
   Vec2 operator- (const Vec2 &v) const;
+  Vec2 operator* (const Vec2 &v) const;
+  Vec2 operator/ (const Vec2 &v) const;
   Vec2 operator* (Float k) const;
   Vec2 operator/ (Float k) const;
   
@@ -49,8 +56,10 @@ struct Vec2
   Vec2 reverse () const;
 };
 
-struct Vec3
+class Vec3
 {
+public:
+
   Float x, y, z;
   
   Vec2 xy () const;
@@ -71,6 +80,8 @@ struct Vec3
   
   Vec3 operator+ (const Vec3 &v) const;
   Vec3 operator- (const Vec3 &v) const;
+  Vec3 operator* (const Vec3 &v) const;
+  Vec3 operator/ (const Vec3 &v) const;
   Vec3 operator* (Float k) const;
   Vec3 operator/ (Float k) const;
   
@@ -84,8 +95,10 @@ struct Vec3
   Vec3 reverse () const;
 };
 
-struct Vec4
+class Vec4
 {
+public:
+
   Float x, y, z, w;
   
   Vec2 xy () const;
@@ -95,15 +108,20 @@ struct Vec4
   Vec4 (Float xyzw);
   Vec4 (Float x0, Float y0, Float z0, Float w0);
   Vec4& set (Float x0, Float y0, Float z0, Float w0);
+  
   Vec4& operator= (const Vec4 &v);
   bool operator== (const Vec4 &v) const;
   bool operator!= (const Vec4 &v) const;
+  
   Vec4& operator+= (const Vec4 &v);
   Vec4& operator-= (const Vec4 &v);
   Vec4& operator*= (Float k);
   Vec4& operator/= (Float k);
+
   Vec4 operator+ (const Vec4 &v) const;
   Vec4 operator- (const Vec4 &v) const;
+  Vec4 operator* (const Vec4 &v) const;
+  Vec4 operator/ (const Vec4 &v) const;
   Vec4 operator* (Float k) const;
   Vec4 operator/ (Float k) const;
   
@@ -120,6 +138,27 @@ struct Vec4
 class Vec
 {
 public:
+
+  static Vec2 Floor (const Vec2 &v);
+  static Vec3 Floor (const Vec3 &v);
+  static Vec4 Floor (const Vec4 &v);
+
+  static Vec2 Ceil (const Vec2 &v);
+  static Vec3 Ceil (const Vec3 &v);
+  static Vec4 Ceil (const Vec4 &v);
+
+  static Vec2 Fract (const Vec2 &v);
+  static Vec3 Fract (const Vec3 &v);
+  static Vec4 Fract (const Vec4 &v);
+
+  static Vec2 Min (const Vec2 &v1, const Vec2 &v2);
+  static Vec3 Min (const Vec3 &v1, const Vec3 &v2);
+  static Vec4 Min (const Vec4 &v1, const Vec4 &v2);
+
+  static Vec2 Max (const Vec2 &v1, const Vec2 &v2);
+  static Vec3 Max (const Vec3 &v1, const Vec3 &v2);
+  static Vec4 Max (const Vec4 &v1, const Vec4 &v2);
+  
   static Float Dot (const Vec2 &v1, const Vec2 &v2);
   static Float Dot (const Vec3 &v1, const Vec3 &v2);
   static Float Dot (const Vec4 &v1, const Vec4 &v2);
@@ -154,8 +193,48 @@ public:
 
 /*
 =============================================
+Quaternion
+=============================================*/
+
+class Quat
+{
+public:
+
+  Float x,y,z,w;
+
+  Quat ();
+  Quat (Float x, Float y, Float z, Float w);
+  void set (Float x, Float y, Float z, Float w);
+
+  Float norm () const;
+  Float normSq () const;
+  Quat& normalize ();
+
+  void setIdentity ();
+  void fromAxisAngle (Float x, Float y, Float z, Float radang);
+  void fromAxisAngle (const Vec3 &axis, Float radang);
+  void fromMatrix (const Matrix4x4 &m);
+  Matrix4x4 toMatrix ();
+  
+  static Quat Slerp (const Quat &q1, const Quat &q2, Float t);
+  static Quat Nlerp (const Quat &q1, const Quat &q2, Float t);
+  inline static Float Dot (const Quat &q1, const Quat &q2);
+
+  bool operator== (const Quat &q) const;
+  bool operator!= (const Quat &q) const;
+};
+
+Quat operator* (const Quat &q1, const Quat &q2);
+
+/*
+=============================================
 Vec inline functions
 =============================================*/
+
+//Swizzle
+inline Vec2 Vec2::yx () const
+  { return Vec2 (y,x); }
+
 
 //Conversions
 inline Vec3 Vec2::xy (Float z) const
@@ -313,6 +392,26 @@ inline Vec4 Vec4::operator- (const Vec4 &v) const
   { return Vec4 (x-v.x, y-v.y, z-v.z, w-v.w); }
 
 
+inline Vec2 Vec2::operator* (const Vec2 &v) const
+  { return Vec2 (x*v.x, y*v.y); }
+
+inline Vec3 Vec3::operator* (const Vec3 &v) const
+  { return Vec3 (x*v.x, y*v.y, z*v.z); }
+
+inline Vec4 Vec4::operator* (const Vec4 &v) const
+  { return Vec4 (x*v.x, y*v.y, z*v.z, w*v.w); }
+
+
+inline Vec2 Vec2::operator/ (const Vec2 &v) const
+  { return Vec2 (x/v.x, y/v.y); }
+
+inline Vec3 Vec3::operator/ (const Vec3 &v) const
+  { return Vec3 (x/v.x, y/v.y, z/v.z); }
+
+inline Vec4 Vec4::operator/ (const Vec4 &v) const
+  { return Vec4 (x/v.x, y/v.y, z/v.z, w/v.w); }
+
+
 inline Vec2 Vec2::operator* (Float k) const
   { return Vec2 (x*k, y*k); }
 
@@ -446,4 +545,123 @@ inline Vec3 Vec::Cross (const Vec3 &v1, const Vec3 &v2) {
 template <class V> inline V Vec::Lerp (const V &v1, const V &v2, Float t) {
   return v1 * (1.0f - t) + v2 * t;
 }
+
+
+inline Vec2 Vec::Floor (const Vec2 &v) {
+  return Vec2( FLOOR(v.x), FLOOR(v.y) );
+}
+
+inline Vec3 Vec::Floor (const Vec3 &v) {
+  return Vec3( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z) );
+}
+
+inline Vec4 Vec::Floor (const Vec4 &v) {
+  return Vec4( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z), FLOOR(v.w) );
+}
+
+
+inline Vec2 Vec::Ceil (const Vec2 &v) {
+  return Vec2( CEIL(v.x), CEIL(v.y) );
+}
+
+inline Vec3 Vec::Ceil (const Vec3 &v) {
+  return Vec3( CEIL(v.x), CEIL(v.y), CEIL(v.z) );
+}
+
+inline Vec4 Vec::Ceil (const Vec4 &v) {
+  return Vec4( CEIL(v.x), CEIL(v.y), CEIL(v.z), CEIL(v.w) );
+}
+
+
+inline Vec2 Vec::Fract (const Vec2 &v) {
+  return Vec2( v.x - FLOOR(v.x), v.y - FLOOR(v.y) );
+}
+
+inline Vec3 Vec::Fract (const Vec3 &v) {
+  return Vec3( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z) );
+}
+
+inline Vec4 Vec::Fract (const Vec4 &v) {
+  return Vec4( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z), v.w - FLOOR(v.w) );
+}
+
+
+inline Vec2 Vec::Min (const Vec2 &v1, const Vec2 &v2) {
+  return Vec2(
+    v1.x < v2.x ? v1.x : v2.x,
+    v1.y < v2.y ? v1.y : v2.y );
+}
+
+inline Vec3 Vec::Min (const Vec3 &v1, const Vec3 &v2) {
+  return Vec3(
+    v1.x < v2.x ? v1.x : v2.x,
+    v1.y < v2.y ? v1.y : v2.y,
+    v1.z < v2.z ? v1.z : v2.z );
+}
+
+inline Vec4 Vec::Min (const Vec4 &v1, const Vec4 &v2) {
+  return Vec4(
+    v1.x < v2.x ? v1.x : v2.x,
+    v1.y < v2.y ? v1.y : v2.y,
+    v1.z < v2.z ? v1.z : v2.z,
+    v1.w < v2.w ? v1.w : v2.w );
+}
+
+
+inline Vec2 Vec::Max (const Vec2 &v1, const Vec2 &v2) {
+  return Vec2(
+    v1.x > v2.x ? v1.x : v2.x,
+    v1.y > v2.y ? v1.y : v2.y );
+}
+
+inline Vec3 Vec::Max (const Vec3 &v1, const Vec3 &v2) {
+  return Vec3(
+    v1.x > v2.x ? v1.x : v2.x,
+    v1.y > v2.y ? v1.y : v2.y,
+    v1.z > v2.z ? v1.z : v2.z );
+}
+
+inline Vec4 Vec::Max (const Vec4 &v1, const Vec4 &v2) {
+  return Vec4(
+    v1.x > v2.x ? v1.x : v2.x,
+    v1.y > v2.y ? v1.y : v2.y,
+    v1.z > v2.z ? v1.z : v2.z,
+    v1.w > v2.w ? v1.w : v2.w );
+}
+
+/*
+=============================================
+Quat inline functions
+=============================================*/
+
+inline Quat::Quat ()
+  { x=0.0f; y=0.0f; z=0.0f; w=1.0f; }
+
+inline Quat::Quat (Float xx, Float yy, Float zz, Float ww)
+  { x=xx; y=yy; z=zz; w=ww; }
+
+inline void Quat::set (Float xx, Float yy, Float zz, Float ww)
+  { x=xx; y=yy; z=zz; w=ww; }
+
+inline void Quat::setIdentity ()
+  { x=0.0f; y=0.0f; z=0.0f; w=1.0f; }
+
+inline Float Quat::norm () const
+  { return SQRT (x*x + y*y + z*z + w*w); }
+
+inline Float Quat::normSq () const
+  { return x*x + y*y + z*z + w*w; }
+
+inline Quat& Quat::normalize ()
+  { Float n=norm(); x/=n; y/=n; z/=n; w/=n; return *this; }
+
+inline Float Quat::Dot (const Quat &q1, const Quat &q2)
+  { return q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w; }
+
+inline bool Quat::operator== (const Quat &q) const
+  { return x==q.x && y==q.y && z==q.z && w==q.w; }
+
+inline bool Quat::operator!= (const Quat &q) const
+  { return x!=q.x || y!=q.y || z!=q.z || w!=q.w; }
+
 #endif//__RVGVECTORS_H
