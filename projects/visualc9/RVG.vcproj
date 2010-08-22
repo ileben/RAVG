@@ -181,7 +181,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\rvgEncodeObj.cpp"
+				RelativePath="..\..\src\rvgEncodeCpuAux.cpp"
 				>
 			</File>
 			<File
