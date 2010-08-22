@@ -15,28 +15,24 @@ in vec2 quad0;
 in vec2 quad1;
 in vec2 quad2;
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord);
-void addQuad (vec2 q0, vec2 q1, vec2 q2, ivec2 cellCoord);
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord);
+void addQuad (vec2 q0, vec2 q1, vec2 q2, ivec2 gridCoord);
 void quadIntersectionY (vec2 q0, vec2 q1, vec2 q2, float y, float minX, float maxX,
                         out bool found1, out bool found2, out float x1, out float x2);
 
 void main()
 {
-  ivec2 cellCoord = ivec2( gl_FragCoord.xy );
-  if (cellCoord.x >= 0 && cellCoord.x < gridSize.x &&
-      cellCoord.y >= 0 && cellCoord.y < gridSize.y)
+  ivec2 gridCoord = ivec2( gl_FragCoord.xy );
+  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
+      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
   {
     bool found1=false, found2=false, inside=false;
     float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
 
-    //Find cell bounds
+    //Find cell origin
     vec2 cmin = vec2(
-      gridOrigin.x + cellCoord.x * cellSize.x,
-      gridOrigin.y + cellCoord.y * cellSize.y );
-
-    vec2 cmax = vec2(
-      gridOrigin.x + (cellCoord.x + 1.0) * cellSize.x,
-      gridOrigin.y + (cellCoord.y + 1.0) * cellSize.y );
+      gridOrigin.x + gridCoord.x * cellSize.x,
+      gridOrigin.y + gridCoord.y * cellSize.y );
 
     //Transform quad coords into cell space
     vec2 q0 = (quad0 - cmin) / cellSize;
@@ -48,13 +44,13 @@ void main()
     if (found1 != found2)
     {
       //Increase auxiliary vertical counter in the cells to the left
-      for (int x = cellCoord.x - 1; x >= 0; --x)
-        imageAtomicAdd( imgCellCounters, ivec3( x, cellCoord.y, 2 ), 1 );
+      for (int x = gridCoord.x - 1; x >= 0; --x)
+        imageAtomicAdd( imgCellCounters, ivec3( x, gridCoord.y, 2 ), 1 );
     }
     if (found1 || found2) inside = true;
 
     //Skip writing into this cell if fully occluded by another object
-    int cellDone = imageLoad( imgCellCounters, ivec3( cellCoord, 3 ) ).r;
+    int cellDone = imageLoad( imgCellCounters, ivec3( gridCoord, 3 ) ).r;
     if (cellDone == 0)
     {
       //Check if quad intersects right edge
@@ -62,13 +58,13 @@ void main()
       if (found1)
       {
         //Add line spanning from intersection point to upper-right corner
-        addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), cellCoord );
+        addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), gridCoord );
         inside = true;
       }
       if (found2)
       {
         //Add line spanning from intersection point to upper-right corner
-        addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), cellCoord );
+        addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), gridCoord );
         inside = true;
       }
 
@@ -101,7 +97,7 @@ void main()
       if (inside)
       {
         //Add quad data to stream
-        addQuad( q0,q1,q2, cellCoord );
+        addQuad( q0,q1,q2, gridCoord );
       }
     }
   }
@@ -109,10 +105,10 @@ void main()
   discard;
 }
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord)
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord)
 {
   int streamIndex = imageAtomicAdd( imgCellCounters, ivec3( 0, 0, 0 ), 6 );
-  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 1 ), streamIndex );
+  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 1 ), streamIndex );
   
   ptrCellStreams[ streamIndex+0 ] = 1.0;
   ptrCellStreams[ streamIndex+1 ] = l0.x;
@@ -123,10 +119,10 @@ void addLine (vec2 l0, vec2 l1, ivec2 cellCoord)
 }
 
 
-void addQuad (vec2 q0, vec2 q1, vec2 q2, ivec2 cellCoord)
+void addQuad (vec2 q0, vec2 q1, vec2 q2, ivec2 gridCoord)
 {
   int streamIndex = imageAtomicAdd( imgCellCounters, ivec3( 0, 0, 0 ), 8 );
-  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 1 ), streamIndex );
+  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 1 ), streamIndex );
   
   ptrCellStreams[ streamIndex+0 ] = 2.0;
   ptrCellStreams[ streamIndex+1 ] = q0.x;

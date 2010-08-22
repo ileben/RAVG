@@ -34,6 +34,7 @@ Function pointers
 //GL_VERSION_1_2
 extern PFNGLDRAWRANGEELEMENTSPROC         GE_glDrawRangeElements;
 extern PFNGLTEXIMAGE3DPROC                GE_glTexImage3D;
+extern PFNGLTEXSUBIMAGE3DEXTPROC          GE_glTexSubImage3D;
 
 //GL_VERSION_1_3
 extern PFNGLACTIVETEXTUREPROC             GE_glActiveTexture;
@@ -44,6 +45,8 @@ extern PFNGLGENBUFFERSPROC                GE_glGenBuffers;
 extern PFNGLBINDBUFFERPROC                GE_glBindBuffer;
 extern PFNGLBUFFERDATAPROC                GE_glBufferData;
 extern PFNGLBUFFERSUBDATAPROC             GE_glBufferSubData;
+extern PFNGLMAPBUFFERPROC                 GE_glMapBuffer;
+extern PFNGLUNMAPBUFFERPROC               GE_glUnmapBuffer;
 
 //GL_VERSION_2_0
 extern PFNGLCREATEPROGRAMPROC             GE_glCreateProgram;
@@ -124,6 +127,7 @@ extern PFNGLMEMORYBARRIEREXTPROC          GE_glMemoryBarrier;
 
 //GL_NV_shader_buffer_load
 extern PFNGLMAKEBUFFERRESIDENTNVPROC        GE_glMakeBufferResident;
+extern PFNGLMAKEBUFFERNONRESIDENTNVPROC     GE_glMakeBufferNonResident;
 extern PFNGLGETBUFFERPARAMETERUI64VNVPROC   GE_glGetBufferParameterui64v;
 extern PFNGLUNIFORMUI64NVPROC               GE_glUniformui64;
 
@@ -142,6 +146,7 @@ Function re-routing
 //GL_VERSION_1_2
 #define glDrawRangeElements          GE_glDrawRangeElements
 #define glTexImage3D                 GE_glTexImage3D
+#define glTexSubImage3D              GE_glTexSubImage3D
 
 //GL_VERSION_1_3
 #define glActiveTexture              GE_glActiveTexture
@@ -152,6 +157,8 @@ Function re-routing
 #define glBindBuffer                GE_glBindBuffer
 #define glBufferData                GE_glBufferData
 #define glBufferSubData             GE_glBufferSubData
+#define glMapBuffer                 GE_glMapBuffer
+#define glUnmapBuffer               GE_glUnmapBuffer
 
 //GL_VERSION_2_0
 #define glCreateProgram              GE_glCreateProgram
@@ -232,6 +239,7 @@ Function re-routing
 
 //GL_NV_shader_buffer_load
 #define glMakeBufferResident        GE_glMakeBufferResident
+#define glMakeBufferNonResident     GE_glMakeBufferNonResident
 #define glGetBufferParameterui64v   GE_glGetBufferParameterui64v
 #define glUniformui64               GE_glUniformui64
 

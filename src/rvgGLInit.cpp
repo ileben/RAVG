@@ -1,4 +1,4 @@
-#include "rvgMain.h"
+#include "rvgDefs.h"
 
 #define GE_NO_EXTENSION_ROUTING
 #include "rvgGLHeaders.h"
@@ -21,6 +21,7 @@ Function pointers for undefined extensions
 //GL_VERSION_1_2
 PFNGLDRAWRANGEELEMENTSPROC         GE_glDrawRangeElements = NULL;
 PFNGLTEXIMAGE3DPROC                GE_glTexImage3D = NULL;
+PFNGLTEXSUBIMAGE3DEXTPROC          GE_glTexSubImage3D = NULL;
 
 //GL_VERSION_1_3
 PFNGLACTIVETEXTUREPROC             GE_glActiveTexture = NULL;
@@ -31,6 +32,8 @@ PFNGLGENBUFFERSPROC                GE_glGenBuffers = NULL;
 PFNGLBINDBUFFERPROC                GE_glBindBuffer = NULL;
 PFNGLBUFFERDATAPROC                GE_glBufferData = NULL;
 PFNGLBUFFERSUBDATAPROC             GE_glBufferSubData = NULL;
+PFNGLMAPBUFFERPROC                 GE_glMapBuffer = NULL;
+PFNGLUNMAPBUFFERPROC               GE_glUnmapBuffer = NULL;
 
 //GL_VERSION_2_0
 PFNGLCREATEPROGRAMPROC             GE_glCreateProgram = NULL;
@@ -110,6 +113,7 @@ PFNGLMEMORYBARRIEREXTPROC          GE_glMemoryBarrier = NULL;
 
 //GL_NV_shader_buffer_load
 PFNGLMAKEBUFFERRESIDENTNVPROC        GE_glMakeBufferResident = NULL;
+PFNGLMAKEBUFFERNONRESIDENTNVPROC     GE_glMakeBufferNonResident = NULL;
 PFNGLGETBUFFERPARAMETERUI64VNVPROC   GE_glGetBufferParameterui64v = NULL;
 PFNGLUNIFORMUI64NVPROC               GE_glUniformui64 = NULL;
 
@@ -235,6 +239,9 @@ void rvgGLInit()
   GE_glTexImage3D = (PFNGLTEXIMAGE3DPROC)
     getProcAddress( "glTexImage3D" );
 
+  GE_glTexSubImage3D = (PFNGLTEXSUBIMAGE3DEXTPROC)
+    getProcAddress( "glTexSubImage3D" );
+
   /*
   Check elements range
   *****************************************/
@@ -285,6 +292,10 @@ void rvgGLInit()
       getProcAddress("glBufferDataARB");
     GE_glBufferSubData = (PFNGLBUFFERSUBDATAPROC)
       getProcAddress("glBufferSubDataARB");
+    GE_glMapBuffer = (PFNGLMAPBUFFERPROC)
+      getProcAddress( "glMapBufferARB" );
+    GE_glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)
+      getProcAddress( "glUnmapBufferARB" );
 
     if (GE_glGenBuffers==NULL || GE_glBindBuffer==NULL ||
         GE_glBufferData==NULL || GE_glBufferSubData==NULL)
@@ -544,6 +555,8 @@ void rvgGLInit()
 
     GE_glMakeBufferResident = (PFNGLMAKEBUFFERRESIDENTNVPROC)
       getProcAddress( "glMakeBufferResidentNV" );
+    GE_glMakeBufferNonResident = (PFNGLMAKEBUFFERNONRESIDENTNVPROC)
+      getProcAddress( "glMakeBufferNonResidentNV" );
     GE_glGetBufferParameterui64v = (PFNGLGETBUFFERPARAMETERUI64VNVPROC)
       getProcAddress( "glGetBufferParameterui64vNV" );
     GE_glUniformui64 = (PFNGLUNIFORMUI64NVPROC)

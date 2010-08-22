@@ -1,276 +1,18 @@
 #include "rvgMain.h"
-#include "rvgGLHeaders.h"
-#include "rvgShaders.h"
-#include "rvgVectors.h"
-#include "rvgMatrix.h"
-#include "rvgMatrixStack.h"
-
-#define USE_IMAGE     0
-#define CPU_USE_AUX   1
-#define GPU_USE_AUX   1
-
-///////////////////////////////////////////////////////////////////
-// Forward declarations
-
-class Contour;
-class Object;
-
-///////////////////////////////////////////////////////////////////
-// Classes
-
-namespace StreamSegType {
-  enum Enum {
-    Line = 1,
-    Quad = 2,
-    Object = 3,
-    End = -1
-  };
-};
-
-namespace SegSpace {
-  enum Enum {
-    Absolute = (1 << 7),
-    Relative = (1 << 7)
-  };
-};
-
-namespace SegType {
-  enum Enum {
-    Close        = 0,
-    
-    MoveTo       = 1,
-    LineTo       = 2,
-    QuadTo       = 3,
-    CubicTo      = 4,
-
-    MoveToAbs    = (SegType::MoveTo  | SegSpace::Absolute),
-    LineToAbs    = (SegType::LineTo  | SegSpace::Absolute),
-    QuadToAbs    = (SegType::QuadTo  | SegSpace::Absolute),
-    CubicToAbs   = (SegType::CubicTo | SegSpace::Absolute),
-
-    MoveToRel    = (SegType::MoveTo  | SegSpace::Relative),
-    LineToRel    = (SegType::LineTo  | SegSpace::Relative),
-    QuadToRel    = (SegType::QuadTo  | SegSpace::Relative),
-    CubicToRel   = (SegType::CubicTo | SegSpace::Relative)
-  };
-};
-
-struct Line
-{
-  Vec2 p0;
-  Vec2 p1;
-
-  Line() {};
-  Line( Float x1, Float y1, Float x2, Float y2 ) {
-    p0.set( x1,y1 ); p1.set( x2,y2 );
-  }
-};
-
-struct Quad
-{
-  Vec2 p0;
-  Vec2 p1;
-  Vec2 p2;
-
-  Quad() {}
-
-  Quad( const Vec2 &pp0, const Vec2 &pp1, const Vec2 &pp2 ) {
-    p0 = pp0; p1 = pp1; p2 = pp2;
-  }
-  Quad( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3 ) {
-    p0.set( x1,y1 ); p1.set( x2,y2 ); p2.set( x3,y3 );
-  }
-};
-
-struct Cubic
-{
-  Vec2 p0;
-  Vec2 p1;
-  Vec2 p2;
-  Vec2 p3;
-
-  Cubic() {};
-  Cubic( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3, Float x4, Float y4 ) {
-    p0.set( x1,y1 ); p1.set( x2,y2 ); p2.set( x3,y3 ); p3.set( x4,y4 );
-  }
-};
-
-class Contour
-{
-public:
-  friend class Object;
-
-  std::vector< int > segments;
-  std::vector< Vec2 > points;
-  std::vector< Vec2 > flatPoints;
-
-public:
-};
-
-class Object
-{
-  Contour *contour;
-  bool penDown;
-  Vec2 pen;
-  Vec2 start;
-
-public:
-
-  Vec2 min;
-  Vec2 max;
-  
-  int *gridWinding;
-
-public:
-
-  bool buffersInit;
-  GLuint bufLines;
-  GLuint bufQuads;
-  GLuint bufABC;
-  GLuint bufPivotWind;
-  GLuint texGrid;
-  GLuint bufLinesQuads;
-  GLuint64 ptrLinesQuads;
-
-public:
-
-  Vec4 color;
-  std::vector< Contour* > contours;
-  std::vector< Line > lines;
-  std::vector< Cubic > cubics;
-  std::vector< Quad > quads;
-
-public:
-
-  Object();
-
-  void moveTo( Float x, Float y,
-    SegSpace::Enum space = SegSpace::Absolute );
-
-  void lineTo( Float x, Float y,
-    SegSpace::Enum space = SegSpace::Absolute );
-
-  void quadTo( Float x1, Float y1, Float x2, Float y2,
-    SegSpace::Enum space = SegSpace::Absolute );
-
-  void cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3,
-    SegSpace::Enum space = SegSpace::Absolute );
-
-  void close();
-
-  void cubicsToQuads();
-  void updateBounds();
-  void updateGrid();
-  void updateBuffers();
-};
-
-class ImageCell
-{
-  std::vector< Float > stream;
-};
-
-class Image
-{
-public:
-
-  Vec2 min;
-  Vec2 max;
-  int gridW;
-  int gridH;
-  Vec2 cellSize;
-  
-  int *gridWinding;
-  Vec2 *gridPivots;
-
-public:
-
-  bool buffersInit;
-  GLuint bufPivotPos;
-  GLuint bufPivotWind;
-  GLuint texGrid;
-  GLuint texCellStreams;
-  GLuint texCellCounters;
-  GLuint bufCellStreams;
-  GLuint64 ptrCellStreams;
-
-  GLuint bufCpuIndirection;
-  GLuint64 ptrCpuIndirection;
-  GLuint bufCpuStream;
-  GLuint64 ptrCpuStream;
-
-public:
-
-  std::vector< Object* > objects;
-  std::vector< Float > cpuStream;
-  int *cpuIndirection;
-
-public:
-
-  Image();
-
-  void updateBounds();
-  void updateGrid();
-  void updateBuffers();
-  void updateStream();
-};
-
-class Shader
-{
-  std::string vertFile;
-  std::string geomFile;
-  std::string fragFile;
-
-public:
-
-  GLProgram *program;
-  GLShader *vertex;
-  GLShader *geometry;
-  GLShader *fragment;
-
-public:
-
-  Shader (const std::string &vertFile, const std::string &fragFile);
-  Shader (const std::string &vertFile, const std::string &geomFile, const std::string &fragFile);
-  ~Shader ();
-  bool load ();
-  void use();
-};
-
-class Vertex
-{
-public:
-  Vec3 coord;
-  Vec2 texcoord;
-};
-
-class VertexBuffer
-{
-public:
-  bool onGpu;
-  GLuint gpuId;
-  std::vector< Vertex > verts;
-
-  VertexBuffer();
-  void toGpu();
-};
-
 
 ////////////////////////////////////////////////////////////////////
 // Global vars
-
-const int COUNTER_LEN = 4;
-const int MAX_STREAM_LEN = 2000;
-const int MAX_COMBINED_STREAM_LEN = 500000;
 
 int resX = 500;
 int resY = 600;
 int gridResX = 60;
 int gridResY = 60;
-bool drawGrid = false;
-bool drawCpu = false;
-bool drawCylinder = false;
-bool draw = true;
+
+bool cpu = false;
 bool encode = true;
+bool draw = true;
+bool drawGrid = false;
+bool drawCylinder = false;
 
 MatrixStack matModelView;
 MatrixStack matProjection;
@@ -289,8 +31,15 @@ Shader *shaderEncodeQuadsAux;
 Shader *shaderEncodeAux;
 Shader *shaderCell;
 Shader *shaderCellAux;
-Shader *shaderCpu;
-Shader *shaderCpuAux;
+
+Shader *shaderEncodeObjInit;
+Shader *shaderEncodeObjInitObject;
+Shader *shaderEncodeObjLines;
+Shader *shaderEncodeObjQuads;
+Shader *shaderEncodeObjObject;
+Shader *shaderEncodeObjSort;
+Shader *shaderCellObj;
+
 Object *object1;
 Object *object2;
 Image *image;
@@ -584,224 +333,21 @@ void Object::cubicsToQuads()
   cubics.clear();
 }
 
-int lineWinding (Vec2 l0, Vec2 l1, Vec2 p0, Vec2 p1)
-{
-  int w = 0;
-
-  if (l0 == l1) return 0;
-  if (p0 == p1) return 0;
-
-  //Line equation
-  float AX = (l1.x - l0.x);
-  float BX = l0.x;
-
-  float AY = (l1.y - l0.y);
-  float BY = l0.y;
-
-  //Line from pivot to fragment point
-  float ax = (p1.x - p0.x);
-  float bx = p0.x;
-
-  float ay = (p1.y - p0.y);
-  float by = p0.y;
-
-  //Check for vertical line
-  if (ax == 0.0f) {
-    float tmp;
-    tmp = ax; ax = ay; ay = tmp;
-    tmp = bx; bx = by; by = tmp;
-    tmp = AX; AX = AY; AY = tmp;
-    tmp = BX; BX = BY; BY = tmp;
-  }
-
-  //Intersection equation
-  float r = ay / ax;
-  float a = (AY - r * AX);
-  float b = (BY - r * BX) - (by - r * bx);
-
-  //Find root
-  float t = -b/a;
-  if (t >= 0.0 && t <= 1.0) {
-    float k = t * AX/ax + BX/ax - bx/ax;
-    if (k >= 0.0 && k <= 1.0) w++;
-  }
-  
-  return w;
-}
-
-int quadWinding (Vec2 q0, Vec2 q1, Vec2 q2, Vec2 p0, Vec2 p1)
-{
-  int w = 0;
-
-  //Quadratic equation
-  float AX = (q0.x - 2*q1.x + q2.x);
-  float BX = (-2*q0.x + 2*q1.x);
-  float CX = q0.x;
-
-  float AY = (q0.y - 2*q1.y + q2.y);
-  float BY = (-2*q0.y + 2*q1.y);
-  float CY = q0.y;
-
-  //Line from pivot to fragment point
-  float ax = (p1.x - p0.x);
-  float bx = p0.x;
-
-  float ay = (p1.y - p0.y);
-  float by = p0.y;
-
-  //Check for vertical line
-  if (ax == 0.0f) {
-    float tmp;
-    tmp = ax; ax = ay; ay = tmp;
-    tmp = bx; bx = by; by = tmp;
-    tmp = AX; AX = AY; AY = tmp;
-    tmp = BX; BX = BY; BY = tmp;
-    tmp = CX; CX = CY; CY = tmp;
-  }
-
-  //Intersection equation
-  float r = ay / ax;
-  float a = (AY - r * AX);
-  float b = (BY - r * BX);
-  float c = (CY - r * CX) - (by - r * bx);
-
-  //Discriminant
-  float d = b*b - 4*a*c;
-
-  //Find roots
-  if (d > 0.0) {
-
-    float sd = sqrt( d );
-    float t1 = (-b - sd) / (2*a);
-    float t2 = (-b + sd) / (2*a);
-    
-    if (t1 >= 0.0 && t1 <= 1.0) {
-      float k1 = t1*t1 * AX/ax + t1 * BX/ax + CX/ax - bx/ax;
-      if (k1 >= 0.0 && k1 <= 1.0) w++;
-    }
-
-    if (t2 >= 0.0 && t2 <= 1.0) {
-      float k2 = t2*t2 * AX/ax + t2 * BX/ax + CX/ax - bx/ax;
-      if (k2 >= 0.0 && k2 <= 1.0) w++;
-    }
-  }
-
-  return w;
-}
-
-void lineIntersectionY (Vec2 l0, Vec2 l1, float y, float minX, float maxX,
-                        bool &found, float &x)
-{
-  found = false;
-
-  //Linear equation (0 = a*t + b)
-  float a = l1.y - l0.y;
-  float b = l0.y - y;
-
-  //Check if equation constant
-  if (a != 0.0f)
-  {
-    //Find t of intersection
-    float t = -b / a;
-
-    //Plug into linear equation to find x of intersection
-    if (t >= 0.0f && t <= 1.0f) {
-      x = l0.x + t * (l1.x - l0.x);
-      if (x >= minX && x <= maxX) found = true;
-    }
-  }
-}
-
-void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y, float minX, float maxX,
-                        bool &found1, bool &found2, float &x1, float &x2)
-{
-  found1 = false;
-  found2 = false;
-
-  //Quadratic equation (0 = a*t*t + b*t + c)
-  float a = (q0.y - 2*q1.y + q2.y);
-  float b = (-2*q0.y + 2*q1.y);
-  float c = q0.y - y;
-
-  //Discriminant
-  float d = b*b - 4*a*c;
-
-  //Find roots
-  if (d > 0.0f) {
-
-    float t1,t2;
-    
-    //Find t of intersection
-    if (a == 0.0)
-    {
-      //Equation is linear
-      t1 = (y - q0.y) / (q2.y - q0.y);
-      t2 = -1.0;
-    }
-    else
-    {
-      //Equation is quadratic
-      float sd = sqrt( d );
-      t1 = (-b - sd) / (2*a);
-      t2 = (-b + sd) / (2*a);
-    }
-    
-    //Plug into bezier equation to find x of intersection
-    if (t1 >= 0.0f && t1 <= 1.0f) {
-      float t = t1;
-      float one_t = 1.0f - t;
-      x1 = one_t*one_t * q0.x + 2*t*one_t * q1.x + t*t * q2.x;
-      if (x1 >= minX && x1 <= maxX) found1 = true;
-    }
-
-    if (t2 >= 0.0f && t2 <= 1.0f) {
-      float t = t2;
-      float one_t = 1.0f - t;
-      x2 = one_t*one_t * q0.x + 2*t*one_t * q1.x + t*t * q2.x;
-      if (x2 >= minX && x2 <= maxX) found2 = true;
-    }
-  }
-}
-
-bool pointInRect (const Vec2 &min, const Vec2 &max, const Vec2 &p)
-{
-  return (p.x >= min.x && p.x <= max.x &&
-          p.y >= min.y && p.y <= max.y);
-}
-
-bool lineInCell (const Vec2 &min, const Vec2 &max, const Line &line)
-{
-  Vec2 points[2] = { line.p0, line.p1 };
-  for (int p=0; p<2; ++p)
-    if (pointInRect( min, max, points[p] ))
-      return true;
-  return false;
-}
-
-bool quadInCell (const Vec2 &min, const Vec2 &max, const Quad &quad)
-{
-  Vec2 points[3] = { quad.p0, quad.p1, quad.p2 };
-  for (int p=0; p<3; ++p)
-    if (pointInRect( min, max, points[p] ))
-      return true;
-  return false;
-}
-
 void Object::updateGrid()
 {
   if (gridWinding) delete[] gridWinding;
-  gridWinding = new int[ image->gridW * image->gridH ];
+  gridWinding = new int[ image->gridSize.x * image->gridSize.y ];
 
   Vec2 testPivot( image->min.x - 1.0f, image->min.y - 1.0f );
 
-  for (int x=0; x < image->gridW; ++x) {
-    for (int y=0; y < image->gridH; ++y) {
+  for (int x=0; x < image->gridSize.x; ++x) {
+    for (int y=0; y < image->gridSize.y; ++y) {
       
       Vec2 pivot(
         image->min.x + (x + 0.5f) * image->cellSize.x,
         image->min.y + (y + 0.5f) * image->cellSize.y);
 
-      int gridIndex = y * image->gridW + x;
+      int gridIndex = y * image->gridSize.x + x;
       int w = 0;
 
       //Walk the list of line segments
@@ -843,21 +389,25 @@ void Object::updateBuffers()
 
   //////////////////////////////////////
   //Line control points
-
-  glBindBuffer( GL_ARRAY_BUFFER, bufLines );
+  
   if (lines.size() > 0)
+  {
+    glBindBuffer( GL_ARRAY_BUFFER, bufLines );
     glBufferData( GL_ARRAY_BUFFER, lines.size() * sizeof( Line ), &lines[0], GL_STATIC_DRAW );
 
-  checkGlError( "Object::updateBuffersGrid lines" );
+    checkGlError( "Object::updateBuffersGrid lines" );
+  }
 
   //////////////////////////////////////
   //Quadratic control points
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufQuads );
   if (quads.size() > 0)
+  {
+    glBindBuffer( GL_ARRAY_BUFFER, bufQuads );
     glBufferData( GL_ARRAY_BUFFER, quads.size() * sizeof( Quad ), &quads[0], GL_STATIC_DRAW );
 
-  checkGlError( "Object::updateBuffers quads" );
+    checkGlError( "Object::updateBuffers quads" );
+  }
 
   //////////////////////////////////////
   //Line + quad control points
@@ -867,13 +417,10 @@ void Object::updateBuffers()
   int quadSize = quads.size() * sizeof( Quad );
   Float counts[2] = { (Float) lines.size(), (Float) quads.size() };
 
-  if (countSize + lineSize + quadSize == 0)
-    bool zomg = true;
-
   glBindBuffer( GL_ARRAY_BUFFER, bufLinesQuads );
   glBufferData( GL_ARRAY_BUFFER, countSize + lineSize + quadSize, 0, GL_STATIC_DRAW );
   
-  glBufferSubData( GL_ARRAY_BUFFER, 0,                    countSize, counts );
+                    glBufferSubData( GL_ARRAY_BUFFER, 0,                    countSize, counts );
   if (lineSize > 0) glBufferSubData( GL_ARRAY_BUFFER, countSize,            lineSize,  &lines[0] );
   if (quadSize > 0) glBufferSubData( GL_ARRAY_BUFFER, countSize + lineSize, quadSize,  &quads[0] );
 
@@ -885,46 +432,57 @@ void Object::updateBuffers()
   //////////////////////////////////////
   //Pivot winding
 
-  std::vector< Float > grid;
+  if (gridWinding)
+  {
+    std::vector< Float > grid;
 
-  for (int y=0; y < image->gridH; ++y) {
-    for (int x=0; x < image->gridW; ++x) {
+    for (int y=0; y < image->gridSize.y; ++y) {
+      for (int x=0; x < image->gridSize.x; ++x) {
 
-      int gridIndex = y * image->gridW + x;
+        int gridIndex = y * image->gridSize.x + x;
 
-      grid.push_back( (Float) gridWinding[ gridIndex ] );
-      grid.push_back( 0.0f ); //padding
-      grid.push_back( 0.0f ); //padding
-      grid.push_back( 0.0f ); //padding
+        grid.push_back( (Float) gridWinding[ gridIndex ] );
+        grid.push_back( 0.0f ); //padding
+        grid.push_back( 0.0f ); //padding
+        grid.push_back( 0.0f ); //padding
+      }
     }
+
+    glBindTexture( GL_TEXTURE_1D, texGrid );
+    glTexImage1D( GL_TEXTURE_1D, 0, GL_RGBA32F, grid.size() / 4, 0, GL_RGBA, GL_FLOAT, &grid[0] );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+
+    checkGlError( "Object::updateBuffers grid" );
   }
 
-  glBindTexture( GL_TEXTURE_1D, texGrid );
-  glTexImage1D( GL_TEXTURE_1D, 0, GL_RGBA32F, grid.size() / 4, 0, GL_RGBA, GL_FLOAT, &grid[0] );
-  glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-  glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-
-  checkGlError( "Object::updateBuffers grid" );
-  
   //////////////////////////////////////
   //Setup pivot buffers
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufPivotWind );
-  glBufferData( GL_ARRAY_BUFFER, image->gridW * image->gridH * sizeof(int), gridWinding, GL_STATIC_DRAW );
+  if (gridWinding)
+  {
+    glBindBuffer( GL_ARRAY_BUFFER, bufPivotWind );
+    glBufferData( GL_ARRAY_BUFFER, image->gridSize.x * image->gridSize.y * sizeof(int), gridWinding, GL_STATIC_DRAW );
+  }
 
   checkGlError( "Object::updateBuffers pivot" );
 }
 
 Image::Image()
 {
-  gridW = 0;
-  gridH = 0;
   gridPivots = NULL;
   gridWinding = NULL;
   buffersInit = false;
 
-  cpuIndirection = NULL;
-  cpuStream.reserve( 200000 );
+  cpuCounters = NULL;
+  cpuStream = NULL;
+  cpuStreamLen = 0;
+
+  ptrInfo = NULL;
+  ptrObjects = NULL;
+  ptrObjectGrids = NULL;
+  ptrGrid = NULL;
+  ptrStream = NULL;
 }
 
 void Image::updateBounds()
@@ -948,10 +506,12 @@ void Image::updateBounds()
     if (obj->max.y > max.y) max.y = obj->max.y;
   }
   
-  gridW = gridResX;
-  gridH = gridResY;
-  cellSize.x = (max.x - min.x) / gridW;
-  cellSize.y = (max.y - min.y) / gridH;
+  gridSize.x = gridResX;
+  gridSize.y = gridResY;
+  gridOrigin.x = min.x;
+  gridOrigin.y = min.y;
+  cellSize.x = (max.x - min.x) / gridSize.x;
+  cellSize.y = (max.y - min.y) / gridSize.y;
 }
 
 void Image::updateGrid ()
@@ -959,24 +519,23 @@ void Image::updateGrid ()
   for (Uint32 o=0; o<objects.size(); ++o)
   {
     Object* obj = objects[o];
-    obj->updateBounds();
     obj->updateGrid();
   }
 
   if (gridPivots) delete[] gridPivots;
   if (gridWinding) delete[] gridWinding;
 
-  gridPivots = new Vec2 [gridW * gridH];
-  gridWinding = new int [gridW * gridH];
+  gridPivots = new Vec2 [gridSize.x * gridSize.y];
+  gridWinding = new int [gridSize.x * gridSize.y];
 
-  for (int x=0; x<gridW; ++x) {
-    for (int y=0; y<gridH; ++y) {
+  for (int x=0; x<gridSize.x; ++x) {
+    for (int y=0; y<gridSize.y; ++y) {
       
       Vec2 pivot(
         min.x + (x + 0.5f) * cellSize.x,
         min.y + (y + 0.5f) * cellSize.y );
 
-      int gridIndex = y * gridW + x;
+      int gridIndex = y * gridSize.x + x;
 
       gridPivots[ gridIndex ] = pivot;
       gridWinding[ gridIndex ] = 0;
@@ -986,428 +545,6 @@ void Image::updateGrid ()
     }
   }
 }
-
-#if (CPU_USE_AUX)
-
-void Image::updateStream ()
-{
-  //Reset indirection table and stream
-  if (cpuIndirection) delete[] cpuIndirection;
-  cpuIndirection = new int[ gridW * gridH ];
-  cpuStream.clear();
-  
-  //Auxiliary vertical counters
-  int *dAux = new int[ gridW * gridH ];
-
-  //Temporary cell streams
-  std::deque< Float > *tempStreams = new std::deque< Float > [ gridW * gridH ];
-  int maxCellLen = 0;
-
-
-  //Walk the list of objects
-  for (Uint32 o=0; o<objects.size(); ++o)
-  {
-    Object *obj = objects[o];
-
-    //Init auxiliary vertical counters
-    for (int x=0; x < gridW; ++x)
-      for (int y=0; y < gridH; ++y)
-        dAux[ y*gridW + x ] = 0;
-
-
-    //Walk the list of line segments
-    for (Uint32 l=0; l<obj->lines.size(); ++l) {
-
-      //Find line bounds
-      Line &line = obj->lines[l];
-      Vec2 lmin = Vec::Min( line.p0, line.p1 );
-      Vec2 lmax = Vec::Max( line.p0, line.p1 );
-
-      //Transform line bounds into grid space
-      lmin = Vec::Floor( (lmin - min) / cellSize );
-      lmax = Vec::Ceil( (lmax - min) / cellSize );
-
-      //Walk the list of cells within line bounds
-      for (int x=(int)lmin.x; x<(int)lmax.x; ++x) {
-        for (int y=(int)lmin.y; y<(int)lmax.y; ++y) {
-
-          //Find cell index
-          int gridIndex = y * gridW + x;
-          std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-          //Find cell bounds
-          Vec2 cmin(
-            min.x + x * cellSize.x,
-            min.y + y * cellSize.y );
-
-          Vec2 cmax(
-            min.x + (x + 1.0f) * cellSize.x,
-            min.y + (y + 1.0f) * cellSize.y );
-
-          //Transform line coords into cell space
-          Vec2 l0 = (line.p0 - cmin) / cellSize;
-          Vec2 l1 = (line.p1 - cmin) / cellSize;
-
-          //Add line data to cell stream
-          tempStream.push_back( StreamSegType::Line );
-          tempStream.push_back( l0.x );
-          tempStream.push_back( l0.y );
-          tempStream.push_back( l1.x );
-          tempStream.push_back( l1.y );
-
-          bool found = false;
-          float yy = 0.0f, xx = 0.0f;
-
-          //Check if line intersects right edge
-          lineIntersectionY( l0.yx(), l1.yx(), 1.0f, 0.0f, 1.0f, found, yy );
-          if (found)
-          {
-            //Add line spanning from intersection point to upper-right corner
-            tempStream.push_back( StreamSegType::Line );
-            tempStream.push_back( 1.0f );
-            tempStream.push_back( yy );
-            tempStream.push_back( 1.0f);
-            tempStream.push_back( -0.25f );
-          }
-
-          //Check if line intersects bottom edge
-          lineIntersectionY( l0, l1, 1.0f, 0.0f, 1.0f, found, xx );
-          if (found)
-          {
-            //Increase auxiliary vertical counter
-            dAux[ gridIndex ]++;
-          }
-        }//y
-      }//x
-    }//lines
-
-
-    //Walk the list of quad segments
-    for (Uint32 q=0; q < obj->quads.size(); ++q) {
-
-      //Find quad bounds
-      Quad &quad= obj->quads[q];
-      Vec2 qmin = Vec::Min( quad.p0, Vec::Min( quad.p1, quad.p2 ) );
-      Vec2 qmax = Vec::Max( quad.p0, Vec::Max( quad.p1, quad.p2 ) );
-
-      //Transform quad bounds into grid space
-      qmin = Vec::Floor( (qmin - min) / cellSize );
-      qmax = Vec::Ceil( (qmax - min) / cellSize );
-
-      //Walk the list of cells within quad bounds
-      for (int x=(int)qmin.x; x<(int)qmax.x; ++x) {
-        for (int y=(int)qmin.y; y<(int)qmax.y; ++y) {
-
-          //Find cell index
-          int gridIndex = y * gridW + x;
-          std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-          //Find cell bounds
-          Vec2 cmin(
-            min.x + x * cellSize.x,
-            min.y + y * cellSize.y );
-
-          Vec2 cmax(
-            min.x + (x + 1.0f) * cellSize.x,
-            min.y + (y + 1.0f) * cellSize.y );
-
-          //Transform quad coords into cell space
-          Vec2 q0 = (quad.p0 - cmin) / cellSize;
-          Vec2 q1 = (quad.p1 - cmin) / cellSize;
-          Vec2 q2 = (quad.p2 - cmin) / cellSize;
-
-          //Add quad data to cell stream
-          tempStream.push_back( StreamSegType::Quad );
-          tempStream.push_back( q0.x );
-          tempStream.push_back( q0.y );
-          tempStream.push_back( q1.x );
-          tempStream.push_back( q1.y );
-          tempStream.push_back( q2.x );
-          tempStream.push_back( q2.y );
-
-          bool found1=false, found2=false;
-          float yy1=0.0f, yy2=0.0f, xx1=0.0f, xx2=0.0f;
-
-          //Check if quad intersects right edge
-          quadIntersectionY( q0.yx(), q1.yx(), q2.yx(), 1.0f, 0.0f, 1.0f,
-                             found1, found2, yy1, yy2 );
-          if (found1)
-          {
-            //Add line spanning from intersection point to upper-right corner
-            tempStream.push_back( StreamSegType::Line );
-            tempStream.push_back( 1.0f );
-            tempStream.push_back( yy1 );
-            tempStream.push_back( 1.0f );
-            tempStream.push_back( -0.25f );
-          }
-
-          if (found2)
-          {
-            //Add line spanning from intersection point to upper-right corner
-            tempStream.push_back( StreamSegType::Line );
-            tempStream.push_back( 1.0f );
-            tempStream.push_back( yy2 );
-            tempStream.push_back( 1.0f );
-            tempStream.push_back( -0.25f );
-          }
-
-          //Check if quad intersects bottom edge
-          quadIntersectionY( q0, q1, q2, 1.0f, 0.0f, 1.0f,
-                             found1, found2, xx1, xx2 );
-          if (found1)
-          {
-            //Increase auxiliary vertical counter
-            dAux[ gridIndex ]++;
-          }
-
-          if (found2)
-          {
-            //Increase auxiliary vertical counter
-            dAux[ gridIndex ]++;
-          }
-        }//y
-      }//x
-    }//quads
-
-
-    //Add auxiliary vertical segments
-    for (int y=0; y < gridH; ++y)
-    {
-      int aux = 0;
-      for (int x=gridW-1; x>=0; --x)
-      {
-        //Find cell index
-        int gridIndex = y * gridW + x;
-        std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-        
-        //Add vertical segment if auxiliary counter parity is odd
-        if (aux % 2)
-        {
-          tempStream.push_back( StreamSegType::Line );
-          tempStream.push_back( 1.0f );
-          tempStream.push_back( 1.25f );
-          tempStream.push_back( 1.0f );
-          tempStream.push_back( -0.25f );
-        }
-
-        //Update running sum of auxiliary counter
-        aux += dAux[ gridIndex ];
-
-      }//x
-    }//y
-
-
-    //Transform object bounds into grid space
-    Vec2 omin = Vec::Floor( (obj->min - min) / cellSize );
-    Vec2 omax = Vec::Ceil( (obj->max - min) / cellSize );
-
-    //Walk the list of cells within object bounds
-    for (int x=(int)omin.x; x<(int)omax.x; ++x) {
-      for (int y=(int)omin.y; y<(int)omax.y; ++y) {
-
-        //Find cell index
-        int gridIndex = y * gridW + x;
-        std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-        //Add object data to cell stream
-        tempStream.push_back( StreamSegType::Object );
-        tempStream.push_back( obj->color.x );
-        tempStream.push_back( obj->color.y );
-        tempStream.push_back( obj->color.z );
-        tempStream.push_back( obj->color.w );
-
-      }//y
-    }//x
-  }//objects
-
-
-  //Flatten cell streams into one
-  for (int x=0; x < gridW; ++x) {
-    for (int y=0; y < gridH; ++y) {
-
-      //Find linear cell index
-      int gridIndex = y * gridW + x;
-      std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-      //Mark the start of the cell stream
-      cpuIndirection[ gridIndex ] = cpuStream.size();
-
-      //Insert stream contents
-      for (Uint32 s=0; s<tempStream.size(); ++s)
-        cpuStream.push_back( tempStream[s] );
-
-      //Terminate stream
-      cpuStream.push_back( -1.0 );
-      
-      //Update maximum cell length
-      int cellLen = tempStream.size();
-      if (cellLen > maxCellLen) { maxCellLen = cellLen; };
-    }
-  }
-
-  int totalLen = cpuStream.size();
-  std::cout << "Maximum cell len: " << maxCellLen << std::endl;
-  std::cout << "Total stream len: " << totalLen << std::endl;
-
-  delete [] dAux;
-  delete [] tempStreams;
-}
-
-#else
-
-void Image::updateStream ()
-{
-  //Reset indirection table and stream
-  if (cpuIndirection) delete[] cpuIndirection;
-  cpuIndirection = new int[ gridW * gridH ];
-  cpuStream.clear();
-
-  //Temporary cell streams
-  std::deque< Float > *tempStreams = new std::deque< Float > [ gridW * gridH ];
-  int maxCellLen = 0;
-
-  //Walk the list of objects
-  for (Uint32 o=0; o<objects.size(); ++o)
-  {
-    Object *obj = objects[o];
-
-    //Walk the list of line segments
-    for (Uint32 l=0; l<obj->lines.size(); ++l) {
-
-      //Find line bounds
-      Line &line = obj->lines[l];
-      Vec2 lmin = Vec::Min( line.p0, line.p1 );
-      Vec2 lmax = Vec::Max( line.p0, line.p1 );
-
-      //Transform line bounds into grid space
-      lmin = Vec::Floor( (lmin - min) / cellSize );
-      lmax = Vec::Ceil( (lmax - min) / cellSize );
-
-      //Walk the list of cells within line bounds
-      for (int x=(int)lmin.x; x<(int)lmax.x; ++x) {
-        for (int y=(int)lmin.y; y<(int)lmax.y; ++y) {
-
-          //Find cell index
-          int gridIndex = y * gridW + x;
-          std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-          //Find cell bounds
-          Vec2 cmin(
-            min.x + x * cellSize.x,
-            min.y + y * cellSize.y );
-
-          Vec2 cmax(
-            min.x + (x + 1.0f) * cellSize.x,
-            min.y + (y + 1.0f) * cellSize.y );
-
-          //Add line data to cell stream
-          tempStream.push_back( 1.0 );
-          tempStream.push_back( line.p0.x );
-          tempStream.push_back( line.p0.y );
-          tempStream.push_back( line.p1.x );
-          tempStream.push_back( line.p1.y );
-
-        }//y
-      }//x
-    }//lines
-
-    //Walk the list of quad segments
-    for (Uint32 q=0; q < obj->quads.size(); ++q) {
-
-      //Find quad bounds
-      Quad &quad= obj->quads[q];
-      Vec2 qmin = Vec::Min( quad.p0, Vec::Min( quad.p1, quad.p2 ) );
-      Vec2 qmax = Vec::Max( quad.p0, Vec::Max( quad.p1, quad.p2 ) );
-
-      //Transform quad bounds into grid space
-      qmin = Vec::Floor( (qmin - min) / cellSize );
-      qmax = Vec::Ceil( (qmax - min) / cellSize );
-
-      //Walk the list of cells within quad bounds
-      for (int x=(int)qmin.x; x<(int)qmax.x; ++x) {
-        for (int y=(int)qmin.y; y<(int)qmax.y; ++y) {
-
-          //Find cell index
-          int gridIndex = y * gridW + x;
-          std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-          //Find cell bounds
-          Vec2 cmin(
-            min.x + x * cellSize.x,
-            min.y + y * cellSize.y );
-
-          Vec2 cmax(
-            min.x + (x + 1.0f) * cellSize.x,
-            min.y + (y + 1.0f) * cellSize.y );
-
-          //Add quad data to cell stream
-          tempStream.push_back( 2.0 );
-          tempStream.push_back( quad.p0.x );
-          tempStream.push_back( quad.p0.y );
-          tempStream.push_back( quad.p1.x );
-          tempStream.push_back( quad.p1.y );
-          tempStream.push_back( quad.p2.x );
-          tempStream.push_back( quad.p2.y );
-
-        }//y
-      }//x
-    }//quads
-
-
-    //Transform object bounds into grid space
-    Vec2 omin = Vec::Floor( (obj->min - min) / cellSize );
-    Vec2 omax = Vec::Ceil( (obj->max - min) / cellSize );
-
-    //Walk the list of cells within object bounds
-    for (int x=(int)omin.x; x<(int)omax.x; ++x) {
-      for (int y=(int)omin.y; y<(int)omax.y; ++y) {
-
-        //Find cell index
-        int gridIndex = y * gridW + x;
-        std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-        //Add object data to cell stream
-        tempStream.push_back( 3.0 );
-        tempStream.push_back( (float) obj->gridWinding[ gridIndex ] );
-        tempStream.push_back( obj->color.x );
-        tempStream.push_back( obj->color.y );
-        tempStream.push_back( obj->color.z );
-        tempStream.push_back( obj->color.w );
-
-      }//y
-    }//x
-  }//objects
-
-  //Flatten cell streams into one
-  for (int x=0; x < gridW; ++x) {
-    for (int y=0; y < gridH; ++y) {
-
-      //Find linear cell index
-      int gridIndex = y * gridW + x;
-      std::deque< Float > &tempStream = tempStreams[ gridIndex ];
-
-      //Mark the start of the cell stream
-      cpuIndirection[ gridIndex ] = cpuStream.size();
-
-      //Insert stream contents
-      for (Uint32 s=0; s<tempStream.size(); ++s)
-        cpuStream.push_back( tempStream[s] );
-
-      //Terminate stream
-      cpuStream.push_back( -1.0 );
-      
-      //Update maximum cell length
-      int cellLen = tempStream.size();
-      if (cellLen > maxCellLen) { maxCellLen = cellLen; };
-    }
-  }
-
-  int totalLen = cpuStream.size();
-  std::cout << "Maximum cell len: " << maxCellLen << std::endl;
-  std::cout << "Total stream len: " << totalLen << std::endl;
-}
-
-#endif//CPU_USE_AUX
 
 void Image::updateBuffers ()
 {
@@ -1422,11 +559,23 @@ void Image::updateBuffers ()
     glGenBuffers( 1, &bufPivotPos );
     glGenBuffers( 1, &bufPivotWind );
     glGenTextures( 1, &texGrid );
-    glGenTextures( 1, &texCellStreams );
+    
     glGenTextures( 1, &texCellCounters );
+    glGenTextures( 1, &texCellStreams );
     glGenBuffers( 1, &bufCellStreams );
-    glGenBuffers( 1, &bufCpuIndirection );
+
+    glGenTextures( 1, &texCpuCounters );
     glGenBuffers( 1, &bufCpuStream );
+
+    glGenBuffers( 1, &bufObjGrid );
+    glGenBuffers( 1, &bufObjStream );
+
+    glGenBuffers( 1, &bufObjs );
+    glGenBuffers( 1, &bufGpuObjInfo );
+    glGenBuffers( 1, &bufGpuObjObjects );
+    glGenBuffers( 1, &bufGpuObjGrid );
+    glGenBuffers( 1, &bufGpuObjStream );
+
     buffersInit = true;
   }
 
@@ -1434,74 +583,147 @@ void Image::updateBuffers ()
   //Setup pivot buffers
   
   glBindBuffer( GL_ARRAY_BUFFER, bufPivotPos );
-  glBufferData( GL_ARRAY_BUFFER, gridW * gridH * sizeof(Vec2), gridPivots, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, gridSize.x * gridSize.y * sizeof(Vec2), gridPivots, GL_STATIC_DRAW );
 
   glBindBuffer( GL_ARRAY_BUFFER, bufPivotWind );
-  glBufferData( GL_ARRAY_BUFFER, gridW * gridH * sizeof(int), gridWinding, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, gridSize.x * gridSize.y * sizeof(int), gridWinding, GL_STATIC_DRAW );
 
   checkGlError( "Image::updateBuffers pivot" );
 
   //////////////////////////////////////
   //Pivot winding texture
   
-  std::vector< Float > grid;
+  if (gridWinding)
+  {
+    std::vector< Float > grid;
 
-  for (int y=0; y < image->gridH; ++y) {
-    for (int x=0; x < image->gridW; ++x) {
+    for (int y=0; y < image->gridSize.y; ++y) {
+      for (int x=0; x < image->gridSize.x; ++x) {
 
-      int gridIndex = y * image->gridW + x;
+        int gridIndex = y * image->gridSize.x + x;
 
-      grid.push_back( (Float) gridWinding[ gridIndex ] );
-      grid.push_back( 0.0f ); //padding;
-      grid.push_back( 0.0f ); //padding;
-      grid.push_back( 0.0f ); //padding;
+        grid.push_back( (Float) gridWinding[ gridIndex ] );
+        grid.push_back( 0.0f ); //padding;
+        grid.push_back( 0.0f ); //padding;
+        grid.push_back( 0.0f ); //padding;
+      }
     }
+
+    glBindTexture( GL_TEXTURE_1D, texGrid );
+    glTexImage1D( GL_TEXTURE_1D, 0, GL_RGBA32F, grid.size() / 4, 0, GL_RGBA, GL_FLOAT, &grid[0] );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+
+    checkGlError( "Image::updateBuffers grid" );
   }
-
-  glBindTexture( GL_TEXTURE_1D, texGrid );
-  glTexImage1D( GL_TEXTURE_1D, 0, GL_RGBA32F, grid.size() / 4, 0, GL_RGBA, GL_FLOAT, &grid[0] );
-  glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-  glTexParameteri( GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-
-  checkGlError( "Image::updateBuffers grid" );
 
   //////////////////////////////////////
   //Cell stream texture
 
-#if (USE_IMAGE)
-  glBindTexture( GL_TEXTURE_2D_ARRAY, texCellStreams );
-  glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_R32F, gridW, gridH, MAX_STREAM_LEN, 0, GL_RED, GL_FLOAT, 0 );
-#else
   glBindBuffer( GL_ARRAY_BUFFER, bufCellStreams );
   glBufferData( GL_ARRAY_BUFFER, MAX_COMBINED_STREAM_LEN * sizeof(GLfloat), 0, GL_STATIC_DRAW );
   glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
   glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrCellStreams );
-#endif
 
   checkGlError( "Image::updateBuffers stream" );
 
   //GL_R32UI with GL_UNSIGNED_INT doesn't work atm (error 0x502 invalid operation)
   glBindTexture( GL_TEXTURE_2D_ARRAY, texCellCounters );
-  glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_R32F, gridW, gridH, COUNTER_LEN, 0, GL_RED, GL_FLOAT, 0 );
+  glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_R32F, gridSize.x, gridSize.y, COUNTER_LEN, 0, GL_RED, GL_FLOAT, 0 );
 
   checkGlError( "Image::updateBuffers counter" );
 
   //////////////////////////////////////
-  //Stream buffer
-
-  glBindBuffer( GL_ARRAY_BUFFER, bufCpuIndirection );
-  glBufferData( GL_ARRAY_BUFFER, gridW * gridH * sizeof(int), cpuIndirection, GL_STATIC_DRAW );
-  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_ONLY );
-  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrCpuIndirection );
-
-  checkGlError( "Image::updateBuffers cpuIndirection" );
+  //Cpu stream texture
 
   glBindBuffer( GL_ARRAY_BUFFER, bufCpuStream );
-  glBufferData( GL_ARRAY_BUFFER, cpuStream.size() * sizeof(GLfloat), &cpuStream[0], GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, MAX_COMBINED_STREAM_LEN * sizeof(GLfloat), cpuStream, GL_STATIC_DRAW );
   glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_ONLY );
   glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrCpuStream );
 
   checkGlError( "Image::updateBuffers cpuStream" );
+
+  glBindTexture( GL_TEXTURE_2D_ARRAY, texCpuCounters );
+  glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_R32F, gridSize.x, gridSize.y, COUNTER_LEN, 0, GL_RED, GL_FLOAT, cpuCounters );
+
+  checkGlError( "Image::updateBuffers cpuCounters" );
+
+  //////////////////////////////////////
+  //Cpu object buffers
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufObjGrid );
+  glBufferData( GL_ARRAY_BUFFER, gridSize.x * gridSize.y * NUM_CELL_COUNTERS * sizeof(int), ptrGrid, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrObjGrid );
+
+  checkGlError( "Image::updateBuffers objGrid" );
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufObjStream );
+  glBufferData( GL_ARRAY_BUFFER, 500000 * sizeof(float), ptrStream, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrObjStream );
+
+  checkGlError( "Image::updateBuffers objStream" );
+
+  //////////////////////////////////////
+  //Gpu object buffers
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufObjs );
+  glBufferData( GL_ARRAY_BUFFER, 1000 * sizeof(Obj), 0, GL_STATIC_DRAW );
+  
+  checkGlError( "Image::updateBuffers objs" );
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuObjInfo );
+  glBufferData( GL_ARRAY_BUFFER, NUM_INFO_COUNTERS * sizeof(int), 0, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuObjInfo );
+
+  checkGlError( "Image::updateBuffers gpuobjInfo" );
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuObjObjects );
+  glBufferData( GL_ARRAY_BUFFER, 1000 * sizeof(ObjInfo), 0, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuObjObjects );
+  
+  checkGlError( "Image::updateBuffers gpuobjObjects" );
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuObjGrid );
+  glBufferData( GL_ARRAY_BUFFER, 500000 * sizeof(int), 0, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuObjGrid );
+
+  checkGlError( "Image::updateBuffers gpuobjGrid" );
+
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuObjStream );
+  glBufferData( GL_ARRAY_BUFFER, 500000 * sizeof(float), 0, GL_STATIC_DRAW );
+  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
+  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuObjStream );
+
+  checkGlError( "Image::updateBuffers gpuobjStream" );
+}
+
+std::vector< Shader::Def > Shader::defs;
+
+void Shader::Define (const std::string &key, const std::string &value)
+{
+  Def def;
+  def.key = key;
+  def.value = value;
+  defs.push_back( def );
+}
+
+std::string Shader::ApplyDefs (const std::string &source)
+{
+  std::string str = source;
+  
+  for (Uint32 d=0; d<defs.size(); ++d)
+  {
+    std::size_t x = 0;
+    while ((x = str.find( defs[d].key )) != std::string::npos)
+      str = str.replace( x, defs[d].key.length(), defs[d].value );
+  }
+
+  return str;
 }
 
 Shader::Shader (const std::string &vertFile, const std::string &fragFile)
@@ -1582,6 +804,7 @@ bool Shader::load()
     vertex = new GLShader();
     std::cout << "Loading shader " << vertFile << "..." << std::endl;
     std::string vertString = readFile( vertFile );
+    vertString = Shader::ApplyDefs( vertString );
 
     vertex->create( ShaderType::Vertex );
     if (vertex->compile( vertString ))
@@ -1602,6 +825,7 @@ bool Shader::load()
     geometry = new GLShader();
     std::cout << "Loading shader " << geomFile << "..." << std::endl;
     std::string geomString = readFile( geomFile );
+    geomString = Shader::ApplyDefs( geomString );
 
     geometry->create( ShaderType::Geometry );
     if (geometry->compile( geomString ))
@@ -1622,6 +846,7 @@ bool Shader::load()
     fragment = new GLShader();
     std::cout << "Loading shader " << fragFile << "..." << std::endl;
     std::string fragString = readFile( fragFile );
+    fragString = Shader::ApplyDefs( fragString );
 
     fragment->create( ShaderType::Fragment );
     if (fragment->compile( fragString ))
@@ -1787,15 +1012,11 @@ void encodeImage (Image *image)
 {
   //Even though the texture is R32F it can be "viewed" as R32I by the image load / store
   //operations (according to the spec) as it shares the same equivalence format of 1x32
-#if (USE_IMAGE)
-  glBindImageTexture( 0, image->texCellStreams, 0, true, 0, GL_READ_WRITE, GL_R32F );
-#endif
-
   glBindImageTexture( 1, image->texCellCounters, 0, true, 0, GL_READ_WRITE, GL_R32I );
   
   checkGlError( "encodeImage bind" );
  
-  glViewport( 0, 0, image->gridW, image->gridH );
+  glViewport( 0, 0, image->gridSize.x, image->gridSize.y );
   glDisable( GL_DEPTH_TEST );
   glDisable( GL_MULTISAMPLE );
 
@@ -1805,19 +1026,14 @@ void encodeImage (Image *image)
     Shader *shader = shaderEncodeInit;
     shader->use();
 
-#if (USE_IMAGE)
-    Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-    glUniform1i( uImgCellStreams, 0 );
-#else
     Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
     glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-#endif
 
     Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
     glUniform1i( uImgCellCounters, 1 );
 
     Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridW, image->gridH );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
 
     renderFullScreenQuad( shader );
   }
@@ -1827,12 +1043,12 @@ void encodeImage (Image *image)
   checkGlError( "encodeImage init" );
 
 /*
-  Float *testBuf = new Float[ o->gridW * o->gridH * COUNTER_LEN ];
+  Float *testBuf = new Float[ o->gridSize.x * o->gridSize.y * COUNTER_LEN ];
   glGetTexImage( GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, testBuf );
   Int32 *uTestBuf = (Int32*)testBuf;
-  for (int y=0; y<o->gridH; ++y) {
-    for (int x=0; x<o->gridW; ++x) {
-      std::cout << uTestBuf[ y * o->gridW + x ] << " ";
+  for (int y=0; y<o->gridSize.y; ++y) {
+    for (int x=0; x<o->gridSize.x; ++x) {
+      std::cout << uTestBuf[ y * o->gridSize.x + x ] << " ";
     }
     std::cout << std::endl;
   }
@@ -1866,20 +1082,15 @@ void encodeImage (Image *image)
       glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
 
       Int32 uGridSize = shader->program->getUniform( "gridSize" );
-      glUniform2i( uGridSize, image->gridW, image->gridH );
+      glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
 
       Int32 aPos = shader->program->getAttribute( "in_pos" );
       glEnableVertexAttribArray( aPos );
       glBindBuffer( GL_ARRAY_BUFFER, obj->bufLines );
       glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
-#if (USE_IMAGE)
-      Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-      glUniform1i( uImgCellStreams, 0 );
-#else
       Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
       glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-#endif
 
       Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
       glUniform1i( uImgCellCounters, 1 );
@@ -1912,20 +1123,15 @@ void encodeImage (Image *image)
       glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
 
       Int32 uGridSize = shader->program->getUniform( "gridSize" );
-      glUniform2i( uGridSize, image->gridW, image->gridH );
+      glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
 
       Int32 aPos = shader->program->getAttribute( "in_pos" );
       glEnableVertexAttribArray( aPos );
       glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads );
       glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
-#if (USE_IMAGE)
-      Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-      glUniform1i( uImgCellStreams, 0 );
-#else
       Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
       glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-#endif
 
       Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
       glUniform1i( uImgCellCounters, 1 );
@@ -1947,13 +1153,8 @@ void encodeImage (Image *image)
       shader->use();
 #endif
 
-#if (USE_IMAGE)
-      Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-      glUniform1i( uImgCellStreams, 0 );
-#else
       Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
       glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-#endif
 
       Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
       glUniform1i( uImgCellCounters, 1 );
@@ -1974,7 +1175,7 @@ void encodeImage (Image *image)
       glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
 
       Int32 uGridSize = shader->program->getUniform( "gridSize" );
-      glUniform2i( uGridSize, image->gridW, image->gridH );
+      glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
 
       Int32 uColor = shader->program->getUniform( "color" );
       glUniform4fv( uColor, 1, (GLfloat*) &obj->color );
@@ -1984,8 +1185,8 @@ void encodeImage (Image *image)
       Vec2 max = Vec::Ceil( (obj->max - image->min) / image->cellSize );
 
       //Transform to [-1,1] normalized coordinates (glViewport will transform back)
-      min = (min / Vec2( (float)image->gridW, (float)image->gridH )) * 2.0f - Vec2(1.0f,1.0f);
-      max = (max / Vec2( (float)image->gridW, (float)image->gridH )) * 2.0f - Vec2(1.0f,1.0f);
+      min = (min / Vec2( (float)image->gridSize.x, (float)image->gridSize.y )) * 2.0f - Vec2(1.0f,1.0f);
+      max = (max / Vec2( (float)image->gridSize.x, (float)image->gridSize.y )) * 2.0f - Vec2(1.0f,1.0f);
 
       renderQuad( shader, min, max );
     }
@@ -2001,19 +1202,14 @@ void encodeImage (Image *image)
       Shader *shader = shaderEncodeAux;
       shader->use();
 
-  #if (USE_IMAGE)
-      Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-      glUniform1i( uImgCellStreams, 0 );
-  #else
       Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
       glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-  #endif
 
       Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
       glUniform1i( uImgCellCounters, 1 );
 
       Int32 uGridSize = shader->program->getUniform( "gridSize" );
-      glUniform2i( uGridSize, image->gridW, image->gridH );
+      glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
 
       renderFullScreenQuad( shader );
     }
@@ -2025,12 +1221,12 @@ void encodeImage (Image *image)
   }
 
   /*
-  Float *testBuf = new Float[ o->gridW * o->gridH * COUNTER_LEN ];
+  Float *testBuf = new Float[ o->gridSize.x * o->gridSize.y * COUNTER_LEN ];
   glGetTexImage( GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, testBuf );
   Int32* uTestBuf = (Int32*) testBuf;
-  for (int y=0; y<o->gridH; ++y) {
-    for (int x=0; x<o->gridW; ++x) {
-      std::cout << uTestBuf[ y * o->gridW + x ] << " ";
+  for (int y=0; y<o->gridSize.y; ++y) {
+    for (int x=0; x<o->gridSize.x; ++x) {
+      std::cout << uTestBuf[ y * o->gridSize.x + x ] << " ";
     }
     std::cout << std::endl;
   }
@@ -2038,6 +1234,314 @@ void encodeImage (Image *image)
   */
 
   checkGlError( "encodeImage encode" );
+
+  glViewport( 0,0, resX, resY );
+}
+
+void encodeImageObj (Image *image)
+{ 
+  glViewport( 0, 0, image->gridSize.x, image->gridSize.y );
+  glDisable( GL_DEPTH_TEST );
+  glDisable( GL_MULTISAMPLE );
+
+  /////////////////////////////////////////////////////
+  // Init object data
+
+  image->objs.clear();
+  image->objInfos.clear();
+
+  //First object grid comes after the main grid
+  int gridOffset = image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS;
+
+  for (int o=0; o<(int)image->objects.size(); ++o)
+  {
+    Object *object = image->objects[o];
+
+    //Transform object bounds into grid space
+    ivec2 gridMin = Vec::Floor( (object->min - image->gridOrigin) / image->cellSize ).toInt();
+    ivec2 gridMax = Vec::Ceil( (object->max - image->gridOrigin) / image->cellSize ).toInt();
+
+    //Find object grid dimensions
+    ivec2 objGridOrigin = gridMin;
+    ivec2 objGridSize = gridMax - gridMin;
+
+    //Find object grid offset
+    int objGridOffset = gridOffset;
+    gridOffset += objGridSize.x * objGridSize.y * NUM_OBJCELL_COUNTERS;
+
+    //Store object data
+    Obj obj;
+    obj.min = vec3( object->min, (float) o );
+    obj.max = vec3( object->max, (float) o );
+    image->objs.push_back( obj );
+
+    ObjInfo objInfo;
+    objInfo.gridOrigin = objGridOrigin;
+    objInfo.gridSize = objGridSize;
+    objInfo.gridOffset = objGridOffset;
+    image->objInfos.push_back( objInfo );
+  }
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufObjs );
+  glBufferSubData( GL_ARRAY_BUFFER, 0, image->objs.size() * sizeof(Obj), &image->objs[0] );
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuObjObjects );
+  glBufferSubData( GL_ARRAY_BUFFER, 0, image->objInfos.size() * sizeof(ObjInfo), &image->objInfos[0] );
+  checkGlError( "encodeImageObj init objects" );
+  
+  /////////////////////////////////////////////////////
+  // Init size counters and main grid
+  {
+    Shader *shader = shaderEncodeObjInit;
+    shader->use();
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuObjInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    renderFullScreenQuad( shader );
+  }
+
+  /////////////////////////////////////////////////////
+  // Init object grids
+  {
+    Shader *shader = shaderEncodeObjInitObject;
+    shader->use();
+    
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrGpuObjObjects );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    Int32 aPos = shader->program->getAttribute( "in_pos" );
+    glBindBuffer( GL_ARRAY_BUFFER, image->bufObjs );
+    glVertexAttribPointer( aPos, 3, GL_FLOAT, false, sizeof(vec3), 0 );
+
+    glEnableVertexAttribArray( aPos );
+    glDrawArrays( GL_LINES, 0, image->objs.size() * 2 );
+    glDisableVertexAttribArray( aPos );
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage init" );
+
+  /*
+  glFinish();
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuObjGrid );
+  glMakeBufferNonResident( GL_ARRAY_BUFFER );
+  int *ptr = (int*) glMapBuffer( GL_ARRAY_BUFFER, GL_READ_ONLY );
+  checkGlError( "encodeImage map" );
+
+  for (int o=0; o<(int)image->objInfos.size(); ++o)
+  {
+    ObjInfo &obj = image->objInfos[o];
+    int *ptrObjGrid = ptr + obj.gridOffset;
+    for (int x=0; x<obj.gridSize.x; ++x) {
+      for (int y=0; y<obj.gridSize.y; ++y) {
+
+        int *ptrObjCell = ptrObjGrid + (y * obj.gridSize.x + x) * NUM_OBJCELL_COUNTERS;
+        std::cout << ptrObjCell[0] << "," << ptrObjCell[1] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+  }
+  glUnmapBuffer( GL_ARRAY_BUFFER );
+  */
+  
+  /////////////////////////////////////////////////////
+  // Encode object lines
+  {
+    Shader *shader = shaderEncodeObjLines;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrGpuObjObjects );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuObjInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuObjStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufLines );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+      glEnableVertexAttribArray( aPos );      
+      glDrawArrays( GL_LINES, 0, object->lines.size() * 2 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  /////////////////////////////////////////////////////
+  // Encode object quads
+  {
+    Shader *shader = shaderEncodeObjQuads;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrGpuObjObjects );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuObjInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuObjStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufQuads );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+      glEnableVertexAttribArray( aPos );
+      glDrawArrays( GL_TRIANGLES, 0, object->quads.size() * 3 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage lines quads" );
+  
+  /////////////////////////////////////////////////////
+  // Encode object properties into stream
+  {
+    Shader *shader = shaderEncodeObjObject;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrGpuObjObjects );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuObjInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuObjStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      //
+      Int32 uPtrObjGrid = shader->program->getUniform( "ptrObjGrid" );
+      glUniformui64( uPtrObjGrid, image->ptrGpuObjGrid + obj.gridOffset * sizeof(int) );
+
+      Int32 uObjGridOrigin = shader->program->getUniform( "objGridOrigin" );
+      glUniform2i( uObjGridOrigin, obj.gridOrigin.x, obj.gridOrigin.y );
+
+      Int32 uObjGridSize = shader->program->getUniform( "objGridSize" );
+      glUniform2i( uObjGridSize, obj.gridSize.x, obj.gridSize.y );
+      //
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 uColor = shader->program->getUniform( "color" );
+      glUniform4fv( uColor, 1, (GLfloat*) &object->color );
+      
+      //Transform and round object bounds to grid space
+      Vec2 min = Vec::Floor( (object->min - image->gridOrigin) / image->cellSize );
+      Vec2 max = Vec::Ceil( (object->max - image->gridOrigin) / image->cellSize );
+
+      //Transform to [-1,1] normalized coordinates (glViewport will transform back)
+      min = (min / image->gridSize.toFloat()) * 2.0f - Vec2(1.0f,1.0f);
+      max = (max / image->gridSize.toFloat()) * 2.0f - Vec2(1.0f,1.0f);
+
+      renderQuad( shader, min, max );
+    }
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage object" );
+
+  /////////////////////////////////////////////////////
+  // Sort objects in every cell back to front
+  {
+    Shader *shader = shaderEncodeObjSort;
+    shader->use();
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuObjStream );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    renderFullScreenQuad( shader );
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage sort" );
 
   glViewport( 0,0, resX, resY );
 }
@@ -2070,7 +1574,7 @@ void renderImageGrid (Image *i)
   glPointSize( 5.0f );
   glEnableVertexAttribArray( pos );
   glEnableVertexAttribArray( wind );
-  glDrawArrays( GL_POINTS, 0, i->gridW * i->gridH );
+  glDrawArrays( GL_POINTS, 0, i->gridSize.x * i->gridSize.y );
   glDisableVertexAttribArray( pos );
   glDisableVertexAttribArray( wind );
 
@@ -2098,20 +1602,13 @@ void renderImage (Image *image, VertexBuffer *buf, GLenum mode)
   Int32 projection = shader->program->getUniform( "projection" );
   glUniformMatrix4fv( projection, 1, false, (GLfloat*) matProjection.top().m );
 
-#if (USE_IMAGE)
-  glBindImageTexture( 0, image->texCellStreams, 0, true, 0, GL_READ_ONLY, GL_R32F );
-#endif
-
   glBindImageTexture( 1, image->texCellCounters, 0, true, 0, GL_READ_ONLY, GL_R32I );
+  //glBindImageTexture( 1, image->texCpuCounters, 0, true, 0, GL_READ_ONLY, GL_R32I );
 
-#if (USE_IMAGE)
-  Int32 uImgCellStreams = shader->program->getUniform( "imgCellStreams" );
-  glUniform1i( uImgCellStreams, 0 );
-#else
   Int32 uPtrCellStreams = shader->program->getUniform( "ptrCellStreams" );
   glUniformui64( uPtrCellStreams, image->ptrCellStreams );
-#endif
-
+  //glUniformui64( uPtrCellStreams, image->ptrCpuStream );
+  
   Int32 uImgCellCounters = shader->program->getUniform( "imgCellCounters" );
   glUniform1i( uImgCellCounters, 1 );
   
@@ -2122,7 +1619,7 @@ void renderImage (Image *image, VertexBuffer *buf, GLenum mode)
   glUniform2f( cellSize, image->cellSize.x, image->cellSize.y );
 
   Int32 gridSize = shader->program->getUniform( "gridSize" );
-  glUniform2i( gridSize, image->gridW, image->gridH );
+  glUniform2i( gridSize, image->gridSize.x, image->gridSize.y );
 
   Int32 gridOrigin = shader->program->getUniform( "gridOrigin" );
   glUniform2f( gridOrigin, image->min.x, image->min.y );
@@ -2138,17 +1635,15 @@ void renderImage (Image *image, VertexBuffer *buf, GLenum mode)
   glDisable( GL_BLEND );
 }
 
-void renderImageCpu (Image *image, VertexBuffer *buf, GLenum mode)
+void renderImageObj (Image *image, VertexBuffer *buf, GLenum mode)
 {
   glColor3f( 0,0,0 );
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
 
-#if (CPU_USE_AUX)
-  Shader *shader = shaderCpuAux;
+  Shader *shader = shaderCellObj;
   shader->use();
-#else
-  Shader *shader = shaderCpu;
-  shader->use();
-#endif
 
   Int32 modelview = shader->program->getUniform( "modelview" );
   glUniformMatrix4fv( modelview, 1, false, (GLfloat*) matModelView.top().m );
@@ -2156,11 +1651,11 @@ void renderImageCpu (Image *image, VertexBuffer *buf, GLenum mode)
   Int32 projection = shader->program->getUniform( "projection" );
   glUniformMatrix4fv( projection, 1, false, (GLfloat*) matProjection.top().m );
 
-  Int32 uPtrCpuIndirection = shader->program->getUniform( "ptrCpuIndirection" );
-  glUniformui64( uPtrCpuIndirection, image->ptrCpuIndirection );
+  Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+  glUniformui64( uPtrGrid, image->ptrGpuObjGrid );
 
-  Int32 uPtrCpuStream = shader->program->getUniform( "ptrCpuStream" );
-  glUniformui64( uPtrCpuStream, image->ptrCpuStream );
+  Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+  glUniformui64( uPtrStream, image->ptrGpuObjStream );
   
   glEnable( GL_BLEND );
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
@@ -2169,10 +1664,61 @@ void renderImageCpu (Image *image, VertexBuffer *buf, GLenum mode)
   glUniform2f( cellSize, image->cellSize.x, image->cellSize.y );
 
   Int32 gridSize = shader->program->getUniform( "gridSize" );
-  glUniform2i( gridSize, image->gridW, image->gridH );
+  glUniform2i( gridSize, image->gridSize.x, image->gridSize.y );
 
   Int32 gridOrigin = shader->program->getUniform( "gridOrigin" );
   glUniform2f( gridOrigin, image->min.x, image->min.y );
+
+  Int32 viewOrigin = shader->program->getUniform( "viewOrigin" );
+  glUniform2f( viewOrigin, 0.0f, 0.0f );
+
+  Int32 viewSize = shader->program->getUniform( "viewSize" );
+  glUniform2f( viewSize, (float) resX, (float) resY );
+  
+  renderVertexBuffer( shader, buf, mode );
+
+  glDisable( GL_BLEND );
+}
+
+void renderImageCpuObj (Image *image, VertexBuffer *buf, GLenum mode)
+{
+  glColor3f( 0,0,0 );
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
+
+  Shader *shader = shaderCellObj;
+  shader->use();
+
+  Int32 modelview = shader->program->getUniform( "modelview" );
+  glUniformMatrix4fv( modelview, 1, false, (GLfloat*) matModelView.top().m );
+
+  Int32 projection = shader->program->getUniform( "projection" );
+  glUniformMatrix4fv( projection, 1, false, (GLfloat*) matProjection.top().m );
+
+  Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+  glUniformui64( uPtrGrid, image->ptrObjGrid );
+
+  Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+  glUniformui64( uPtrStream, image->ptrObjStream );
+  
+  glEnable( GL_BLEND );
+  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
+  Int32 cellSize = shader->program->getUniform( "cellSize" );
+  glUniform2f( cellSize, image->cellSize.x, image->cellSize.y );
+
+  Int32 gridSize = shader->program->getUniform( "gridSize" );
+  glUniform2i( gridSize, image->gridSize.x, image->gridSize.y );
+
+  Int32 gridOrigin = shader->program->getUniform( "gridOrigin" );
+  glUniform2f( gridOrigin, image->min.x, image->min.y );
+
+  Int32 viewOrigin = shader->program->getUniform( "viewOrigin" );
+  glUniform2f( viewOrigin, 0.0f, 0.0f );
+
+  Int32 viewSize = shader->program->getUniform( "viewSize" );
+  glUniform2f( viewSize, (float) resX, (float) resY );
   
   renderVertexBuffer( shader, buf, mode );
 
@@ -2224,15 +1770,26 @@ void renderImage1to1 ()
 
   glDisable( GL_DEPTH_TEST );
 
-  if (drawCpu)
+  if (cpu)
   {
-    //image->updateStream();
-    if (draw) renderImageCpu( image, &buf, GL_QUADS );
+    if (encode) image->updateStream();
+    if (draw) renderImageCpuObj( image, &buf, GL_QUADS );
+
+    //glBindBuffer( GL_ARRAY_BUFFER, image->bufCpuStream );
+    //glBufferSubData( GL_ARRAY_BUFFER, 0, MAX_COMBINED_STREAM_LEN * sizeof(GLfloat), image->cpuStream );
+
+    //glBindTexture( GL_TEXTURE_2D_ARRAY, image->texCpuCounters );
+    //glTexSubImage3D( GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, image->gridSize.x, image->gridSize.y, COUNTER_LEN,
+      //GL_RED, GL_FLOAT, image->cpuCounters );
+
+    //if (draw) renderImageCpu( image, &buf, GL_QUADS );
   }
   else 
   {
-    if (encode) encodeImage( image );
-    if (draw) renderImage( image, &buf, GL_QUADS );
+    //if (encode) encodeImage( image );
+    //if (draw) renderImage( image, &buf, GL_QUADS );
+    if (encode) encodeImageObj( image );
+    if (draw) renderImageObj( image, &buf, GL_QUADS );
   }
   
   if (drawGrid) renderImageGrid( image );
@@ -2365,8 +1922,8 @@ void specialKey (int key, int x, int y)
   }
   else if (key == GLUT_KEY_F1)
   {
-    drawCpu = !drawCpu;
-    std::cout << (drawCpu ? "Using CPU stream" : "Using GPU stream" ) << std::endl;
+    cpu = !cpu;
+    std::cout << (cpu ? "Using CPU stream" : "Using GPU stream" ) << std::endl;
   }
   else if (key == GLUT_KEY_F2)
   {
@@ -2381,7 +1938,7 @@ void specialKey (int key, int x, int y)
   else if (key == GLUT_KEY_F4)
   {
     drawGrid = !drawGrid;
-    std::cout << (drawCpu ? "Grid ON" : "Grid OFF" ) << std::endl;
+    std::cout << (drawGrid ? "Grid ON" : "Grid OFF" ) << std::endl;
   }
   else if (key == GLUT_KEY_F5)
   {
@@ -2518,6 +2075,21 @@ int main (int argc, char **argv)
   rvgGLInit();
   wglSwapInterval( 0 );
 
+  Shader::Define( "INFO_COUNTER_STREAMLEN", "0" );
+  Shader::Define( "INFO_COUNTER_GRIDLEN",   "1" );
+  Shader::Define( "NUM_INFO_COUNTERS",      "2" );
+
+  Shader::Define( "OBJCELL_COUNTER_PREV",   "0" );
+  Shader::Define( "OBJCELL_COUNTER_AUX",    "1" );
+  Shader::Define( "NUM_OBJCELL_COUNTERS",   "2" );
+
+  Shader::Define( "CELL_COUNTER_PREV",      "0" );
+  Shader::Define( "NUM_CELL_COUNTERS",      "1" );
+
+  Shader::Define( "NODE_TYPE_LINE",         "1" );
+  Shader::Define( "NODE_TYPE_QUAD",         "2" );
+  Shader::Define( "NODE_TYPE_OBJECT",       "3" );
+
   shader1 = new Shader( "shader.vert.c", "shader.frag.c" );
   shader1->load();
 
@@ -2563,11 +2135,45 @@ int main (int argc, char **argv)
   //shaderCellAux = new Shader( "cell_aux.vert.c", "cell_aux.geom.c", "cell_aux.frag.c" );
   //shaderCellAux->load();
 
-  shaderCpu = new Shader( "cpu.vert.c", "cpu.frag.c" );
-  shaderCpu->load();
 
-  shaderCpuAux = new Shader( "cpu_aux.vert.c", "cpu_aux.frag.c" );
-  shaderCpuAux->load();
+  shaderEncodeObjInit = new Shader(
+    "shaders_obj/encode_obj_init.vert.c",
+    "shaders_obj/encode_obj_init.frag.c" );
+  shaderEncodeObjInit->load();
+
+  shaderEncodeObjInitObject = new Shader(
+    "shaders_obj/encode_obj_initobject.vert.c",
+    "shaders_obj/encode_obj_initobject.geom.c",
+    "shaders_obj/encode_obj_initobject.frag.c" );
+  shaderEncodeObjInitObject->load();
+
+  shaderEncodeObjLines = new Shader(
+    "shaders_obj/encode_obj_lines.vert.c",
+    "shaders_obj/encode_obj_lines.geom.c",
+    "shaders_obj/encode_obj_lines.frag.c" );
+  shaderEncodeObjLines->load();
+
+  shaderEncodeObjQuads = new Shader(
+    "shaders_obj/encode_obj_quads.vert.c",
+    "shaders_obj/encode_obj_quads.geom.c",
+    "shaders_obj/encode_obj_quads.frag.c" );
+  shaderEncodeObjQuads->load();
+
+  shaderEncodeObjObject = new Shader(
+    "shaders_obj/encode_obj_object.vert.c",
+    "shaders_obj/encode_obj_object.frag.c" );
+  shaderEncodeObjObject->load();
+
+  shaderEncodeObjSort = new Shader(
+    "shaders_obj/encode_obj_sort.vert.c",
+    "shaders_obj/encode_obj_sort.frag.c" );
+  shaderEncodeObjSort->load();
+
+  shaderCellObj = new Shader(
+    "shaders_obj/cell_obj.vert.c",
+    "shaders_obj/cell_obj.frag.c" );
+  shaderCellObj->load();
+
 
   object1 = new Object();
   object2 = new Object();
@@ -2598,7 +2204,7 @@ int main (int argc, char **argv)
   const int VG_FILL_PATH  (1 << 1);
   for (int i=0; i<pathCount; ++i)
   //for (int i=100; i<102; ++i)
-  //for (int i=19; i<20; ++i)
+  //for (int i=12; i<14; ++i)
   {
     const float *style = styleArrays[i];
     if (! (((int)style[9]) & VG_FILL_PATH)) continue;
@@ -2615,10 +2221,13 @@ int main (int argc, char **argv)
   }
   
   image->updateBounds();
-  image->updateGrid();
+  //image->updateGrid();
   image->updateStream();
   image->updateBuffers();
-/*
+
+  std::cout << "Total stream len: " << image->cpuStreamLen << std::endl;
+  //std::cout << "Maximum cell len: " << maxCellLen << std::endl;
+
   int start = glutGet( GLUT_ELAPSED_TIME );
   image->updateStream();
   int end = glutGet( GLUT_ELAPSED_TIME );
@@ -2637,7 +2246,6 @@ int main (int argc, char **argv)
   std::cout << time1 << "ms" << std::endl;
   std::cout << time2 << "ms" << std::endl;
   std::cout << time3 << "ms" << std::endl;
-*/
 
   glutMainLoop();
 }

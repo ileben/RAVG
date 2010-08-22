@@ -12,14 +12,14 @@ in layout( pixel_center_integer ) vec4 gl_FragCoord;
 
 void main()
 {
-  ivec2 cellCoord = ivec2( gl_FragCoord );
-  if (cellCoord.x >= 0 && cellCoord.x < gridSize.x &&
-      cellCoord.y >= 0 && cellCoord.y < gridSize.y)
+  ivec2 gridCoord = ivec2( gl_FragCoord );
+  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
+      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
   {
-    imageStore( imgCellCounters, ivec3( cellCoord, 0 ), ivec4( 0 ) );
-    imageStore( imgCellCounters, ivec3( cellCoord, 1 ), ivec4( -1 ) );
-    imageStore( imgCellCounters, ivec3( cellCoord, 2 ), ivec4( 0 ) );
-    imageStore( imgCellCounters, ivec3( cellCoord, 3 ), ivec4( 0 ) );
+    imageStore( imgCellCounters, ivec3( gridCoord, 0 ), ivec4( 0 ) );
+    imageStore( imgCellCounters, ivec3( gridCoord, 1 ), ivec4( -1 ) );
+    imageStore( imgCellCounters, ivec3( gridCoord, 2 ), ivec4( 0 ) );
+    imageStore( imgCellCounters, ivec3( gridCoord, 3 ), ivec4( 0 ) );
   }
 
   discard;

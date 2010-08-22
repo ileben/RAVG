@@ -1,4 +1,4 @@
-#include "rvgMain.h"
+#include "rvgDefs.h"
 #include "rvgVectors.h"
 #include "rvgMatrix.h"
 

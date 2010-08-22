@@ -11,27 +11,27 @@ uniform vec4 color;
 
 in layout( pixel_center_integer ) vec4 gl_FragCoord;
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord);
-void addObjectStart (ivec2 cellCoord);
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord);
+void addObject (vec4 color, ivec2 gridCoord);
 
 
 void main()
 {
-  ivec2 cellCoord = ivec2( gl_FragCoord.xy );
-  if (cellCoord.x >= 0 && cellCoord.x < gridSize.x &&
-      cellCoord.y >= 0 && cellCoord.y < gridSize.y)
+  ivec2 gridCoord = ivec2( gl_FragCoord.xy );
+  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
+      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
   {
     //Get and reset auxiliary vertical counter
-    int aux = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 2 ), 0 );
+    int aux = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 2 ), 0 );
 
     //Skip writing into this cell if fully occluded by another object
-    int cellDone = imageLoad( imgCellCounters, ivec3( cellCoord, 3 ) ).r;
+    int cellDone = imageLoad( imgCellCounters, ivec3( gridCoord, 3 ) ).r;
     if (cellDone == 0)
     {
       bool anySegments = false;
 
       //Get index of the previous node
-      int prevIndex = imageLoad( imgCellCounters, ivec3( cellCoord, 1 ) ).r;
+      int prevIndex = imageLoad( imgCellCounters, ivec3( gridCoord, 1 ) ).r;
       if (prevIndex >= 0)
       {
         //Check if previous node other than an object start
@@ -43,25 +43,25 @@ void main()
       if (aux % 2 == 1)
       {
         //Add auxiliary vertical segment
-        addLine( vec2( 1.0, 1.25f ), vec2( 1.0, -0.25f ), cellCoord );
+        addLine( vec2( 1.0, 1.25f ), vec2( 1.0, -0.25f ), gridCoord );
 
         //If no other segments, mark the cell fully occluded
-        if (!anySegments) imageStore( imgCellCounters, ivec3( cellCoord, 3 ), ivec4( 1 ) );
+        if (!anySegments) imageStore( imgCellCounters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
         anySegments = true;
       }
       
       //Add object data if any of its segments in this cell
-      if (anySegments) addObjectStart( cellCoord );
+      if (anySegments) addObject( color, gridCoord );
     }
   }
 
   discard;
 }
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord)
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord)
 {
   int streamIndex = imageAtomicAdd( imgCellCounters, ivec3( 0, 0, 0 ), 6 );
-  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 1 ), streamIndex );
+  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 1 ), streamIndex );
   
   ptrCellStreams[ streamIndex+0 ] = 1.0;
   ptrCellStreams[ streamIndex+1 ] = l0.x;
@@ -71,10 +71,10 @@ void addLine (vec2 l0, vec2 l1, ivec2 cellCoord)
   ptrCellStreams[ streamIndex+5 ] = (float) prevIndex;
 }
 
-void addObjectStart (ivec2 cellCoord)
+void addObject (vec4 color, ivec2 gridCoord)
 {
   int streamIndex = imageAtomicAdd( imgCellCounters, ivec3( 0, 0, 0 ), 6 );
-  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 1 ), streamIndex );
+  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 1 ), streamIndex );
   
   ptrCellStreams[ streamIndex+0 ] = 3.0;
   ptrCellStreams[ streamIndex+1 ] = color.r;

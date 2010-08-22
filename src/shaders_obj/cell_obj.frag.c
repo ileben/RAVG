@@ -3,9 +3,8 @@
 #extension GL_EXT_shader_image_load_store : enable
 #extension GL_NV_shader_buffer_load : enable
 
-uniform float* ptrCellStreams;
-uniform layout( size1x32 ) image2DArray imgCellStreams;
-uniform layout( size1x32 ) iimage2DArray imgCellCounters;
+uniform int* ptrGrid;
+uniform float *ptrStream;
 uniform vec2 cellSize;
 uniform ivec2 gridSize;
 uniform vec2 gridOrigin;
@@ -24,12 +23,10 @@ void quadIntersectionY (vec2 q0, vec2 q1, vec2 q2, float y, float minX, float ma
 
 void main (void)
 {
-  int streamIndex = 0;
-
+  int objIndex = 0;
+  int segIndex = 0;
+  int safetyCounter = 0;
   vec3 finalColor = vec3( 1,1,1 );
-  vec4 objColor = vec4( 0,0,0,0 );
-  bool objValid = false;
-  int objWinding = 0;
 
   //Find grid coordinate
   gridCoord = ivec2(floor( (f_tex - gridOrigin) / cellSize ));
@@ -43,70 +40,77 @@ void main (void)
       gridOrigin.x + gridCoord.x * cellSize.x,
       gridOrigin.y + gridCoord.y * cellSize.y );
 
-    //Init stream index
-    vec4 cellCounterTexel1 = imageLoad( imgCellCounters, ivec3( gridCoord, 1 ) );
-    streamIndex = int( cellCounterTexel1.r );
-
-    //Loop until end of stream
-    int safetyCounter = 0;
-    while (streamIndex != -1)
+    //Loop until end of object list
+    objIndex = ptrGrid[ (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS ];
+    while (objIndex != -1)
     {
-      if (++safetyCounter == 10000) { finalColor = vec3(1,0,0); break; }
-      
-      //Check segment type
-      float *ptrSeg = ptrCellStreams + streamIndex;
-      int segType = (int) ptrSeg[0];
-      if (segType == 1)
+      //Sanity check
+      //if (++safetyCounter >= 10000) { finalColor = vec3(1,0,0); break; }
+      //if (objIndex < -1 || objIndex > 500000)
+        //break;
+
+      //Get object type and link to previous object
+      float *ptrObj = ptrStream + objIndex;
+      int objType = (int) ptrObj[0];
+      objIndex = (int) ptrObj[1];
+
+      //Check object type
+      if (objType == NODE_TYPE_OBJECT)
       {
-        vec2 l0 = vec2( ptrSeg[1], ptrSeg[2] );
-        vec2 l1 = vec2( ptrSeg[3], ptrSeg[4] );
-        
-        bool found; float xx;
-        vec2 pp = clamp( (f_tex - cmin) / cellSize, vec2(0), vec2(1) );
-        lineIntersectionY( l0,l1, pp.y, pp.x, 1.0, found, xx );
-        if (found) objWinding++;
+        //Get color of the object
+        int objId = (int) ptrObj[2];
+        vec4 objColor = vec4( ptrObj[3], ptrObj[4], ptrObj[5], ptrObj[6] );
+        int objWinding = 0;
 
-        //Link to previous node
-        streamIndex = (int) ptrSeg[5];
-      }
-      else if (segType == 2)
-      {
-        vec2 q0 = vec2( ptrSeg[1], ptrSeg[2] );
-        vec2 q1 = vec2( ptrSeg[3], ptrSeg[4] );
-        vec2 q2 = vec2( ptrSeg[5], ptrSeg[6] );
+        //Loop until end of segment list
+        segIndex = (int) ptrObj[7];
+        while (segIndex != -1)
+        {
+          //Sanity check
+          //if (++safetyCounter >= 10000) { finalColor = vec3(1,0,0); break; }
+          //if (segIndex < -1 || segIndex > 500000)
+            //break;
 
-        bool found1, found2; float xx1,xx2;
-        vec2 pp = clamp( (f_tex - cmin) / cellSize, vec2(0), vec2(1) );
-        quadIntersectionY( q0,q1,q2, pp.y, pp.x, 1.0, found1,found2, xx1,xx2 );
-        if (found1) objWinding++;
-        if (found2) objWinding++;
+          //Get segment type and link to previous segment
+          float *ptrSeg = ptrStream + segIndex;
+          int segType = (int) ptrSeg[0];
+          segIndex = (int) ptrSeg[1];
 
-        //Link to previous node
-        streamIndex = (int) ptrSeg[7];
-      }
-      else if (segType == 3)
-      {
-        //Finalize previous object
-        if (objValid)
-          if (objWinding % 2 == 1)
-            finalColor = objColor.rgb;
+          //Check segment type
+          if (segType == NODE_TYPE_LINE)
+          {
+            vec2 l0 = vec2( ptrSeg[2], ptrSeg[3] );
+            vec2 l1 = vec2( ptrSeg[4], ptrSeg[5] );
+            
+            //Update winding number
+            bool found; float xx;
+            vec2 pp = clamp( (f_tex - cmin) / cellSize, vec2(0), vec2(1) );
+            lineIntersectionY( l0,l1, pp.y, pp.x, 1.0, found, xx );
+            if (found) objWinding++;
+          }
+          else if (segType == NODE_TYPE_QUAD)
+          {
+            vec2 q0 = vec2( ptrSeg[2], ptrSeg[3] );
+            vec2 q1 = vec2( ptrSeg[4], ptrSeg[5] );
+            vec2 q2 = vec2( ptrSeg[6], ptrSeg[7] );
 
-        //Get color of the next object
-        objColor = vec4( ptrSeg[1], ptrSeg[2], ptrSeg[3], ptrSeg[4] );
-        objValid = true;
-        objWinding = 0;
+            //Update winding number
+            bool found1, found2; float xx1,xx2;
+            vec2 pp = clamp( (f_tex - cmin) / cellSize, vec2(0), vec2(1) );
+            quadIntersectionY( q0,q1,q2, pp.y, pp.x, 1.0, found1,found2, xx1,xx2 );
+            if (found1) objWinding++;
+            if (found2) objWinding++;
+          }
+          else break;
+        }
 
-        //Link to previous node
-        streamIndex = (int) ptrSeg[5];
+        //Merge object color
+        if (objWinding % 2 == 1)
+          finalColor = objColor.rgb;
       }
       else break;
     }
   }
-
-  //Finalize previous object
-  if (objValid)
-    if (objWinding % 2 == 1)
-      finalColor = objColor.rgb;
 
   out_color = vec4( finalColor, 1 );
 }

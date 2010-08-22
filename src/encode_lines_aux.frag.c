@@ -14,27 +14,23 @@ in layout( pixel_center_integer ) vec4 gl_FragCoord;
 in vec2 line0;
 in vec2 line1;
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord);
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord);
 void lineIntersectionY (vec2 l0, vec2 l1, float y, float minX, float maxX,
                         out bool found, out float x);
 
 void main()
 {
-  ivec2 cellCoord = ivec2( gl_FragCoord.xy );
-  if (cellCoord.x >= 0 && cellCoord.x < gridSize.x &&
-      cellCoord.y >= 0 && cellCoord.y < gridSize.y)
+  ivec2 gridCoord = ivec2( gl_FragCoord.xy );
+  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
+      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
   {
     bool found = false, inside = false;
     float yy = 0.0, xx = 0.0;
 
-    //Find cell bounds
+    //Find cell origin
     vec2 cmin = vec2(
-      gridOrigin.x + cellCoord.x * cellSize.x,
-      gridOrigin.y + cellCoord.y * cellSize.y );
-
-    vec2 cmax = vec2(
-      gridOrigin.x + (cellCoord.x + 1.0) * cellSize.x,
-      gridOrigin.y + (cellCoord.y + 1.0) * cellSize.y );
+      gridOrigin.x + gridCoord.x * cellSize.x,
+      gridOrigin.y + gridCoord.y * cellSize.y );
 
     //Transform line coords into cell space
     vec2 l0 = (line0 - cmin) / cellSize;
@@ -45,13 +41,13 @@ void main()
     if (found)
     {
       //Increase auxiliary vertical counter in the cells to the left
-      for (int x = cellCoord.x - 1; x >= 0; --x)
-        imageAtomicAdd( imgCellCounters, ivec3( x, cellCoord.y, 2 ), 1 );
+      for (int x = gridCoord.x - 1; x >= 0; --x)
+        imageAtomicAdd( imgCellCounters, ivec3( x, gridCoord.y, 2 ), 1 );
       inside = true;
     }
 
     //Skip writing into this cell if fully occluded by another object
-    int cellDone = imageLoad( imgCellCounters, ivec3( cellCoord, 3 ) ).r;
+    int cellDone = imageLoad( imgCellCounters, ivec3( gridCoord, 3 ) ).r;
     if (cellDone == 0)
     {
       //Check if line intersects right edge
@@ -59,7 +55,7 @@ void main()
       if (found)
       {
         //Add line spanning from intersection point to upper-right corner
-        addLine( vec2( 1.0, yy ), vec2( 1.0, -0.25 ), cellCoord );
+        addLine( vec2( 1.0, yy ), vec2( 1.0, -0.25 ), gridCoord );
         inside = true;
       }
       
@@ -92,7 +88,7 @@ void main()
       if (inside)
       {
         //Add line data to stream
-        addLine( l0,l1, cellCoord );
+        addLine( l0,l1, gridCoord );
       }
     }
   }
@@ -100,10 +96,10 @@ void main()
   discard;
 }
 
-void addLine (vec2 l0, vec2 l1, ivec2 cellCoord)
+void addLine (vec2 l0, vec2 l1, ivec2 gridCoord)
 {
   int streamIndex = imageAtomicAdd( imgCellCounters, ivec3( 0, 0, 0 ), 6 );
-  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( cellCoord, 1 ), streamIndex );
+  int prevIndex = imageAtomicExchange( imgCellCounters, ivec3( gridCoord, 1 ), streamIndex );
   
   ptrCellStreams[ streamIndex+0 ] = 1.0;
   ptrCellStreams[ streamIndex+1 ] = l0.x;

@@ -6,8 +6,9 @@
 Forward declarations
 ------------------------------------*/
 
-class Vec3;
-class Vec4;
+template <class S> class TVec2;
+template <class S> class TVec3;
+template <class S> class TVec4;
 class Matrix4x4;
 
 /*
@@ -15,181 +16,219 @@ class Matrix4x4;
 2, 3, and 4-dimensional vectors
 =============================================*/
 
-class Vec2
+template <class S>
+class TVec2
 {
 public:
 
-  Float x, y;
-  
-  Vec2 yx () const;
+  S x, y;
 
-  Vec3 xy (Float z) const;
-  Vec4 xy (Float z, Float w) const;
+  TVec2<int> toInt() const;
+  TVec2<float> toFloat() const;
+  TVec2<double> toDouble() const;
+
+  TVec2<S> yx () const;
+
+  TVec3<S> xy (S z) const;
+  TVec4<S> xy (S z, S w) const;
   
-  Vec2 ();
-  Vec2 (Float xy);
-  Vec2 (Float x0, Float y0);
-  Vec2& set (Float x0, Float y0);
-  Vec2& operator= (const Vec2 &v);
-  bool operator== (const Vec2 &v) const;
-  bool operator!= (const Vec2 &v) const;
+  TVec2 ();
+  TVec2 (S xy);
+  TVec2 (S x0, S y0);
+  TVec2<S>& set (S x0, S y0);
+  TVec2<S>& operator= (const TVec2<S> &v);
+  bool operator== (const TVec2<S> &v) const;
+  bool operator!= (const TVec2<S> &v) const;
   
-  Vec2& operator+= (const Vec2 &v);
-  Vec2& operator-= (const Vec2 &v);
-  Vec2& operator*= (Float k);
-  Vec2& operator/= (Float k);
+  TVec2<S>& operator+= (const TVec2<S> &v);
+  TVec2<S>& operator-= (const TVec2<S> &v);
+  TVec2<S>& operator*= (Float k);
+  TVec2<S>& operator/= (Float k);
   
-  Vec2 operator+ (const Vec2 &v) const;
-  Vec2 operator- (const Vec2 &v) const;
-  Vec2 operator* (const Vec2 &v) const;
-  Vec2 operator/ (const Vec2 &v) const;
-  Vec2 operator* (Float k) const;
-  Vec2 operator/ (Float k) const;
+  TVec2<S> operator+ (const TVec2<S> &v) const;
+  TVec2<S> operator- (const TVec2<S> &v) const;
+  TVec2<S> operator* (const TVec2<S> &v) const;
+  TVec2<S> operator/ (const TVec2<S> &v) const;
+  TVec2<S> operator* (Float k) const;
+  TVec2<S> operator/ (Float k) const;
   
   Float norm () const;
   Float normSq () const;
-  Vec2& normalize ();
+  TVec2<S>& normalize ();
   
-  Vec2& offset (Float ox, Float oy);
-  Vec2& offsetV (const Vec2 &v, Float d);
-  Vec2& offsetVN (const Vec2 &v, Float d);
-  Vec2 reverse () const;
+  TVec2<S>& offset (Float ox, Float oy);
+  TVec2<S>& offsetV (const TVec2<S> &v, Float d);
+  TVec2<S>& offsetVN (const TVec2<S> &v, Float d);
+  TVec2<S> reverse () const;
 };
 
-class Vec3
+template <class S>
+class TVec3
 {
 public:
 
-  Float x, y, z;
+  S x, y, z;
+
+  TVec3<int> toInt() const;
+  TVec3<float> toFloat() const;
+  TVec3<double> toDouble() const;
   
-  Vec2 xy () const;
-  Vec4 xyz (Float w) const;
+  TVec2<S> xy () const;
+  TVec4<S> xyz (S w) const;
   
-  Vec3 ();
-  Vec3 (Float xyz);
-  Vec3 (Float x0, Float y0, Float z0);
-  Vec3& set (Float x0, Float y0, Float z0);
-  Vec3& operator= (const Vec3 &v);
-  bool operator== (const Vec3 &v) const;
-  bool operator!= (const Vec3 &v) const;
+  TVec3 ();
+  TVec3 (S xyz);
+  TVec3 (S x0, S y0, S z0);
+  TVec3 (const TVec2<S> &v, S z0);
+
+  TVec3<S>& set (S x0, S y0, S z0);
+  TVec3<S>& operator= (const TVec3<S> &v);
+  bool operator== (const TVec3<S> &v) const;
+  bool operator!= (const TVec3<S> &v) const;
   
-  Vec3& operator+= (const Vec3 &v);
-  Vec3& operator-= (const Vec3 &v);
-  Vec3& operator*= (Float k);
-  Vec3& operator/= (Float k);
+  TVec3<S>& operator+= (const TVec3<S> &v);
+  TVec3<S>& operator-= (const TVec3<S> &v);
+  TVec3<S>& operator*= (Float k);
+  TVec3<S>& operator/= (Float k);
   
-  Vec3 operator+ (const Vec3 &v) const;
-  Vec3 operator- (const Vec3 &v) const;
-  Vec3 operator* (const Vec3 &v) const;
-  Vec3 operator/ (const Vec3 &v) const;
-  Vec3 operator* (Float k) const;
-  Vec3 operator/ (Float k) const;
+  TVec3<S> operator+ (const TVec3<S> &v) const;
+  TVec3<S> operator- (const TVec3<S> &v) const;
+  TVec3<S> operator* (const TVec3<S> &v) const;
+  TVec3<S> operator/ (const TVec3<S> &v) const;
+  TVec3<S> operator* (Float k) const;
+  TVec3<S> operator/ (Float k) const;
   
   Float norm () const;
   Float normSq () const;
-  Vec3& normalize ();
+  TVec3<S>& normalize ();
   
-  Vec3& offset (Float ox, Float oy, Float oz);
-  Vec3& offsetV (const Vec3 &v, Float d);
-  Vec3& offsetVN (const Vec3 &v, Float d);
-  Vec3 reverse () const;
+  TVec3<S>& offset (Float ox, Float oy, Float oz);
+  TVec3<S>& offsetV (const TVec3<S> &v, Float d);
+  TVec3<S>& offsetVN (const TVec3<S> &v, Float d);
+  TVec3<S> reverse () const;
 };
 
-class Vec4
+template <class S>
+class TVec4
 {
 public:
 
-  Float x, y, z, w;
-  
-  Vec2 xy () const;
-  Vec3 xyz () const;
-  
-  Vec4 ();
-  Vec4 (Float xyzw);
-  Vec4 (Float x0, Float y0, Float z0, Float w0);
-  Vec4& set (Float x0, Float y0, Float z0, Float w0);
-  
-  Vec4& operator= (const Vec4 &v);
-  bool operator== (const Vec4 &v) const;
-  bool operator!= (const Vec4 &v) const;
-  
-  Vec4& operator+= (const Vec4 &v);
-  Vec4& operator-= (const Vec4 &v);
-  Vec4& operator*= (Float k);
-  Vec4& operator/= (Float k);
+  S x, y, z, w;
 
-  Vec4 operator+ (const Vec4 &v) const;
-  Vec4 operator- (const Vec4 &v) const;
-  Vec4 operator* (const Vec4 &v) const;
-  Vec4 operator/ (const Vec4 &v) const;
-  Vec4 operator* (Float k) const;
-  Vec4 operator/ (Float k) const;
+  TVec4<int> toInt() const;
+  TVec4<float> toFloat() const;
+  TVec4<double> toDouble() const;
+  
+  TVec2<S> xy () const;
+  TVec3<S> xyz () const;
+  
+  TVec4 ();
+  TVec4 (S xyzw);
+  TVec4 (S x0, S y0, S z0, S w0);
+  TVec4 (const TVec2<S> &v, S z0, S w0 );
+  TVec4 (const TVec3<S> &v, S w0 );
+
+  TVec4<S>& set (S x0, S y0, S z0, S w0);
+  TVec4<S>& operator= (const TVec4<S> &v);
+  bool operator== (const TVec4<S> &v) const;
+  bool operator!= (const TVec4<S> &v) const;
+  
+  TVec4<S>& operator+= (const TVec4<S> &v);
+  TVec4<S>& operator-= (const TVec4<S> &v);
+  TVec4<S>& operator*= (Float k);
+  TVec4<S>& operator/= (Float k);
+
+  TVec4<S> operator+ (const TVec4<S> &v) const;
+  TVec4<S> operator- (const TVec4<S> &v) const;
+  TVec4<S> operator* (const TVec4<S> &v) const;
+  TVec4<S> operator/ (const TVec4<S> &v) const;
+  TVec4<S> operator* (Float k) const;
+  TVec4<S> operator/ (Float k) const;
   
   Float norm () const;
   Float normSq () const;
-  Vec4& normalize ();
+  TVec4<S>& normalize ();
   
-  Vec4& offset (Float ox, Float oy, Float ow, Float oz);
-  Vec4& offsetV (const Vec4 &v, Float d);
-  Vec4& offsetVN (const Vec4 &v, Float d);
-  Vec4 reverse () const;
+  TVec4<S>& offset (Float ox, Float oy, Float ow, Float oz);
+  TVec4<S>& offsetV (const TVec4<S> &v, Float d);
+  TVec4<S>& offsetVN (const TVec4<S> &v, Float d);
+  TVec4<S> reverse () const;
 };
 
-class Vec
+template <class S>
+class TVec
 {
 public:
 
-  static Vec2 Floor (const Vec2 &v);
-  static Vec3 Floor (const Vec3 &v);
-  static Vec4 Floor (const Vec4 &v);
+  static TVec2<S> Floor (const TVec2<S> &v);
+  static TVec3<S> Floor (const TVec3<S> &v);
+  static TVec4<S> Floor (const TVec4<S> &v);
 
-  static Vec2 Ceil (const Vec2 &v);
-  static Vec3 Ceil (const Vec3 &v);
-  static Vec4 Ceil (const Vec4 &v);
+  static TVec2<S> Ceil (const TVec2<S> &v);
+  static TVec3<S> Ceil (const TVec3<S> &v);
+  static TVec4<S> Ceil (const TVec4<S> &v);
 
-  static Vec2 Fract (const Vec2 &v);
-  static Vec3 Fract (const Vec3 &v);
-  static Vec4 Fract (const Vec4 &v);
+  static TVec2<S> Fract (const TVec2<S> &v);
+  static TVec3<S> Fract (const TVec3<S> &v);
+  static TVec4<S> Fract (const TVec4<S> &v);
 
-  static Vec2 Min (const Vec2 &v1, const Vec2 &v2);
-  static Vec3 Min (const Vec3 &v1, const Vec3 &v2);
-  static Vec4 Min (const Vec4 &v1, const Vec4 &v2);
+  static TVec2<S> Min (const TVec2<S> &v1, const TVec2<S> &v2);
+  static TVec3<S> Min (const TVec3<S> &v1, const TVec3<S> &v2);
+  static TVec4<S> Min (const TVec4<S> &v1, const TVec4<S> &v2);
 
-  static Vec2 Max (const Vec2 &v1, const Vec2 &v2);
-  static Vec3 Max (const Vec3 &v1, const Vec3 &v2);
-  static Vec4 Max (const Vec4 &v1, const Vec4 &v2);
+  static TVec2<S> Max (const TVec2<S> &v1, const TVec2<S> &v2);
+  static TVec3<S> Max (const TVec3<S> &v1, const TVec3<S> &v2);
+  static TVec4<S> Max (const TVec4<S> &v1, const TVec4<S> &v2);
   
-  static Float Dot (const Vec2 &v1, const Vec2 &v2);
-  static Float Dot (const Vec3 &v1, const Vec3 &v2);
-  static Float Dot (const Vec4 &v1, const Vec4 &v2);
+  static Float Dot (const TVec2<S> &v1, const TVec2<S> &v2);
+  static Float Dot (const TVec3<S> &v1, const TVec3<S> &v2);
+  static Float Dot (const TVec4<S> &v1, const TVec4<S> &v2);
   
-  static Float Angle (const Vec2 &v1, const Vec2 &v2);
-  static Float Angle (const Vec3 &v1, const Vec3 &v2);
-  static Float Angle (const Vec4 &v1, const Vec4 &v2);
+  static Float Angle (const TVec2<S> &v1, const TVec2<S> &v2);
+  static Float Angle (const TVec3<S> &v1, const TVec3<S> &v2);
+  static Float Angle (const TVec4<S> &v1, const TVec4<S> &v2);
   
-  static Float AngleN (const Vec2 &v1, const Vec2 &v2);
-  static Float AngleN (const Vec3 &v1, const Vec3 &v2);
-  static Float AngleN (const Vec4 &v1, const Vec4 &v2);
+  static Float AngleN (const TVec2<S> &v1, const TVec2<S> &v2);
+  static Float AngleN (const TVec3<S> &v1, const TVec3<S> &v2);
+  static Float AngleN (const TVec4<S> &v1, const TVec4<S> &v2);
   
-  static Float Cross (const Vec2 &v1, const Vec2 &v2);
-  static Vec3 Cross (const Vec3 &v1, const Vec3 &v2);
+  static Float Cross (const TVec2<S> &v1, const TVec2<S> &v2);
+  static TVec3<S> Cross (const TVec3<S> &v1, const TVec3<S> &v2);
 
   template <class V> static V Lerp (const V &v1, const V &v2, Float t);
   
-  static Float RotationOnPlane2 (const Vec2 &v);
-  static Float RotationOnPlane2N (const Vec2 &v);
-  static Float RotationOnPlane3 (const Vec3 &v, const Vec3 &ux, const Vec3 &uy);
-  static Float RotationOnPlane3N (const Vec3 &v, const Vec3 &ux, const Vec3 &uy);
+  static Float RotationOnPlane2 (const TVec2<S> &v);
+  static Float RotationOnPlane2N (const TVec2<S> &v);
+  static Float RotationOnPlane3 (const TVec3<S> &v, const TVec3<S> &ux, const TVec3<S> &uy);
+  static Float RotationOnPlane3N (const TVec3<S> &v, const TVec3<S> &ux, const TVec3<S> &uy);
   
-  static Float AreaSign2 (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3);
-  static Float AreaSign3 (const Vec3 &p1, const Vec3 &p2, const Vec3 &p3);
-  static Float Area2 (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3);
-  static Float Area2V (const Vec2 &v1, const Vec2 &v2);
-  static Float Area3 (const Vec3 &p1, const Vec3 &p2, const Vec3 &p3);
-  static Float Area3V (const Vec3 &v1, const Vec3 &v2);
-  static bool InsideTriangle (const Vec2 &p, const Vec2 &p1, const Vec2 &p2,
-                              const Vec2 &p3, Float maxerror=0.0001);
+  static Float AreaSign2 (const TVec2<S> &p1, const TVec2<S> &p2, const TVec2<S> &p3);
+  static Float AreaSign3 (const TVec3<S> &p1, const TVec3<S> &p2, const TVec3<S> &p3);
+  static Float Area2 (const TVec2<S> &p1, const TVec2<S> &p2, const TVec2<S> &p3);
+  static Float Area2V (const TVec2<S> &v1, const TVec2<S> &v2);
+  static Float Area3 (const TVec3<S> &p1, const TVec3<S> &p2, const TVec3<S> &p3);
+  static Float Area3V (const TVec3<S> &v1, const TVec3<S> &v2);
+  static bool InsideTriangle (const TVec2<S> &p, const TVec2<S> &p1, const TVec2<S> &p2,
+                              const TVec2<S> &p3, Float maxerror=0.0001);
 };
+
+
+/*
+=============================================
+Commond vector types
+=============================================*/
+
+typedef TVec2<Float> Vec2;
+typedef TVec3<Float> Vec3;
+typedef TVec4<Float> Vec4;
+
+typedef TVec2<Int32> IVec2;
+typedef TVec3<Int32> IVec3;
+typedef TVec4<Int32> IVec4;
+
+typedef TVec<Float> Vec;
+typedef TVec<Int32> IVec;
+
 
 /*
 =============================================
@@ -231,376 +270,540 @@ Quat operator* (const Quat &q1, const Quat &q2);
 Vec inline functions
 =============================================*/
 
+//Scalar conversions (don't want automatic conversions!)
+template <class S>
+inline TVec2<int> TVec2<S>::toInt() const {
+  return TVec2<int> ((int)x,(int)y);
+}
+
+template <class S>
+inline TVec3<int> TVec3<S>::toInt() const {
+  return TVec3<int> ((int)x,(int)y,(int)z);
+}
+
+template <class S>
+inline TVec4<int> TVec4<S>::toInt() const {
+  return TVec4<int> ((int)x,(int)y,(int)z,(int)w);
+}
+
+
+template <class S>
+inline TVec2<float> TVec2<S>::toFloat() const {
+  return TVec2<float> ((float)x,(float)y);
+}
+
+template <class S>
+inline TVec3<float> TVec3<S>::toFloat() const {
+  return TVec3<float> ((float)x,(float)y,(float)z);
+}
+
+template <class S>
+inline TVec4<float> TVec4<S>::toFloat() const {
+  return TVec4<float> ((float)x,(float)y,(float)z,(float)w);
+}
+
+
+template <class S>
+inline TVec2<double> TVec2<S>::toDouble() const {
+  return TVec2<double> ((double)x,(double)y);
+}
+
+template <class S>
+inline TVec3<double> TVec3<S>::toDouble() const {
+  return TVec3<double> ((double)x,(double)y,(double)z);
+}
+
+template <class S>
+inline TVec4<double> TVec4<S>::toDouble() const {
+  return TVec4<double> ((double)x,(double)y,(double)z,(double)w);
+}
+
 //Swizzle
-inline Vec2 Vec2::yx () const
-  { return Vec2 (y,x); }
+template <class S>
+inline TVec2<S> TVec2<S>::yx () const
+  { return TVec2<S> (y,x); }
 
 
 //Conversions
-inline Vec3 Vec2::xy (Float z) const
-  { return Vec3 (x,y,z); }
+template <class S>
+inline TVec3<S> TVec2<S>::xy (S z) const
+  { return TVec3<S> (x,y,z); }
 
-inline Vec4 Vec2::xy (Float z, Float w) const
-  { return Vec4 (x,y,z,w); }
-
-
-inline Vec2 Vec3::xy () const
-  { return Vec2 (x,y); }
-
-inline Vec4 Vec3::xyz (Float w) const
-  { return Vec4 (x,y,z,w); }
+template <class S>
+inline TVec4<S> TVec2<S>::xy (S z, S w) const
+  { return TVec4<S> (x,y,z,w); }
 
 
-inline Vec2 Vec4::xy () const
-  { return Vec2 (x,y); }
+template <class S>
+inline TVec2<S> TVec3<S>::xy () const
+  { return TVec2<S> (x,y); }
 
-inline Vec3 Vec4::xyz () const
-  { return Vec3(x,y,z); }
+template <class S>
+inline TVec4<S> TVec3<S>::xyz (S w) const
+  { return TVec4<S> (x,y,z,w); }
+
+template <class S>
+inline TVec2<S> TVec4<S>::xy () const
+  { return TVec2<S> (x,y); }
+
+template <class S>
+inline TVec3<S> TVec4<S>::xyz () const
+  { return TVec3<S>(x,y,z); }
 
 
 //Default constructor
-inline Vec2::Vec2 ()
-  { x=0.0f; y=0.0f; }
+template <class S>
+inline TVec2<S>::TVec2 ()
+  { x=(S)0; y=(S)0; }
 
-inline Vec3::Vec3 ()
-  { x=0.0f; y=0.0f; z=0.0f; }
+template <class S>
+inline TVec3<S>::TVec3 ()
+  { x=(S)0; y=(S)0; z=(S)0; }
 
-inline Vec4::Vec4 ()
-  { x=0.0f; y=0.0f; z=0.0f; w=0.0f; }
+template <class S>
+inline TVec4<S>::TVec4 ()
+  { x=(S)0; y=(S)0; z=(S)0; w=(S)0; }
 
 
 //All-members constructor
-inline Vec2::Vec2 (Float xy)
+template <class S>
+inline TVec2<S>::TVec2 (S xy)
   { x=xy; y=xy; }
 
-inline Vec3::Vec3 (Float xyz)
+template <class S>
+inline TVec3<S>::TVec3 (S xyz)
   { x=xyz; y=xyz; z=xyz; }
 
-inline Vec4::Vec4 (Float xyzw)
+template <class S>
+inline TVec4<S>::TVec4 (S xyzw)
   { x=xyzw; y=xyzw; z=xyzw; w=xyzw; }
 
 
-//Separate members contructor
-inline Vec2::Vec2 (Float x0, Float y0)
+//Separate members constructor
+template <class S>
+inline TVec2<S>::TVec2 (S x0, S y0)
   { x=x0; y=y0; }
 
-inline Vec3::Vec3 (Float x0, Float y0, Float z0)
+template <class S>
+inline TVec3<S>::TVec3 (S x0, S y0, S z0)
   { x=x0; y=y0; z=z0; }
 
-inline Vec4::Vec4 (Float x0, Float y0, Float z0, Float w0)
+template <class S>
+inline TVec4<S>::TVec4 (S x0, S y0, S z0, S w0)
   { x=x0; y=y0; z=z0; w=w0; }
 
 
+//Partial vector constructor
+template <class S>
+inline TVec3<S>::TVec3(const TVec2<S> &v, S z0)
+  { x=v.x; y=v.y; z=z0; }
+
+template <class S>
+inline TVec4<S>::TVec4(const TVec2<S> &v, S z0, S w0)
+  { x=v.x; y=v.y; z=z0; w=w0; }
+
+template <class S>
+inline TVec4<S>::TVec4(const TVec3<S> &v, S w0)
+  { x=v.x; y=v.y; z=v.z; w=w0; }
+
+
 //Separate members assignment
-inline Vec2& Vec2::set (Float x0, Float y0)
+template <class S>
+inline TVec2<S>& TVec2<S>::set (S x0, S y0)
   { x=x0; y=y0; return *this; }
 
-inline Vec3& Vec3::set (Float x0, Float y0, Float z0)
+template <class S>
+inline TVec3<S>& TVec3<S>::set (S x0, S y0, S z0)
   { x=x0; y=y0; z=z0; return *this; }
 
-inline Vec4& Vec4::set (Float x0, Float y0, Float z0, Float w0)
+template <class S>
+inline TVec4<S>& TVec4<S>::set (S x0, S y0, S z0, S w0)
   { x=x0; y=y0; z=z0; w=w0; return *this; }
 
 
-inline Vec2& Vec2::operator= (const Vec2 &v)
+template <class S>
+inline TVec2<S>& TVec2<S>::operator= (const TVec2<S> &v)
   { x=v.x; y=v.y; return *this; }
 
-inline Vec3& Vec3::operator= (const Vec3 &v)
+template <class S>
+inline TVec3<S>& TVec3<S>::operator= (const TVec3<S> &v)
   { x=v.x; y=v.y; z=v.z; return *this; }
 
-inline Vec4& Vec4::operator= (const Vec4 &v)
+template <class S>
+inline TVec4<S>& TVec4<S>::operator= (const TVec4<S> &v)
   { x=v.x; y=v.y; z=v.z; w=v.w; return *this; }
 
 
-inline bool Vec2::operator== (const Vec2 &v) const
+template <class S>
+inline bool TVec2<S>::operator== (const TVec2<S> &v) const
   { return x==v.x && y==v.y; }
 
-inline bool Vec3::operator== (const Vec3 &v) const
+template <class S>
+inline bool TVec3<S>::operator== (const TVec3<S> &v) const
   { return x==v.x && y==v.y && z==v.z; }
 
-inline bool Vec4::operator== (const Vec4 &v) const
+template <class S>
+inline bool TVec4<S>::operator== (const TVec4<S> &v) const
   { return x==v.x && y==v.y && z==v.z && w==v.w; }
 
 
-inline bool Vec2::operator!= (const Vec2 &v) const
+template <class S>
+inline bool TVec2<S>::operator!= (const TVec2<S> &v) const
   { return x!=v.x || y!=v.y; }
 
-inline bool Vec3::operator!= (const Vec3 &v) const
+template <class S>
+inline bool TVec3<S>::operator!= (const TVec3<S> &v) const
   { return x!=v.x || y!=v.y || z!=v.z; }
 
-inline bool Vec4::operator!= (const Vec4 &v) const
+template <class S>
+inline bool TVec4<S>::operator!= (const TVec4<S> &v) const
   { return x!=v.x || y!=v.y || z!=v.z || w!=v.w; }
 
 
-inline Vec2& Vec2::operator+= (const Vec2 &v)
+template <class S>
+inline TVec2<S>& TVec2<S>::operator+= (const TVec2<S> &v)
   { x+=v.x; y+=v.y; return *this; }
 
-inline Vec3& Vec3::operator+= (const Vec3 &v)
+template <class S>
+inline TVec3<S>& TVec3<S>::operator+= (const TVec3<S> &v)
   { x+=v.x; y+=v.y; z+=v.z; return *this; }
 
-inline Vec4& Vec4::operator+= (const Vec4 &v)
+template <class S>
+inline TVec4<S>& TVec4<S>::operator+= (const TVec4<S> &v)
   { x+=v.x; y+=v.y; z+=v.z; w+=v.w; return *this; }
 
 
-inline Vec2& Vec2::operator-= (const Vec2 &v)
+template <class S>
+inline TVec2<S>& TVec2<S>::operator-= (const TVec2<S> &v)
   { x-=v.x; y-=v.y; return *this; }
 
-inline Vec3& Vec3::operator-= (const Vec3 &v)
+template <class S>
+inline TVec3<S>& TVec3<S>::operator-= (const TVec3<S> &v)
   { x-=v.x; y-=v.y; z-=v.z; return *this; }
 
-inline Vec4& Vec4::operator-= (const Vec4 &v)
+template <class S>
+inline TVec4<S>& TVec4<S>::operator-= (const TVec4<S> &v)
   { x-=v.x; y-=v.y; z-=v.z; w-=v.w; return *this; }
 
 
-inline Vec2& Vec2::operator*= (Float k)
+template <class S>
+inline TVec2<S>& TVec2<S>::operator*= (Float k)
   { x*=k; y*=k; return *this; }
 
-inline Vec3& Vec3::operator*= (Float k)
+template <class S>
+inline TVec3<S>& TVec3<S>::operator*= (Float k)
   { x*=k; y*=k; z*=k; return *this; }
 
-inline Vec4& Vec4::operator*= (Float k)
+template <class S>
+inline TVec4<S>& TVec4<S>::operator*= (Float k)
   { x*=k; y*=k; z*=k; w*=k; return *this; }
 
 
-inline Vec2& Vec2::operator/= (Float k)
+template <class S>
+inline TVec2<S>& TVec2<S>::operator/= (Float k)
   { x/=k; y/=k; return *this; }
 
-inline Vec3& Vec3::operator/= (Float k)
+template <class S>
+inline TVec3<S>& TVec3<S>::operator/= (Float k)
   { x/=k; y/=k; z/=k; return *this; }
 
-inline Vec4& Vec4::operator/= (Float k)
+template <class S>
+inline TVec4<S>& TVec4<S>::operator/= (Float k)
   { x/=k; y/=k; z/=k; w/=k; return *this; }
 
 
-inline Vec2 Vec2::operator+ (const Vec2 &v) const
-  { return Vec2 (x+v.x, y+v.y); }
+template <class S>
+inline TVec2<S> TVec2<S>::operator+ (const TVec2<S> &v) const
+  { return TVec2<S> (x+v.x, y+v.y); }
 
-inline Vec3 Vec3::operator+ (const Vec3 &v) const
-  { return Vec3 (x+v.x, y+v.y, z+v.z); }
+template <class S>
+inline TVec3<S> TVec3<S>::operator+ (const TVec3<S> &v) const
+  { return TVec3<S> (x+v.x, y+v.y, z+v.z); }
 
-inline Vec4 Vec4::operator+ (const Vec4 &v) const
-  { return Vec4 (x+v.x, y+v.y, z+v.z, w+v.w); }
-
-
-inline Vec2 Vec2::operator- (const Vec2 &v) const
-  { return Vec2 (x-v.x, y-v.y); }
-
-inline Vec3 Vec3::operator- (const Vec3 &v) const
-  { return Vec3 (x-v.x, y-v.y, z-v.z); }
-
-inline Vec4 Vec4::operator- (const Vec4 &v) const
-  { return Vec4 (x-v.x, y-v.y, z-v.z, w-v.w); }
+template <class S>
+inline TVec4<S> TVec4<S>::operator+ (const TVec4<S> &v) const
+  { return TVec4<S> (x+v.x, y+v.y, z+v.z, w+v.w); }
 
 
-inline Vec2 Vec2::operator* (const Vec2 &v) const
-  { return Vec2 (x*v.x, y*v.y); }
+template <class S>
+inline TVec2<S> TVec2<S>::operator- (const TVec2<S> &v) const
+  { return TVec2<S> (x-v.x, y-v.y); }
 
-inline Vec3 Vec3::operator* (const Vec3 &v) const
-  { return Vec3 (x*v.x, y*v.y, z*v.z); }
+template <class S>
+inline TVec3<S> TVec3<S>::operator- (const TVec3<S> &v) const
+  { return TVec3<S> (x-v.x, y-v.y, z-v.z); }
 
-inline Vec4 Vec4::operator* (const Vec4 &v) const
-  { return Vec4 (x*v.x, y*v.y, z*v.z, w*v.w); }
-
-
-inline Vec2 Vec2::operator/ (const Vec2 &v) const
-  { return Vec2 (x/v.x, y/v.y); }
-
-inline Vec3 Vec3::operator/ (const Vec3 &v) const
-  { return Vec3 (x/v.x, y/v.y, z/v.z); }
-
-inline Vec4 Vec4::operator/ (const Vec4 &v) const
-  { return Vec4 (x/v.x, y/v.y, z/v.z, w/v.w); }
+template <class S>
+inline TVec4<S> TVec4<S>::operator- (const TVec4<S> &v) const
+  { return TVec4<S> (x-v.x, y-v.y, z-v.z, w-v.w); }
 
 
-inline Vec2 Vec2::operator* (Float k) const
-  { return Vec2 (x*k, y*k); }
+template <class S>
+inline TVec2<S> TVec2<S>::operator* (const TVec2<S> &v) const
+  { return TVec2<S> (x*v.x, y*v.y); }
 
-inline Vec3 Vec3::operator* (Float k) const
-  { return Vec3 (x*k, y*k, z*k); }
+template <class S>
+inline TVec3<S> TVec3<S>::operator* (const TVec3<S> &v) const
+  { return TVec3<S> (x*v.x, y*v.y, z*v.z); }
 
-inline Vec4 Vec4::operator* (Float k) const
-  { return Vec4 (x*k, y*k, z*k, w*k); }
-
-
-inline Vec2 Vec2::operator/ (Float k) const
-  { return Vec2 (x/k, y/k); }
-
-inline Vec3 Vec3::operator/ (Float k) const
-  { return Vec3 (x/k, y/k, z/k); }
-
-inline Vec4 Vec4::operator/ (Float k) const
-  { return Vec4 (x/k, y/k, z/k, w/k); }
+template <class S>
+inline TVec4<S> TVec4<S>::operator* (const TVec4<S> &v) const
+  { return TVec4<S> (x*v.x, y*v.y, z*v.z, w*v.w); }
 
 
-inline Float Vec2::norm () const
+template <class S>
+inline TVec2<S> TVec2<S>::operator/ (const TVec2<S> &v) const
+  { return TVec2<S> (x/v.x, y/v.y); }
+
+template <class S>
+inline TVec3<S> TVec3<S>::operator/ (const TVec3<S> &v) const
+  { return TVec3<S> (x/v.x, y/v.y, z/v.z); }
+
+template <class S>
+inline TVec4<S> TVec4<S>::operator/ (const TVec4<S> &v) const
+  { return TVec4<S> (x/v.x, y/v.y, z/v.z, w/v.w); }
+
+
+template <class S>
+inline TVec2<S> TVec2<S>::operator* (Float k) const
+  { return TVec2<S> (x*k, y*k); }
+
+template <class S>
+inline TVec3<S> TVec3<S>::operator* (Float k) const
+  { return TVec3<S> (x*k, y*k, z*k); }
+
+template <class S>
+inline TVec4<S> TVec4<S>::operator* (Float k) const
+  { return TVec4<S> (x*k, y*k, z*k, w*k); }
+
+
+template <class S>
+inline TVec2<S> TVec2<S>::operator/ (Float k) const
+  { return TVec2<S> (x/k, y/k); }
+
+template <class S>
+inline TVec3<S> TVec3<S>::operator/ (Float k) const
+  { return TVec3<S> (x/k, y/k, z/k); }
+
+template <class S>
+inline TVec4<S> TVec4<S>::operator/ (Float k) const
+  { return TVec4<S> (x/k, y/k, z/k, w/k); }
+
+
+template <class S>
+inline Float TVec2<S>::norm () const
   { return SQRT (x*x + y*y); }
 
-inline Float Vec3::norm () const
+template <class S>
+inline Float TVec3<S>::norm () const
   { return SQRT (x*x + y*y + z*z); }
 
-inline Float Vec4::norm () const
+template <class S>
+inline Float TVec4<S>::norm () const
   { return SQRT (x*x + y*y + z*z + w*w); }
 
 
-inline Float Vec2::normSq () const
+template <class S>
+inline Float TVec2<S>::normSq () const
   { return x*x + y*y; }
 
-inline Float Vec3::normSq () const
+template <class S>
+inline Float TVec3<S>::normSq () const
   { return x*x + y*y + z*z; }
 
-inline Float Vec4::normSq () const
+template <class S>
+inline Float TVec4<S>::normSq () const
   { return x*x + y*y + z*z + w*w; }
 
 
-inline Vec2& Vec2::normalize ()
+template <class S>
+inline TVec2<S>& TVec2<S>::normalize ()
   { Float k=1.0f/norm(); x = k*x; y = k*y; return *this; }
 
-inline Vec3& Vec3::normalize ()
+template <class S>
+inline TVec3<S>& TVec3<S>::normalize ()
   { Float k=1.0f/norm(); x = k*x; y = k*y; z = k*z; return *this; }
 
-inline Vec4& Vec4::normalize ()
+template <class S>
+inline TVec4<S>& TVec4<S>::normalize ()
   { Float k=1.0f/norm(); x = k*x; y = k*y; z = k*z; w = k*w; return *this; }
 
 
-inline Vec2& Vec2::offset (Float ox, Float oy)
+template <class S>
+inline TVec2<S>& TVec2<S>::offset (Float ox, Float oy)
   { x+=ox; y+=oy; return *this; }
 
-inline Vec3& Vec3::offset (Float ox, Float oy, Float oz)
+template <class S>
+inline TVec3<S>& TVec3<S>::offset (Float ox, Float oy, Float oz)
   { x+=ox; y+=oy; z+=oz; return *this; }
 
-inline Vec4& Vec4::offset (Float ox, Float oy, Float oz, Float ow)
+template <class S>
+inline TVec4<S>& TVec4<S>::offset (Float ox, Float oy, Float oz, Float ow)
   { x+=ox; y+=oy; z+=oz; w+=ow; return *this; }
 
 
-inline Vec2& Vec2::offsetV (const Vec2 &v, Float d)
+template <class S>
+inline TVec2<S>& TVec2<S>::offsetV (const TVec2<S> &v, Float d)
   { Float K = d/v.norm(); x += v.x*K; y += v.y*K; return *this; }
 
-inline Vec3& Vec3::offsetV (const Vec3 &v, Float d)
+template <class S>
+inline TVec3<S>& TVec3<S>::offsetV (const TVec3<S> &v, Float d)
   { Float K = d/v.norm(); x += v.x*K; y += v.y*K; z += v.z*K; return *this; }
 
-inline Vec4& Vec4::offsetV (const Vec4 &v, Float d)
+template <class S>
+inline TVec4<S>& TVec4<S>::offsetV (const TVec4<S> &v, Float d)
   { Float K = d/v.norm(); x += v.x*K; y += v.y*K; z += v.z*K; w += v.w*K; return *this; }
 
 
-inline Vec2& Vec2::offsetVN (const Vec2 &v, Float d)
+template <class S>
+inline TVec2<S>& TVec2<S>::offsetVN (const TVec2<S> &v, Float d)
   { x += v.x*d; y += v.y*d; return *this; }
 
-inline Vec3& Vec3::offsetVN (const Vec3 &v, Float d)
+template <class S>
+inline TVec3<S>& TVec3<S>::offsetVN (const TVec3<S> &v, Float d)
   { x += v.x*d; y += v.y*d; z += v.z*d; return *this; }
 
-inline Vec4& Vec4::offsetVN (const Vec4 &v, Float d)
+template <class S>
+inline TVec4<S>& TVec4<S>::offsetVN (const TVec4<S> &v, Float d)
   { x += v.x*d; y += v.y*d; z += v.z*d; w += v.w*d; return *this; }
 
 
-inline Vec2 Vec2::reverse () const
-  { return Vec2 (-x, -y); }
+template <class S>
+inline TVec2<S> TVec2<S>::reverse () const
+  { return TVec2<S> (-x, -y); }
 
-inline Vec3 Vec3::reverse () const
-  { return Vec3 (-x, -y, -z); }
+template <class S>
+inline TVec3<S> TVec3<S>::reverse () const
+  { return TVec3<S> (-x, -y, -z); }
 
-inline Vec4 Vec4::reverse () const
-  { return Vec4 (-x, -y, -z, -w); }
+template <class S>
+inline TVec4<S> TVec4<S>::reverse () const
+  { return TVec4<S> (-x, -y, -z, -w); }
 
 
-inline Float Vec::Dot (const Vec2 &v1, const Vec2 &v2)
+template <class S>
+inline Float TVec<S>::Dot (const TVec2<S> &v1, const TVec2<S> &v2)
   { return v1.x*v2.x + v1.y*v2.y; }
 
-inline Float Vec::Dot (const Vec3 &v1, const Vec3 &v2)
+template <class S>
+inline Float TVec<S>::Dot (const TVec3<S> &v1, const TVec3<S> &v2)
   { return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z; }
 
-inline Float Vec::Dot (const Vec4 &v1, const Vec4 &v2)
+template <class S>
+inline Float TVec<S>::Dot (const TVec4<S> &v1, const TVec4<S> &v2)
   { return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z + v1.w*v2.w; }
 
 
-inline Float Vec::Angle (const Vec2 &v1, const Vec2 &v2)
-  { return ACOS (Vec::Dot (v1,v2) / (v1.norm() * v2.norm())); }
+template <class S>
+inline Float TVec<S>::Angle (const TVec2<S> &v1, const TVec2<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2) / (v1.norm() * v2.norm())); }
 
-inline Float Vec::Angle (const Vec3 &v1, const Vec3 &v2)
-  { return ACOS (Vec::Dot (v1,v2) / (v1.norm() * v2.norm())); }
+template <class S>
+inline Float TVec<S>::Angle (const TVec3<S> &v1, const TVec3<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2) / (v1.norm() * v2.norm())); }
 
-inline Float Vec::Angle (const Vec4 &v1, const Vec4 &v2)
-  { return ACOS (Vec::Dot (v1,v2) / (v1.norm() * v2.norm())); }
-
-
-inline Float Vec::AngleN (const Vec2 &v1, const Vec2 &v2)
-  { return ACOS (Vec::Dot (v1,v2)); }
-
-inline Float Vec::AngleN (const Vec3 &v1, const Vec3 &v2)
-  { return ACOS (Vec::Dot (v1,v2)); }
-
-inline Float Vec::AngleN (const Vec4 &v1, const Vec4 &v2)
-  { return ACOS (Vec::Dot (v1,v2)); }
+template <class S>
+inline Float TVec<S>::Angle (const TVec4<S> &v1, const TVec4<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2) / (v1.norm() * v2.norm())); }
 
 
-inline Float Vec::Cross (const Vec2 &v1, const Vec2 &v2) {
+template <class S>
+inline Float TVec<S>::AngleN (const TVec2<S> &v1, const TVec2<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2)); }
+
+template <class S>
+inline Float TVec<S>::AngleN (const TVec3<S> &v1, const TVec3<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2)); }
+
+template <class S>
+inline Float TVec<S>::AngleN (const TVec4<S> &v1, const TVec4<S> &v2)
+  { return ACOS (TVec<S>::Dot (v1,v2)); }
+
+
+template <class S>
+inline Float TVec<S>::Cross (const TVec2<S> &v1, const TVec2<S> &v2) {
   return v1.x*v2.y - v2.x*v1.y;
 }
 
-inline Vec3 Vec::Cross (const Vec3 &v1, const Vec3 &v2) {
-  return Vec3 (v1.y*v2.z - v2.y*v1.z,
+template <class S>
+inline TVec3<S> TVec<S>::Cross (const TVec3<S> &v1, const TVec3<S> &v2) {
+  return TVec3<S> (v1.y*v2.z - v2.y*v1.z,
                   v2.x*v1.z - v1.x*v2.z,
                   v1.x*v2.y - v2.x*v1.y);
 }
 
-template <class V> inline V Vec::Lerp (const V &v1, const V &v2, Float t) {
+template <class S>
+template <class V> inline V TVec<S>::Lerp (const V &v1, const V &v2, Float t) {
   return v1 * (1.0f - t) + v2 * t;
 }
 
 
-inline Vec2 Vec::Floor (const Vec2 &v) {
-  return Vec2( FLOOR(v.x), FLOOR(v.y) );
+template <class S>
+inline TVec2<S> TVec<S>::Floor (const TVec2<S> &v) {
+  return TVec2<S>( FLOOR(v.x), FLOOR(v.y) );
 }
 
-inline Vec3 Vec::Floor (const Vec3 &v) {
-  return Vec3( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z) );
+template <class S>
+inline TVec3<S> TVec<S>::Floor (const TVec3<S> &v) {
+  return TVec3<S>( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z) );
 }
 
-inline Vec4 Vec::Floor (const Vec4 &v) {
-  return Vec4( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z), FLOOR(v.w) );
-}
-
-
-inline Vec2 Vec::Ceil (const Vec2 &v) {
-  return Vec2( CEIL(v.x), CEIL(v.y) );
-}
-
-inline Vec3 Vec::Ceil (const Vec3 &v) {
-  return Vec3( CEIL(v.x), CEIL(v.y), CEIL(v.z) );
-}
-
-inline Vec4 Vec::Ceil (const Vec4 &v) {
-  return Vec4( CEIL(v.x), CEIL(v.y), CEIL(v.z), CEIL(v.w) );
+template <class S>
+inline TVec4<S> TVec<S>::Floor (const TVec4<S> &v) {
+  return TVec4<S>( FLOOR(v.x), FLOOR(v.y), FLOOR(v.z), FLOOR(v.w) );
 }
 
 
-inline Vec2 Vec::Fract (const Vec2 &v) {
-  return Vec2( v.x - FLOOR(v.x), v.y - FLOOR(v.y) );
+template <class S>
+inline TVec2<S> TVec<S>::Ceil (const TVec2<S> &v) {
+  return TVec2<S>( CEIL(v.x), CEIL(v.y) );
 }
 
-inline Vec3 Vec::Fract (const Vec3 &v) {
-  return Vec3( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z) );
+template <class S>
+inline TVec3<S> TVec<S>::Ceil (const TVec3<S> &v) {
+  return TVec3<S>( CEIL(v.x), CEIL(v.y), CEIL(v.z) );
 }
 
-inline Vec4 Vec::Fract (const Vec4 &v) {
-  return Vec4( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z), v.w - FLOOR(v.w) );
+template <class S>
+inline TVec4<S> TVec<S>::Ceil (const TVec4<S> &v) {
+  return TVec4<S>( CEIL(v.x), CEIL(v.y), CEIL(v.z), CEIL(v.w) );
 }
 
 
-inline Vec2 Vec::Min (const Vec2 &v1, const Vec2 &v2) {
-  return Vec2(
+template <class S>
+inline TVec2<S> TVec<S>::Fract (const TVec2<S> &v) {
+  return TVec2<S>( v.x - FLOOR(v.x), v.y - FLOOR(v.y) );
+}
+
+template <class S>
+inline TVec3<S> TVec<S>::Fract (const TVec3<S> &v) {
+  return TVec3<S>( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z) );
+}
+
+template <class S>
+inline TVec4<S> TVec<S>::Fract (const TVec4<S> &v) {
+  return TVec4<S>( v.x - FLOOR(v.x), v.y - FLOOR(v.y), v.z - FLOOR(v.z), v.w - FLOOR(v.w) );
+}
+
+
+template <class S>
+inline TVec2<S> TVec<S>::Min (const TVec2<S> &v1, const TVec2<S> &v2) {
+  return TVec2<S>(
     v1.x < v2.x ? v1.x : v2.x,
     v1.y < v2.y ? v1.y : v2.y );
 }
 
-inline Vec3 Vec::Min (const Vec3 &v1, const Vec3 &v2) {
-  return Vec3(
+template <class S>
+inline TVec3<S> TVec<S>::Min (const TVec3<S> &v1, const TVec3<S> &v2) {
+  return TVec3<S>(
     v1.x < v2.x ? v1.x : v2.x,
     v1.y < v2.y ? v1.y : v2.y,
     v1.z < v2.z ? v1.z : v2.z );
 }
 
-inline Vec4 Vec::Min (const Vec4 &v1, const Vec4 &v2) {
-  return Vec4(
+template <class S>
+inline TVec4<S> TVec<S>::Min (const TVec4<S> &v1, const TVec4<S> &v2) {
+  return TVec4<S>(
     v1.x < v2.x ? v1.x : v2.x,
     v1.y < v2.y ? v1.y : v2.y,
     v1.z < v2.z ? v1.z : v2.z,
@@ -608,21 +811,24 @@ inline Vec4 Vec::Min (const Vec4 &v1, const Vec4 &v2) {
 }
 
 
-inline Vec2 Vec::Max (const Vec2 &v1, const Vec2 &v2) {
-  return Vec2(
+template <class S>
+inline TVec2<S> TVec<S>::Max (const TVec2<S> &v1, const TVec2<S> &v2) {
+  return TVec2<S>(
     v1.x > v2.x ? v1.x : v2.x,
     v1.y > v2.y ? v1.y : v2.y );
 }
 
-inline Vec3 Vec::Max (const Vec3 &v1, const Vec3 &v2) {
-  return Vec3(
+template <class S>
+inline TVec3<S> TVec<S>::Max (const TVec3<S> &v1, const TVec3<S> &v2) {
+  return TVec3<S>(
     v1.x > v2.x ? v1.x : v2.x,
     v1.y > v2.y ? v1.y : v2.y,
     v1.z > v2.z ? v1.z : v2.z );
 }
 
-inline Vec4 Vec::Max (const Vec4 &v1, const Vec4 &v2) {
-  return Vec4(
+template <class S>
+inline TVec4<S> TVec<S>::Max (const TVec4<S> &v1, const TVec4<S> &v2) {
+  return TVec4<S>(
     v1.x > v2.x ? v1.x : v2.x,
     v1.y > v2.y ? v1.y : v2.y,
     v1.z > v2.z ? v1.z : v2.z,
