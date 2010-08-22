@@ -55,7 +55,7 @@ int Image::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjC
   return nodeOffset;
 }
 
-int Image::addObject (const Vec4 &color, int lastSegmentOffset, int *ptrCell)
+int Image::addObject (int objectId, const Vec4 &color, int lastSegmentOffset, int *ptrCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -108,336 +108,314 @@ void Image::frag_encodeInit
   ptrInfo[ INFO_COUNTER_STREAMLEN ] = 0; //This should be done only once instead
   ptrInfo[ INFO_COUNTER_GRIDLEN ] = 0; //This should be done only once instead
 
-  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
-      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
-  {
-    //Get grid cell pointer
-    int *ptrCell = ptrGrid
-      + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
+  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
+      gridCoord.y < 0 || gridCoord.y >= gridSize.y)
+      return;
 
-    //Init grid cell data
-    ptrCell[ CELL_COUNTER_PREV ] = -1;
-  }
-}
+  //Get grid cell pointer
+  int *ptrCell = ptrGrid
+    + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
 
-void Image::geom_encodeInitObject
-(
- vec2 min,
- vec2 max,
- ivec2 &objGridOrigin,
- ivec2 &objGridSize,
- int &objGridOffset
-)
-{
-  //Transform object bounds into grid space
-  ivec2 gridMin = Vec::Floor( (min - gridOrigin) / cellSize ).toInt();
-  ivec2 gridMax = Vec::Ceil( (max - gridOrigin) / cellSize ).toInt();
-
-  objGridOrigin = gridMin;
-  objGridSize = gridMax - gridMin;
-
-  //Get object offset, store new grid stream size
-  objGridOffset = atomicAdd( ptrInfo + INFO_COUNTER_GRIDLEN,
-    objGridSize.x * objGridSize.y * NUM_OBJCELL_COUNTERS );
-
-  //Store object data
-  int *ptrObj = ptrObjects + objectId * 5;
-  ptrObj[ 0 ] = objGridOrigin.x;
-  ptrObj[ 1 ] = objGridOrigin.y;
-  ptrObj[ 2 ] = objGridSize.x;
-  ptrObj[ 3 ] = objGridSize.y;
-  ptrObj[ 4 ] = objGridOffset;
+  //Init grid cell data
+  ptrCell[ CELL_COUNTER_PREV ] = -1;
 }
 
 void Image::frag_encodeInitObject
 (
- const ivec2 &gridCoord,
- ivec2 objGridOrigin,
- ivec2 objGridSize,
- int objGridOffset
+ int objectId,
+ const ivec2 &gridCoord
 )
 {
-  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
-      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
-  {
-    //Get object grid pointer
-    int *ptrObjGrid = ptrObjectGrids + objGridOffset;
-    ivec2 objGridCoord = gridCoord - objGridOrigin;
+  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
+      gridCoord.y < 0 || gridCoord.y >= gridSize.y)
+      return;
 
-    //Get object grid cell pointer
-    int* ptrObjCell = ptrObjGrid
-      + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+  //Get object pointer and object grid info
+  int  *ptrObj        = ptrObjects + objectId * 5;
+  ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
+  ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
+  int   objGridOffset = ptrObj[4];
 
-    //Init object grid cell data
-    ptrObjCell[ OBJCELL_COUNTER_PREV ] = -1;
-    ptrObjCell[ OBJCELL_COUNTER_AUX ] = 0;
-  }
+  //Get object grid pointer
+  int *ptrObjGrid = ptrGrid + objGridOffset;
+  ivec2 objGridCoord = gridCoord - objGridOrigin;
+
+  //Get object grid cell pointer
+  int* ptrObjCell = ptrObjGrid
+    + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+
+  //Init object grid cell data
+  ptrObjCell[ OBJCELL_COUNTER_PREV ] = -1;
+  ptrObjCell[ OBJCELL_COUNTER_AUX ] = 0;
 }
 
 void Image::frag_encodeLine
 (
+ int objectId,
  const ivec2 &gridCoord,
  const vec2 &line0,
  const vec2 &line1
  )
 {
-  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
-      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
+  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
+      gridCoord.y < 0 || gridCoord.y >= gridSize.y)
+      return;
+
+  bool found = false, inside = false;
+  float yy = 0.0f, xx = 0.0f;
+
+  //Get object pointer and object grid info
+  int  *ptrObj        = ptrObjects + objectId * 5;
+  ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
+  ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
+  int   objGridOffset = ptrObj[4];
+  
+  //Get object grid pointer and coordinate
+  int  *ptrObjGrid   = ptrGrid + objGridOffset;
+  ivec2 objGridCoord = gridCoord - objGridOrigin;
+
+  //Get object grid cell pointer
+  int* ptrObjCell = ptrObjGrid
+    + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+
+  //Find cell origin
+  Vec2 cmin = Vec2(
+    gridOrigin.x + gridCoord.x * cellSize.x,
+    gridOrigin.y + gridCoord.y * cellSize.y );
+
+  //Transform line coords into cell space
+  Vec2 l0 = (line0 - cmin) / cellSize;
+  Vec2 l1 = (line1 - cmin) / cellSize;
+
+  //Check if line intersects bottom edge
+  lineIntersectionY( l0, l1, 1.0f, 0.0f, 1.0f, found, xx );
+  if (found)
   {
-    bool found = false, inside = false;
-    float yy = 0.0f, xx = 0.0f;
+    //Walk all the cells to the left
+    for (int x = (int)objGridCoord.x - 1; x >= 0; --x)
+    {
+      //Get object grid cell pointer
+      int *ptrObjCellAux = ptrObjGrid
+        + (objGridCoord.y * objGridSize.x + x) * NUM_OBJCELL_COUNTERS;
 
-    //Get object pointer and object grid info
-    int  *ptrObj        = ptrObjects + objectId * 5;
-    ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
-    ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
-    int   objGridOffset = ptrObj[4];
-    
-    //Get object grid pointer and coordinate
-    int  *ptrObjGrid   = ptrObjectGrids + objGridOffset;
-    ivec2 objGridCoord = gridCoord - objGridOrigin;
+      //Increase auxiliary vertical counter
+      atomicAdd( ptrObjCellAux + OBJCELL_COUNTER_AUX, 1 );
+    }
+    inside = true;
+  }
 
-    //Get object grid cell pointer
-    int* ptrObjCell = ptrObjGrid
-      + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
-
-    //Find cell origin
-    Vec2 cmin = Vec2(
-      gridOrigin.x + gridCoord.x * cellSize.x,
-      gridOrigin.y + gridCoord.y * cellSize.y );
-
-    //Transform line coords into cell space
-    Vec2 l0 = (line0 - cmin) / cellSize;
-    Vec2 l1 = (line1 - cmin) / cellSize;
-
-    //Check if line intersects bottom edge
-    lineIntersectionY( l0, l1, 1.0f, 0.0f, 1.0f, found, xx );
+  //Skip writing into this cell if fully occluded by another object
+  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
+  //if (cellDone == 0)
+  {
+    //Check if line intersects right edge
+    lineIntersectionY( l0.yx(), l1.yx(), 1.0f, 0.0f, 1.0f, found, yy );
     if (found)
     {
-      //Walk all the cells to the left
-      for (int x = (int)objGridCoord.x - 1; x >= 0; --x)
-      {
-        //Get object grid cell pointer
-        int *ptrObjCellAux = ptrObjGrid
-          + (objGridCoord.y * objGridSize.x + x) * NUM_OBJCELL_COUNTERS;
-
-        //Increase auxiliary vertical counter
-        atomicAdd( ptrObjCellAux + OBJCELL_COUNTER_AUX, 1 );
-      }
+      //Add line spanning from intersection point to upper-right corner
+      addLine( Vec2( 1.0f, yy ), Vec2( 1.0f, -0.25f ), ptrObjCell );
       inside = true;
     }
-
-    //Skip writing into this cell if fully occluded by another object
-    //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-    //if (cellDone == 0)
+    
+    //Check for additional conditions if these two failed
+    if (!inside)
     {
-      //Check if line intersects right edge
-      lineIntersectionY( l0.yx(), l1.yx(), 1.0f, 0.0f, 1.0f, found, yy );
-      if (found)
-      {
-        //Add line spanning from intersection point to upper-right corner
-        addLine( Vec2( 1.0f, yy ), Vec2( 1.0f, -0.25f ), ptrObjCell );
+      //Check if start point inside
+      if (l0.x >= 0.0f && l0.x <= 1.0f && l0.y >= 0.0f && l0.y <= 1.0f)
         inside = true;
-      }
-      
-      //Check for additional conditions if these two failed
-      if (!inside)
+      else
       {
-        //Check if start point inside
-        if (l0.x >= 0.0f && l0.x <= 1.0f && l0.y >= 0.0f && l0.y <= 1.0f)
+        //Check if end point inside
+        if (l1.x >= 0.0f && l1.x <= 1.0f && l1.y >= 0.0f && l1.y <= 1.0f)
           inside = true;
         else
         {
-          //Check if end point inside
-          if (l1.x >= 0.0f && l1.x <= 1.0f && l1.y >= 0.0f && l1.y <= 1.0f)
-            inside = true;
+          //Check if line intersects top edge
+          lineIntersectionY( l0, l1, 0.0f, 0.0f, 1.0f, found, xx );
+          if (found) inside = true;
           else
           {
-            //Check if line intersects top edge
-            lineIntersectionY( l0, l1, 0.0f, 0.0f, 1.0f, found, xx );
+            //Check if line intersects left edge
+            lineIntersectionY( l0.yx(), l1.yx(), 0.0f, 0.0f, 1.0f, found, yy );
             if (found) inside = true;
-            else
-            {
-              //Check if line intersects left edge
-              lineIntersectionY( l0.yx(), l1.yx(), 0.0f, 0.0f, 1.0f, found, yy );
-              if (found) inside = true;
-            }
           }
         }
       }
+    }
 
-      if (inside)
-      {
-        //Add line data to stream
-        addLine( l0,l1, ptrObjCell );
-      }
+    if (inside)
+    {
+      //Add line data to stream
+      addLine( l0,l1, ptrObjCell );
     }
   }
 }
 
 void Image::frag_encodeQuad
 (
+  int objectId,
   const ivec2 &gridCoord,
   const Vec2 &quad0,
   const Vec2 &quad1,
   const Vec2 &quad2
 )
 {
-  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
-      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
+  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
+      gridCoord.y < 0 || gridCoord.y >= gridSize.y)
+      return;
+
+  bool found1=false, found2=false, inside=false;
+  float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
+
+  //Get object pointer and object grid info
+  int  *ptrObj        = ptrObjects + objectId * 5;
+  ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
+  ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
+  int   objGridOffset = ptrObj[4];
+  
+  //Get object grid pointer and coordinate
+  int  *ptrObjGrid   = ptrGrid + objGridOffset;
+  ivec2 objGridCoord = gridCoord - objGridOrigin;
+
+  //Get object grid cell pointer
+  int* ptrObjCell = ptrObjGrid
+    + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+
+  //Find cell origin
+  vec2 cmin = vec2(
+    gridOrigin.x + gridCoord.x * cellSize.x,
+    gridOrigin.y + gridCoord.y * cellSize.y );
+
+  //Transform quad coords into cell space
+  vec2 q0 = (quad0 - cmin) / cellSize;
+  vec2 q1 = (quad1 - cmin) / cellSize;
+  vec2 q2 = (quad2 - cmin) / cellSize;
+
+  //Check if quad intersects bottom edge
+  quadIntersectionY( q0, q1, q2, 1.0, 0.0, 1.0, found1, found2, xx1, xx2 );
+  if (found1 != found2)
   {
-    bool found1=false, found2=false, inside=false;
-    float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
-
-    //Get object pointer and object grid info
-    int  *ptrObj        = ptrObjects + objectId * 5;
-    ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
-    ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
-    int   objGridOffset = ptrObj[4];
-    
-    //Get object grid pointer and coordinate
-    int  *ptrObjGrid   = ptrObjectGrids + objGridOffset;
-    ivec2 objGridCoord = gridCoord - objGridOrigin;
-
-    //Get object grid cell pointer
-    int* ptrObjCell = ptrObjGrid
-      + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
-
-    //Find cell origin
-    vec2 cmin = vec2(
-      gridOrigin.x + gridCoord.x * cellSize.x,
-      gridOrigin.y + gridCoord.y * cellSize.y );
-
-    //Transform quad coords into cell space
-    vec2 q0 = (quad0 - cmin) / cellSize;
-    vec2 q1 = (quad1 - cmin) / cellSize;
-    vec2 q2 = (quad2 - cmin) / cellSize;
-
-    //Check if quad intersects bottom edge
-    quadIntersectionY( q0, q1, q2, 1.0, 0.0, 1.0, found1, found2, xx1, xx2 );
-    if (found1 != found2)
+    //Walk all the cells to the left
+    for (int x = (int)objGridCoord.x - 1; x >= 0; --x)
     {
-      //Walk all the cells to the left
-      for (int x = (int)objGridCoord.x - 1; x >= 0; --x)
-      {
-        //Get object grid cell pointer
-        int *ptrObjCellAux = ptrObjGrid
-          + (objGridCoord.y * objGridSize.x + x) * NUM_OBJCELL_COUNTERS;
+      //Get object grid cell pointer
+      int *ptrObjCellAux = ptrObjGrid
+        + (objGridCoord.y * objGridSize.x + x) * NUM_OBJCELL_COUNTERS;
 
-        //Increase auxiliary vertical counter
-        atomicAdd( ptrObjCellAux + OBJCELL_COUNTER_AUX, 1 );
-      }
+      //Increase auxiliary vertical counter
+      atomicAdd( ptrObjCellAux + OBJCELL_COUNTER_AUX, 1 );
     }
-    if (found1 || found2) inside = true;
+  }
+  if (found1 || found2) inside = true;
 
-    //Skip writing into this cell if fully occluded by another object
-    //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-    //if (cellDone == 0)
+  //Skip writing into this cell if fully occluded by another object
+  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
+  //if (cellDone == 0)
+  {
+    //Check if quad intersects right edge
+    quadIntersectionY( q0.yx(), q1.yx(), q2.yx(), 1.0, 0.0, 1.0, found1, found2, yy1, yy2 );
+    if (found1)
     {
-      //Check if quad intersects right edge
-      quadIntersectionY( q0.yx(), q1.yx(), q2.yx(), 1.0, 0.0, 1.0, found1, found2, yy1, yy2 );
-      if (found1)
-      {
-        //Add line spanning from intersection point to upper-right corner
-        addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), ptrObjCell );
-        inside = true;
-      }
-      if (found2)
-      {
-        //Add line spanning from intersection point to upper-right corner
-        addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), ptrObjCell );
-        inside = true;
-      }
+      //Add line spanning from intersection point to upper-right corner
+      addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), ptrObjCell );
+      inside = true;
+    }
+    if (found2)
+    {
+      //Add line spanning from intersection point to upper-right corner
+      addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), ptrObjCell );
+      inside = true;
+    }
 
-      //Check for additional conditions if these two failed
-      if (!inside)
+    //Check for additional conditions if these two failed
+    if (!inside)
+    {
+      //Check if start point inside
+      if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
+        inside = true;
+      else
       {
-        //Check if start point inside
-        if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
+        //Check if end point inside
+        if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
           inside = true;
         else
         {
-          //Check if end point inside
-          if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
-            inside = true;
+          //Check if quad intersects top edge
+          quadIntersectionY( q0, q1, q2, 0.0, 0.0, 1.0, found1, found2, xx1, xx2 );
+          if (found1 || found2) inside = true;
           else
           {
-            //Check if quad intersects top edge
-            quadIntersectionY( q0, q1, q2, 0.0, 0.0, 1.0, found1, found2, xx1, xx2 );
+            //Check if quad intersects left edge
+            quadIntersectionY( q0.yx(), q1.yx(), q2.yx(), 0.0, 0.0, 1.0, found1, found2, yy1, yy2 );
             if (found1 || found2) inside = true;
-            else
-            {
-              //Check if quad intersects left edge
-              quadIntersectionY( q0.yx(), q1.yx(), q2.yx(), 0.0, 0.0, 1.0, found1, found2, yy1, yy2 );
-              if (found1 || found2) inside = true;
-            }
           }
         }
       }
+    }
 
-      if (inside)
-      {
-        //Add quad data to stream
-        addQuad( q0,q1,q2, ptrObjCell );
-      }
+    if (inside)
+    {
+      //Add quad data to stream
+      addQuad( q0,q1,q2, ptrObjCell );
     }
   }
 }
 
 void Image::frag_encodeObject
 (
-  const ivec2 &gridCoord,
-  const Vec4 &color
+  int objectId,
+  const Vec4 &color,
+  const ivec2 &gridCoord
 )
 {
-  if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
-      gridCoord.y >= 0 && gridCoord.y < gridSize.y)
+  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
+      gridCoord.y < 0 || gridCoord.y >= gridSize.y)
+      return;
+
+  //Get object pointer and object grid info
+  int  *ptrObj        = ptrObjects + objectId * 5;
+  ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
+  ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
+  int   objGridOffset = ptrObj[4];
+  
+  //Get object grid pointer and coordinate
+  int  *ptrObjGrid   = ptrGrid + objGridOffset;
+  ivec2 objGridCoord = gridCoord - objGridOrigin;
+
+  //Get object grid cell pointer
+  int* ptrObjCell = ptrObjGrid
+    + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+
+  //Get grid cell pointer
+  int *ptrCell = ptrGrid
+    + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
+
+  //Get and reset auxiliary vertical counter
+  int aux = atomicExchange( ptrObjCell + OBJCELL_COUNTER_AUX, 0 );
+
+  //Skip writing into this cell if fully occluded by another object
+  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
+  //if (cellDone == 0)
   {
-    //Get object pointer and object grid info
-    int  *ptrObj        = ptrObjects + objectId * 5;
-    ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
-    ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
-    int   objGridOffset = ptrObj[4];
-    
-    //Get object grid pointer and coordinate
-    int  *ptrObjGrid   = ptrObjectGrids + objGridOffset;
-    ivec2 objGridCoord = gridCoord - objGridOrigin;
+    bool anySegments = false;
 
-    //Get object grid cell pointer
-    int* ptrObjCell = ptrObjGrid
-      + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
+    //Check if object has any segments in this cell
+    int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
+    if (prevOffset >= 0) anySegments = true;
 
-    //Get grid cell pointer
-    int *ptrCell = ptrGrid
-      + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
-
-    //Get and reset auxiliary vertical counter
-    int aux = atomicExchange( ptrObjCell + OBJCELL_COUNTER_AUX, 0 );
-
-    //Skip writing into this cell if fully occluded by another object
-    //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-    //if (cellDone == 0)
+    //Check if auxiliary counter parity is odd
+    if (aux % 2 == 1)
     {
-      bool anySegments = false;
+      //Add auxiliary vertical segment
+      prevOffset = addLine( vec2( 1.0, 1.25f ), vec2( 1.0, -0.25f ), ptrObjCell );
 
-      //Check if object has any segments in this cell
-      int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
-      if (prevOffset >= 0) anySegments = true;
-
-      //Check if auxiliary counter parity is odd
-      if (aux % 2 == 1)
-      {
-        //Add auxiliary vertical segment
-        prevOffset = addLine( vec2( 1.0, 1.25f ), vec2( 1.0, -0.25f ), ptrObjCell );
-
-        //If no other segments, mark the cell fully occluded
-        //if (!anySegments) imageStore( counters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
-        anySegments = true;
-      }
-      
-      //Add object data if any of its segments in this cell
-      if (anySegments) addObject( color, prevOffset, ptrCell );
+      //If no other segments, mark the cell fully occluded
+      //if (!anySegments) imageStore( counters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
+      anySegments = true;
     }
+    
+    //Add object data if any of its segments in this cell
+    if (anySegments) addObject( objectId, color, prevOffset, ptrCell );
   }
 }
 
@@ -485,16 +463,13 @@ void Image::updateStream ()
 {
   //Reset buffers and stream
   if (ptrInfo)        delete[] ptrInfo;
-  if (ptrObjects)     delete[] ptrObjects;
-  if (ptrObjectGrids) delete[] ptrObjectGrids;
   if (ptrGrid)        delete[] ptrGrid;
   if (ptrStream)      delete[] ptrStream;
 
   ptrInfo         = new int[ NUM_INFO_COUNTERS ];
-  ptrObjects      = new int[ objects.size() * 5 ];
-  ptrObjectGrids  = new int[ 500000 ];
-  ptrGrid         = new int[ gridSize.x * gridSize.y * NUM_CELL_COUNTERS ];
+  ptrGrid         = new int[ 500000 ];
   ptrStream       = new float[ 500000 ];
+  ptrObjects      = (int*) &objInfos[0];
 
   int maxCellLen = 0;
 
@@ -514,25 +489,16 @@ void Image::updateStream ()
   {
     Object *obj = objects[o];
 
-    //Uniforms
-    //pointers,
-    //grid,
-    objectId = o;
-
-    //Geometry shader output
-    ivec2 objGridOrigin;
-    ivec2 objGridSize;
-    int objGridOffset;
-
-    //Geometry shader
-    geom_encodeInitObject( obj->min, obj->max, objGridOrigin, objGridSize, objGridOffset );
+    //Transform object bounds into grid space
+    ivec2 iomin = Vec::Floor( (obj->min - gridOrigin) / cellSize ).toInt();
+    ivec2 iomax = Vec::Ceil( (obj->max - gridOrigin) / cellSize ).toInt();
 
     //Walk the cells within object bounds
-    for (int x = objGridOrigin.x; x < objGridOrigin.x + objGridSize.x; ++x) {
-      for (int y = objGridOrigin.y; y < objGridOrigin.y + objGridSize.y; ++y) {
+    for (int x=iomin.x; x<iomax.x; ++x) {
+      for (int y=iomin.y; y<iomax.y; ++y) {
 
         //Fragment shader
-        frag_encodeInitObject( ivec2(x,y), objGridOrigin, objGridSize, objGridOffset );
+        frag_encodeInitObject( o, ivec2(x,y) );
       }
     }
   }
@@ -543,12 +509,6 @@ void Image::updateStream ()
   for (int o=0; o<(int)objects.size(); ++o)
   {
     Object *obj = objects[o];
-
-
-    //Uniforms
-    //pointers,
-    //grid,
-    objectId = o;
 
     //Walk the list of line segments
     for (Uint32 l=0; l<obj->lines.size(); ++l)
@@ -567,17 +527,11 @@ void Image::updateStream ()
         for (int y=ilmin.y; y<ilmax.y; ++y) {
 
           //Fragment shader
-          frag_encodeLine( ivec2(x,y), line.p0, line.p1 );
+          frag_encodeLine( o, ivec2(x,y), line.p0, line.p1 );
 
         }//y
       }//x
     }//lines
-
-
-    //Uniforms
-    //pointers,
-    //grid,
-    objectId = o;
 
     //Walk the list of quad segments
     for (Uint32 q=0; q < obj->quads.size(); ++q)
@@ -596,7 +550,7 @@ void Image::updateStream ()
         for (int y=iqmin.y; y<iqmax.y; ++y) {
 
           //Fragment shader
-          frag_encodeQuad( ivec2(x,y), quad.p0, quad.p1, quad.p2 );
+          frag_encodeQuad( o, ivec2(x,y), quad.p0, quad.p1, quad.p2 );
 
         }//y
       }//x
@@ -611,11 +565,6 @@ void Image::updateStream ()
   {
     Object *obj = objects[o];
 
-    //Uniforms
-    //pointers,
-    //grid,
-    objectId = o;
-
     //Transform object bounds into grid space
     ivec2 iomin = Vec::Floor( (obj->min - gridOrigin) / cellSize ).toInt();
     ivec2 iomax = Vec::Ceil( (obj->max - gridOrigin) / cellSize ).toInt();
@@ -625,7 +574,7 @@ void Image::updateStream ()
       for (int y=iomin.y; y<iomax.y; ++y) {
 
         //Fragment shader
-        frag_encodeObject( ivec2(x,y), obj->color );
+        frag_encodeObject( o, obj->color, ivec2(x,y) );
 
       }//y
     }//x
@@ -642,7 +591,6 @@ void Image::updateStream ()
     }
   }
 
-  int cpuGridLen = ptrInfo[ INFO_COUNTER_GRIDLEN ];
   cpuStreamLen = ptrInfo[ INFO_COUNTER_STREAMLEN ];
 }
 

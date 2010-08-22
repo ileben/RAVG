@@ -210,30 +210,18 @@ public:
   GLuint bufPivotPos;
   GLuint bufPivotWind;
   GLuint texGrid;
-  GLuint texCellCounters;
-  GLuint texCellStreams;
-  GLuint bufCellCounters;
-  GLuint64 ptrCellCounters;
-  GLuint bufCellStreams;
-  GLuint64 ptrCellStreams;
 
-  GLuint texCpuCounters;
-  GLuint bufCpuCounters;
-  GLuint64 ptrCpuCounters;
-
-  GLuint bufCpuStream;
-  GLuint64 ptrCpuStream;
+  GLuint bufObjs;
+  GLuint bufObjInfos;
+  GLuint64 ptrObjInfos;
   
   GLuint bufObjGrid;
   GLuint64 ptrObjGrid;
   GLuint bufObjStream;
   GLuint64 ptrObjStream;
 
-  GLuint bufObjs;
   GLuint bufGpuObjInfo;
   GLuint64 ptrGpuObjInfo;
-  GLuint bufGpuObjObjects;
-  GLuint64 ptrGpuObjObjects;
   GLuint bufGpuObjGrid;
   GLuint64 ptrGpuObjGrid;
   GLuint bufGpuObjStream;
@@ -274,17 +262,15 @@ public:
   int atomicExchange (int *ptr, int value);
 
   //Emulated uniform variables
-  int objectId;
-  int *ptrInfo;
   int *ptrObjects;
-  int *ptrObjectGrids;
+  int *ptrInfo;
   int *ptrGrid;
   float *ptrStream;
 
   //Emulated shader utility functions
   int addLine (const Vec2 &l0, const Vec2 &l1, int *ptrObjCell);
   int addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell);
-  int addObject (const Vec4 &color, int lastSegmentOffset, int *ptrCell);
+  int addObject (int objectId, const Vec4 &color, int lastSegmentOffset, int *ptrCell);
 
   //Emulated shader main() functions
   void frag_encodeInit
@@ -292,25 +278,15 @@ public:
     const ivec2 &gridCoord
     );
 
-  void geom_encodeInitObject
-    (
-    vec2 min,
-    vec2 max,
-    ivec2 &objGridOrigin,
-    ivec2 &objGridSize,
-    int &objGridOffset
-    );
-
   void frag_encodeInitObject
     (
-    const ivec2 &gridCoord,
-    ivec2 objGridOrigin,
-    ivec2 objGridSize,
-    int objGridOffset
+    int objectId,
+    const ivec2 &gridCoord
     );
 
   void frag_encodeLine
     (
+    int objectId,
     const ivec2 &gridCoord,
     const Vec2 &line0,
     const Vec2 &line1
@@ -318,6 +294,7 @@ public:
 
   void frag_encodeQuad
     (
+    int objectId,
     const ivec2 &gridCoord,
     const Vec2 &quad0,
     const Vec2 &quad1,
@@ -325,8 +302,9 @@ public:
     );
   void frag_encodeObject
     (
-    const ivec2 &gridCoord,
-    const Vec4 &color
+    int objectId,
+    const Vec4 &color,
+    const ivec2 &gridCoord
     );
   void frag_encodeSort
     (
