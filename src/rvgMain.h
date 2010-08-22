@@ -215,17 +215,17 @@ public:
   GLuint bufObjInfos;
   GLuint64 ptrObjInfos;
   
-  GLuint bufObjGrid;
-  GLuint64 ptrObjGrid;
-  GLuint bufObjStream;
-  GLuint64 ptrObjStream;
+  GLuint bufAuxGrid;
+  GLuint64 ptrAuxGrid;
+  GLuint bufAuxStream;
+  GLuint64 ptrAuxStream;
 
-  GLuint bufGpuObjInfo;
-  GLuint64 ptrGpuObjInfo;
-  GLuint bufGpuObjGrid;
-  GLuint64 ptrGpuObjGrid;
-  GLuint bufGpuObjStream;
-  GLuint64 ptrGpuObjStream;
+  GLuint bufGpuAuxInfo;
+  GLuint64 ptrGpuAuxInfo;
+  GLuint bufGpuAuxGrid;
+  GLuint64 ptrGpuAuxGrid;
+  GLuint bufGpuAuxStream;
+  GLuint64 ptrGpuAuxStream;
   
   int cpuStreamLen;
 
@@ -320,8 +320,7 @@ public:
   void updateBounds();
   void updateGrid();
   void updateBuffers();
-  void updateStream();
-  void encodeInit();
+  void encodeCpuAux();
 };
 
 class Shader

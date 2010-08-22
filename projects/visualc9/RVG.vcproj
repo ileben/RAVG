@@ -327,7 +327,7 @@
 					Name="aux"
 					>
 					<File
-						RelativePath="..\..\src\shaders_obj\cell_obj.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_init.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -347,7 +347,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\cell_obj.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_init.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -367,7 +367,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_init.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_initobject.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -387,7 +387,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_init.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_initobject.geom.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -407,7 +407,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_initobject.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_initobject.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -427,7 +427,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_initobject.geom.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_lines.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -447,7 +447,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_initobject.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_lines.geom.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -467,7 +467,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_lines.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_lines.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -487,7 +487,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_lines.geom.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_object.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -507,7 +507,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_lines.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_object.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -527,7 +527,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_object.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_quads.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -547,7 +547,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_object.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_quads.geom.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -567,7 +567,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_quads.frag.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_quads.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -587,7 +587,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_quads.geom.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_sort.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -607,7 +607,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_quads.vert.c"
+						RelativePath="..\..\src\shaders_aux\encode_aux_sort.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -627,7 +627,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_sort.frag.c"
+						RelativePath="..\..\src\shaders_aux\render_aux.frag.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"
@@ -647,7 +647,7 @@
 						</FileConfiguration>
 					</File>
 					<File
-						RelativePath="..\..\src\shaders_obj\encode_obj_sort.vert.c"
+						RelativePath="..\..\src\shaders_aux\render_aux.vert.c"
 						>
 						<FileConfiguration
 							Name="Debug|Win32"

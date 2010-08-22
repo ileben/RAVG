@@ -459,7 +459,7 @@ void Image::frag_encodeSort
   }
 }
 
-void Image::updateStream ()
+void Image::encodeCpuAux ()
 {
   //Reset buffers and stream
   if (ptrInfo)        delete[] ptrInfo;
