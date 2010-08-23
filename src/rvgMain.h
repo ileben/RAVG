@@ -416,11 +416,6 @@ extern const VGfloat*  styleArrays[];
 #define MAX_STREAM_LEN            2000
 #define MAX_COMBINED_STREAM_LEN   500000
 
-#define COUNTER_MASTER     0
-#define COUNTER_PREV       1
-#define COUNTER_AUX        2
-#define COUNTER_OCCLUSION  3
-
 #define MIX_OBJECT_LEN           500000
 #define MIX_STREAM_LEN           500000
 
@@ -430,6 +425,7 @@ extern const VGfloat*  styleArrays[];
 
 #define OBJCELL_COUNTER_PREV     0
 #define OBJCELL_COUNTER_AUX      1
+#define OBJCELL_COUNTER_WIND     1
 #define NUM_OBJCELL_COUNTERS     2
 
 #define CELL_COUNTER_PREV        0

@@ -8,7 +8,16 @@ int resY = 600;
 int gridResX = 60;
 int gridResY = 60;
 
-bool cpu = false;
+namespace Source {
+  enum Enum {
+    Cpu   = 0,
+    Aux   = 1,
+    Pivot = 2,
+    Count = 3
+  };
+};
+
+int source = Source::Pivot;
 bool encode = true;
 bool draw = true;
 bool drawGrid = false;
@@ -26,6 +35,14 @@ Shader *shaderEncodeAuxQuads;
 Shader *shaderEncodeAuxObject;
 Shader *shaderEncodeAuxSort;
 Shader *shaderRenderAux;
+
+Shader *shaderEncodePivotInit;
+Shader *shaderEncodePivotInitObject;
+Shader *shaderEncodePivotLines;
+Shader *shaderEncodePivotQuads;
+Shader *shaderEncodePivotObject;
+Shader *shaderEncodePivotSort;
+Shader *shaderRenderPivot;
 
 Object *object1;
 Object *object2;
@@ -1292,6 +1309,294 @@ void encodeImageAux (Image *image)
   glViewport( 0,0, resX, resY );
 }
 
+void encodeImagePivot (Image *image)
+{ 
+  glViewport( 0, 0, image->gridSize.x, image->gridSize.y );
+  glDisable( GL_DEPTH_TEST );
+  glDisable( GL_MULTISAMPLE );
+  
+  /////////////////////////////////////////////////////
+  // Init size counters and main grid
+  {
+    Shader *shader = shaderEncodePivotInit;
+    shader->use();
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuAuxInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    renderFullScreenQuad( shader );
+  }
+
+  /////////////////////////////////////////////////////
+  // Init object grids
+  {
+    Shader *shader = shaderEncodePivotInitObject;
+    shader->use();
+    
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrObjInfos );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    Int32 aPos = shader->program->getAttribute( "in_pos" );
+    glBindBuffer( GL_ARRAY_BUFFER, image->bufObjs );
+    glVertexAttribPointer( aPos, 3, GL_FLOAT, false, sizeof(vec3), 0 );
+
+    glEnableVertexAttribArray( aPos );
+    glDrawArrays( GL_LINES, 0, image->objs.size() * 2 );
+    glDisableVertexAttribArray( aPos );
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage init" );
+
+  /*
+  glFinish();
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuAuxGrid );
+  glMakeBufferNonResident( GL_ARRAY_BUFFER );
+  int *ptr = (int*) glMapBuffer( GL_ARRAY_BUFFER, GL_READ_ONLY );
+  checkGlError( "encodeImage map" );
+
+  for (int o=0; o<(int)image->objInfos.size(); ++o)
+  {
+    ObjInfo &obj = image->objInfos[o];
+    int *ptrObjGrid = ptr + obj.gridOffset;
+    for (int x=0; x<obj.gridSize.x; ++x) {
+      for (int y=0; y<obj.gridSize.y; ++y) {
+
+        int *ptrObjCell = ptrObjGrid + (y * obj.gridSize.x + x) * NUM_OBJCELL_COUNTERS;
+        std::cout << ptrObjCell[0] << "," << ptrObjCell[1] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+  }
+  glUnmapBuffer( GL_ARRAY_BUFFER );
+  */
+  
+  /////////////////////////////////////////////////////
+  // Encode object lines
+  {
+    Shader *shader = shaderEncodePivotLines;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrObjInfos );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuAuxInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuAuxStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufLines );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+      glEnableVertexAttribArray( aPos );      
+      glDrawArrays( GL_LINES, 0, object->lines.size() * 2 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  /////////////////////////////////////////////////////
+  // Encode object quads
+  {
+    Shader *shader = shaderEncodePivotQuads;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrObjInfos );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuAuxInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuAuxStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufQuads );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+      glEnableVertexAttribArray( aPos );
+      glDrawArrays( GL_TRIANGLES, 0, object->quads.size() * 3 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage lines quads" );
+
+/*
+  glFinish();
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuAuxGrid );
+  glMakeBufferNonResident( GL_ARRAY_BUFFER );
+  int *ptr = (int*) glMapBuffer( GL_ARRAY_BUFFER, GL_READ_ONLY );
+  checkGlError( "encodeImage map" );
+
+  for (int o=0; o<(int)image->objInfos.size(); ++o)
+  {
+    ObjInfo &obj = image->objInfos[o];
+    int *ptrObjGrid = ptr + obj.gridOffset;
+    for (int x=0; x<obj.gridSize.x; ++x) {
+      for (int y=0; y<obj.gridSize.y; ++y) {
+
+        int *ptrObjCell = ptrObjGrid + (y * obj.gridSize.x + x) * NUM_OBJCELL_COUNTERS;
+        std::cout << ptrObjCell[0] << "," << ptrObjCell[1] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+  }
+  glUnmapBuffer( GL_ARRAY_BUFFER );
+  */
+  
+  /////////////////////////////////////////////////////
+  // Encode object properties into stream
+  {
+    Shader *shader = shaderEncodePivotObject;
+    shader->use();
+
+    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+    glUniformui64( uPtrObjects, image->ptrObjInfos );
+
+    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
+    glUniformui64( uPtrInfo, image->ptrGpuAuxInfo );
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuAuxStream );
+
+    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    Int32 uCellSize = shader->program->getUniform( "cellSize" );
+    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
+
+    for (int o=0; o<(int)image->objects.size(); ++o)
+    {
+      Object *object = image->objects[o];
+      ObjInfo &obj = image->objInfos[o];
+
+      //
+      Int32 uPtrObjGrid = shader->program->getUniform( "ptrObjGrid" );
+      glUniformui64( uPtrObjGrid, image->ptrGpuAuxGrid + obj.gridOffset * sizeof(int) );
+
+      Int32 uObjGridOrigin = shader->program->getUniform( "objGridOrigin" );
+      glUniform2i( uObjGridOrigin, obj.gridOrigin.x, obj.gridOrigin.y );
+
+      Int32 uObjGridSize = shader->program->getUniform( "objGridSize" );
+      glUniform2i( uObjGridSize, obj.gridSize.x, obj.gridSize.y );
+      //
+
+      Int32 uObjectId = shader->program->getUniform( "objectId" );
+      glUniform1i( uObjectId, o );
+
+      Int32 uColor = shader->program->getUniform( "color" );
+      glUniform4fv( uColor, 1, (GLfloat*) &object->color );
+      
+      //Transform and round object bounds to grid space
+      Vec2 min = Vec::Floor( (object->min - image->gridOrigin) / image->cellSize );
+      Vec2 max = Vec::Ceil( (object->max - image->gridOrigin) / image->cellSize );
+
+      //Transform to [-1,1] normalized coordinates (glViewport will transform back)
+      min = (min / image->gridSize.toFloat()) * 2.0f - Vec2(1.0f,1.0f);
+      max = (max / image->gridSize.toFloat()) * 2.0f - Vec2(1.0f,1.0f);
+
+      renderQuad( shader, min, max );
+    }
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage object" );
+
+  /////////////////////////////////////////////////////
+  // Sort objects in every cell back to front
+  {
+    Shader *shader = shaderEncodePivotSort;
+    shader->use();
+
+    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+    glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+    glUniformui64( uPtrStream, image->ptrGpuAuxStream );
+
+    Int32 uGridSize = shader->program->getUniform( "gridSize" );
+    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
+
+    renderFullScreenQuad( shader );
+  }
+
+  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
+  checkGlError( "encodeImage sort" );
+
+  glViewport( 0,0, resX, resY );
+}
+
 void renderImageAux (Image *image, VertexBuffer *buf, GLenum mode)
 {
   glColor3f( 0,0,0 );
@@ -1300,6 +1605,51 @@ void renderImageAux (Image *image, VertexBuffer *buf, GLenum mode)
   glMinSampleShading( 1.0f );
 
   Shader *shader = shaderRenderAux;
+  shader->use();
+
+  Int32 modelview = shader->program->getUniform( "modelview" );
+  glUniformMatrix4fv( modelview, 1, false, (GLfloat*) matModelView.top().m );
+
+  Int32 projection = shader->program->getUniform( "projection" );
+  glUniformMatrix4fv( projection, 1, false, (GLfloat*) matProjection.top().m );
+
+  Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+  glUniformui64( uPtrGrid, image->ptrGpuAuxGrid );
+
+  Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+  glUniformui64( uPtrStream, image->ptrGpuAuxStream );
+  
+  glEnable( GL_BLEND );
+  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
+  Int32 cellSize = shader->program->getUniform( "cellSize" );
+  glUniform2f( cellSize, image->cellSize.x, image->cellSize.y );
+
+  Int32 gridSize = shader->program->getUniform( "gridSize" );
+  glUniform2i( gridSize, image->gridSize.x, image->gridSize.y );
+
+  Int32 gridOrigin = shader->program->getUniform( "gridOrigin" );
+  glUniform2f( gridOrigin, image->min.x, image->min.y );
+
+  Int32 viewOrigin = shader->program->getUniform( "viewOrigin" );
+  glUniform2f( viewOrigin, 0.0f, 0.0f );
+
+  Int32 viewSize = shader->program->getUniform( "viewSize" );
+  glUniform2f( viewSize, (float) resX, (float) resY );
+  
+  renderVertexBuffer( shader, buf, mode );
+
+  glDisable( GL_BLEND );
+}
+
+void renderImagePivot (Image *image, VertexBuffer *buf, GLenum mode)
+{
+  glColor3f( 0,0,0 );
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
+
+  Shader *shader = shaderRenderPivot;
   shader->use();
 
   Int32 modelview = shader->program->getUniform( "modelview" );
@@ -1427,26 +1777,18 @@ void renderImage1to1 ()
 
   glDisable( GL_DEPTH_TEST );
 
-  if (cpu)
-  {
-    if (encode) image->encodeCpuAux();
-    if (draw) renderImageCpuAux( image, &buf, GL_QUADS );
-
-    //glBindBuffer( GL_ARRAY_BUFFER, image->bufCpuStream );
-    //glBufferSubData( GL_ARRAY_BUFFER, 0, MAX_COMBINED_STREAM_LEN * sizeof(GLfloat), image->cpuStream );
-
-    //glBindTexture( GL_TEXTURE_2D_ARRAY, image->texCpuCounters );
-    //glTexSubImage3D( GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, image->gridSize.x, image->gridSize.y, COUNTER_LEN,
-      //GL_RED, GL_FLOAT, image->cpuCounters );
-
-    //if (draw) renderImageCpu( image, &buf, GL_QUADS );
+  switch (source) {
+  case Source::Cpu:
+    renderImageCpuAux( image, &buf, GL_QUADS );
+    break;
+  case Source::Aux:
+    renderImageAux( image, &buf, GL_QUADS );
+    break;
+  case Source::Pivot:
+    renderImagePivot( image, &buf, GL_QUADS );
+    break;
   }
-  else 
-  {
-    if (encode) encodeImageAux( image );
-    if (draw) renderImageAux( image, &buf, GL_QUADS );
-  }
-  
+
   if (drawGrid) renderGrid( image );
   
   matModelView.pop();
@@ -1505,9 +1847,20 @@ void renderImageCylinder()
   matModelView.rotate( 0.0f, 1.0f, 0.0f, angleX );
   matModelView.scale( 1.0f, 2.0f, 1.0f );
 
-  if (encode) encodeImageAux( image );
   glEnable( GL_DEPTH_TEST );
-  if (draw) renderImageAux( image, &buf, GL_TRIANGLE_STRIP );
+  glDisable( GL_CULL_FACE );
+
+  switch (source) {
+  case Source::Cpu:
+    renderImageCpuAux( image, &buf, GL_TRIANGLE_STRIP );
+    break;
+  case Source::Aux:
+    renderImageAux( image, &buf, GL_TRIANGLE_STRIP );
+    break;
+  case Source::Pivot:
+    renderImagePivot( image, &buf, GL_TRIANGLE_STRIP );
+    break;
+  }
 
   matProjection.pop();
   matModelView.pop();
@@ -1518,8 +1871,35 @@ void display ()
   glClearColor( 1,1,1,1 );
   glClear( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  if (drawCylinder) renderImageCylinder();
-  else renderImage1to1();
+  //Encode image
+  static int prevSource = source;
+  if (encode || source != prevSource)
+  {
+    prevSource = source;
+    switch (source)
+    {
+    case Source::Cpu:
+      image->encodeCpuAux();
+      glBindBuffer( GL_ARRAY_BUFFER, image->bufAuxGrid );
+      glBufferSubData( GL_ARRAY_BUFFER, 0, image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS * sizeof(int), image->ptrGrid );
+      glBindBuffer( GL_ARRAY_BUFFER, image->bufAuxStream );
+      glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuStreamLen * sizeof(float), image->ptrStream );
+      break;
+    case Source::Aux:
+      encodeImageAux( image );
+      break;
+    case Source::Pivot:
+      encodeImagePivot( image );
+      break;
+    }
+  }
+
+  //Render image
+  if (draw)
+  {
+    if (drawCylinder) renderImageCylinder();
+    else renderImage1to1();
+  }
 
   //Check fps
   static int fps = 0;
@@ -1544,13 +1924,6 @@ void reshape (int w, int h)
 
   resX = w;
   resY = h;
-
-  //glMatrixMode( GL_PROJECTION );
-  //glLoadIdentity();
-  //gluOrtho2D( 0, w, 0, h );
-
-  //glMatrixMode( GL_MODELVIEW );
-  //glLoadIdentity();
 
   Matrix4x4 m;
   m.setOrthoLH( 0, (Float)w, 0, (Float)h, -1.0f, 1.0f );
@@ -1577,8 +1950,12 @@ void specialKey (int key, int x, int y)
   }
   else if (key == GLUT_KEY_F1)
   {
-    cpu = !cpu;
-    std::cout << (cpu ? "Using CPU stream" : "Using GPU stream" ) << std::endl;
+    source = (source + 1) % Source::Count;
+    switch (source) {
+    case Source::Cpu: std::cout << "Using CPU stream" << std::endl; break;
+    case Source::Aux: std::cout << "Using AUX stream" << std::endl; break;
+    case Source::Pivot: std::cout << "Using PIVOT stream" << std::endl; break;
+    }
   }
   else if (key == GLUT_KEY_F2)
   {
@@ -1621,7 +1998,7 @@ void mouseMove (int x, int y)
   }
   else if (mouseButton == GLUT_RIGHT_BUTTON)
   {
-    zoomZ *= 1.0f + mouseDiff.y / 100.0f;
+    zoomZ *= 1.0f + -mouseDiff.y / 100.0f;
   }
 }
 
@@ -1736,6 +2113,7 @@ int main (int argc, char **argv)
 
   Shader::Define( "OBJCELL_COUNTER_PREV",   "0" );
   Shader::Define( "OBJCELL_COUNTER_AUX",    "1" );
+  Shader::Define( "OBJCELL_COUNTER_WIND",   "1" );
   Shader::Define( "NUM_OBJCELL_COUNTERS",   "2" );
 
   Shader::Define( "CELL_COUNTER_PREV",      "0" );
@@ -1788,6 +2166,45 @@ int main (int argc, char **argv)
   shaderEncodeAuxObject->load();
   shaderEncodeAuxSort->load();
   shaderRenderAux->load();
+
+  shaderEncodePivotInit = new Shader(
+    "shaders_pivot/encode_pivot_init.vert.c",
+    "shaders_pivot/encode_pivot_init.frag.c" );
+
+  shaderEncodePivotInitObject = new Shader(
+    "shaders_pivot/encode_pivot_initobject.vert.c",
+    "shaders_pivot/encode_pivot_initobject.geom.c",
+    "shaders_pivot/encode_pivot_initobject.frag.c" );
+
+  shaderEncodePivotLines = new Shader(
+    "shaders_pivot/encode_pivot_lines.vert.c",
+    "shaders_pivot/encode_pivot_lines.geom.c",
+    "shaders_pivot/encode_pivot_lines.frag.c" );
+
+  shaderEncodePivotQuads = new Shader(
+    "shaders_pivot/encode_pivot_quads.vert.c",
+    "shaders_pivot/encode_pivot_quads.geom.c",
+    "shaders_pivot/encode_pivot_quads.frag.c" );
+
+  shaderEncodePivotObject = new Shader(
+    "shaders_pivot/encode_pivot_object.vert.c",
+    "shaders_pivot/encode_pivot_object.frag.c" );
+
+  shaderEncodePivotSort = new Shader(
+    "shaders_pivot/encode_pivot_sort.vert.c",
+    "shaders_pivot/encode_pivot_sort.frag.c" );
+
+  shaderRenderPivot = new Shader(
+    "shaders_pivot/render_pivot.vert.c",
+    "shaders_pivot/render_pivot.frag.c" );
+
+  shaderEncodePivotInit->load();
+  shaderEncodePivotInitObject->load();
+  shaderEncodePivotLines->load();
+  shaderEncodePivotQuads->load();
+  shaderEncodePivotObject->load();
+  shaderEncodePivotSort->load();
+  shaderRenderPivot->load();
 
 
   object1 = new Object();
