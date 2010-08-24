@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="RVG"
+	Name="RAVG"
 	ProjectGUID="{D5446F02-1B31-4062-83E3-2E2BD68D8A30}"
 	RootNamespace="RVG"
 	Keyword="Win32Proj"
@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\Users\Ivan\Projects\Programming\RVG\include"
+				AdditionalIncludeDirectories="..\..\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -117,7 +117,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="C:\Users\Ivan\Projects\Programming\RVG\include"
+				AdditionalIncludeDirectories="..\..\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"

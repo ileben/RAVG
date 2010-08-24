@@ -54,10 +54,10 @@ void main()
   coherent int *ptrCell = ptrGrid
     + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
 
-  //Get and reset winding counter
-  int wind = atomicExchange( ptrObjCell + OBJCELL_COUNTER_WIND, 0 );
+  //Get winding counter
+  int wind = ptrObjCell[ OBJCELL_COUNTER_WIND ];
 
-  //Check if object has any segments in this cell
+  //Check if object has any segments or fully occludes this cell
   int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
   if (prevOffset >= 0 || (wind % 2 == 1))
   {

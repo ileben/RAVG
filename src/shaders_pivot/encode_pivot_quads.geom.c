@@ -16,6 +16,7 @@ uniform ivec2 gridSize;
 flat out vec2 quad0;
 flat out vec2 quad1;
 flat out vec2 quad2;
+flat out ivec2 quadMin;
 
 void main()
 {
@@ -30,22 +31,25 @@ void main()
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
 
   //Find the bounds of the input triangle
-  vec2 pmin = min( quad0, min( quad1, quad2 ));
-  vec2 pmax = max( quad0, max( quad1, quad2 ));
+  vec2 gridMin = min( quad0, min( quad1, quad2 ));
+  vec2 gridMax = max( quad0, max( quad1, quad2 ));
   
   //Transform and round to grid space
-  pmin = floor( (pmin - gridOrigin) / cellSize );
-  pmax = ceil( (pmax - gridOrigin) / cellSize );
-  pmin.x = objGridOrigin.x;
+  gridMin = floor( (gridMin - gridOrigin) / cellSize );
+  gridMax = ceil( (gridMax - gridOrigin) / cellSize );
+  quadMin = ivec2( gridMin );
+
+  //Extend left side to object boundary
+  gridMin.x = objGridOrigin.x;
 
   //Transform into [-1,1] normalized coordinates (glViewport will transform back)
-  pmin = (pmin / gridSize) * 2.0 - vec2(1.0);
-  pmax = (pmax / gridSize) * 2.0 - vec2(1.0);
+  gridMin = (gridMin / gridSize) * 2.0 - vec2(1.0);
+  gridMax = (gridMax / gridSize) * 2.0 - vec2(1.0);
   
   //Emit triangle strip forming the bounding box
-  gl_Position = vec4( pmin.x, pmin.y, 0, 1 ); EmitVertex();
-  gl_Position = vec4( pmax.x, pmin.y, 0, 1 ); EmitVertex();
-  gl_Position = vec4( pmin.x, pmax.y, 0, 1 ); EmitVertex();
-  gl_Position = vec4( pmax.x, pmax.y, 0, 1 ); EmitVertex();
+  gl_Position = vec4( gridMin.x, gridMin.y, 0, 1 ); EmitVertex();
+  gl_Position = vec4( gridMax.x, gridMin.y, 0, 1 ); EmitVertex();
+  gl_Position = vec4( gridMin.x, gridMax.y, 0, 1 ); EmitVertex();
+  gl_Position = vec4( gridMax.x, gridMax.y, 0, 1 ); EmitVertex();
   EndPrimitive();
 }

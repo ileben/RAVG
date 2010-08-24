@@ -57,31 +57,25 @@ void main()
 
   //Get and reset auxiliary vertical counter
   int aux = atomicExchange( ptrObjCell + OBJCELL_COUNTER_AUX, 0 );
+  bool anySegments = false;
 
-  //Skip writing into this cell if fully occluded by another object
-  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-  //if (cellDone == 0)
+  //Check if object has any segments in this cell
+  int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
+  if (prevOffset >= 0) anySegments = true;
+
+  //Check if auxiliary counter parity is odd
+  if (aux % 2 == 1)
   {
-    bool anySegments = false;
+    //Add auxiliary vertical segment
+    prevOffset = addLine( vec2( 1.0, 1.25 ), vec2( 1.0, -0.25 ), ptrObjCell );
 
-    //Check if object has any segments in this cell
-    int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
-    if (prevOffset >= 0) anySegments = true;
-
-    //Check if auxiliary counter parity is odd
-    if (aux % 2 == 1)
-    {
-      //Add auxiliary vertical segment
-      prevOffset = addLine( vec2( 1.0, 1.25 ), vec2( 1.0, -0.25 ), ptrObjCell );
-
-      //If no other segments, mark the cell fully occluded
-      //if (!anySegments) imageStore( counters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
-      anySegments = true;
-    }
-    
-    //Add object data if any of its segments in this cell
-    if (anySegments) addObject( color, prevOffset, ptrCell );
+    //If no other segments, mark the cell fully occluded
+    //if (!anySegments) imageStore( counters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
+    anySegments = true;
   }
+  
+  //Add object data if any of its segments in this cell
+  if (anySegments) addObject( color, prevOffset, ptrCell );
 
   discard;
 }

@@ -54,9 +54,7 @@ void main()
     + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
 
   //Find cell origin
-  vec2 cmin = vec2(
-    gridOrigin.x + gridCoord.x * cellSize.x,
-    gridOrigin.y + gridCoord.y * cellSize.y );
+  vec2 cmin = gridOrigin + gridCoord * cellSize;
 
   //Transform quad coords into cell space
   vec2 q0 = (quad0 - cmin) / cellSize;
@@ -80,56 +78,51 @@ void main()
   }
   if (found1 || found2) inside = true;
 
-  //Skip writing into this cell if fully occluded by another object
-  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-  //if (cellDone == 0)
+  //Check if quad intersects right edge
+  quadIntersectionY( q0.yx, q1.yx, q2.yx, 1.0, 0.0, 1.0, found1, found2, yy1, yy2 );
+  if (found1)
   {
-    //Check if quad intersects right edge
-    quadIntersectionY( q0.yx, q1.yx, q2.yx, 1.0, 0.0, 1.0, found1, found2, yy1, yy2 );
-    if (found1)
-    {
-      //Add line spanning from intersection point to upper-right corner
-      addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), ptrObjCell );
-      inside = true;
-    }
-    if (found2)
-    {
-      //Add line spanning from intersection point to upper-right corner
-      addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), ptrObjCell );
-      inside = true;
-    }
+    //Add line spanning from intersection point to upper-right corner
+    addLine( vec2( 1.0, yy1 ), vec2( 1.0, -0.25 ), ptrObjCell );
+    inside = true;
+  }
+  if (found2)
+  {
+    //Add line spanning from intersection point to upper-right corner
+    addLine( vec2( 1.0, yy2 ), vec2( 1.0, -0.25 ), ptrObjCell );
+    inside = true;
+  }
 
-    //Check for additional conditions if these two failed
-    if (!inside)
+  //Check for additional conditions if these two failed
+  if (!inside)
+  {
+    //Check if start point inside
+    if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
+      inside = true;
+    else
     {
-      //Check if start point inside
-      if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
+      //Check if end point inside
+      if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
         inside = true;
       else
       {
-        //Check if end point inside
-        if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
-          inside = true;
+        //Check if quad intersects top edge
+        quadIntersectionY( q0, q1, q2, 0.0, 0.0, 1.0, found1, found2, xx1, xx2 );
+        if (found1 || found2) inside = true;
         else
         {
-          //Check if quad intersects top edge
-          quadIntersectionY( q0, q1, q2, 0.0, 0.0, 1.0, found1, found2, xx1, xx2 );
+          //Check if quad intersects left edge
+          quadIntersectionY( q0.yx, q1.yx, q2.yx, 0.0, 0.0, 1.0, found1, found2, yy1, yy2 );
           if (found1 || found2) inside = true;
-          else
-          {
-            //Check if quad intersects left edge
-            quadIntersectionY( q0.yx, q1.yx, q2.yx, 0.0, 0.0, 1.0, found1, found2, yy1, yy2 );
-            if (found1 || found2) inside = true;
-          }
         }
       }
     }
+  }
 
-    if (inside)
-    {
-      //Add quad data to stream
-      addQuad( q0,q1,q2, ptrObjCell );
-    }
+  if (inside)
+  {
+    //Add quad data to stream
+    addQuad( q0,q1,q2, ptrObjCell );
   }
 
   discard;

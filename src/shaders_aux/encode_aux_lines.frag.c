@@ -52,9 +52,7 @@ void main()
     + (objGridCoord.y * objGridSize.x + objGridCoord.x) * NUM_OBJCELL_COUNTERS;
 
   //Find cell origin
-  vec2 cmin = vec2(
-    gridOrigin.x + gridCoord.x * cellSize.x,
-    gridOrigin.y + gridCoord.y * cellSize.y );
+  vec2 cmin = gridOrigin + gridCoord * cellSize;
 
   //Transform line coords into cell space
   vec2 l0 = (line0 - cmin) / cellSize;
@@ -77,50 +75,45 @@ void main()
     inside = true;
   }
 
-  //Skip writing into this cell if fully occluded by another object
-  //int cellDone = imageLoad( counters, ivec3( gridCoord, COUNTER_OCCLUSION ) ).x;
-  //if (cellDone == 0)
+  //Check if line intersects right edge
+  lineIntersectionY( l0.yx, l1.yx, 1.0, 0.0, 1.0, found, yy );
+  if (found)
   {
-    //Check if line intersects right edge
-    lineIntersectionY( l0.yx, l1.yx, 1.0, 0.0, 1.0, found, yy );
-    if (found)
-    {
-      //Add line spanning from intersection point to upper-right corner
-      addLine( vec2( 1.0, yy ), vec2( 1.0, -0.25 ), ptrObjCell );
+    //Add line spanning from intersection point to upper-right corner
+    addLine( vec2( 1.0, yy ), vec2( 1.0, -0.25 ), ptrObjCell );
+    inside = true;
+  }
+  
+  //Check for additional conditions if these two failed
+  if (!inside)
+  {
+    //Check if start point inside
+    if (l0.x >= 0.0 && l0.x <= 1.0 && l0.y >= 0.0 && l0.y <= 1.0)
       inside = true;
-    }
-    
-    //Check for additional conditions if these two failed
-    if (!inside)
+    else
     {
-      //Check if start point inside
-      if (l0.x >= 0.0 && l0.x <= 1.0 && l0.y >= 0.0 && l0.y <= 1.0)
+      //Check if end point inside
+      if (l1.x >= 0.0 && l1.x <= 1.0 && l1.y >= 0.0 && l1.y <= 1.0)
         inside = true;
       else
       {
-        //Check if end point inside
-        if (l1.x >= 0.0 && l1.x <= 1.0 && l1.y >= 0.0 && l1.y <= 1.0)
-          inside = true;
+        //Check if line intersects top edge
+        lineIntersectionY( l0, l1, 0.0, 0.0, 1.0, found, xx );
+        if (found) inside = true;
         else
         {
-          //Check if line intersects top edge
-          lineIntersectionY( l0, l1, 0.0, 0.0, 1.0, found, xx );
+          //Check if line intersects left edge
+          lineIntersectionY( l0.yx, l1.yx, 0.0, 0.0, 1.0, found, yy );
           if (found) inside = true;
-          else
-          {
-            //Check if line intersects left edge
-            lineIntersectionY( l0.yx, l1.yx, 0.0, 0.0, 1.0, found, yy );
-            if (found) inside = true;
-          }
         }
       }
     }
+  }
 
-    if (inside)
-    {
-      //Add line data to stream
-      addLine( l0,l1, ptrObjCell );
-    }
+  if (inside)
+  {
+    //Add line data to stream
+    addLine( l0,l1, ptrObjCell );
   }
 
   discard;

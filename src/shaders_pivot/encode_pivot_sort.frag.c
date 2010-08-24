@@ -23,6 +23,18 @@ void main()
   coherent int *ptrCell = ptrGrid
     + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
 
+  //WTF: there are some invocations of the shader with erroneous data
+  //read from the buffer, despite the memory barrier. 
+
+  int objId = ptrCell[ CELL_COUNTER_PREV ];
+  //if (objId > 500000) { discard; return; }
+  if (objId > -1)
+  {
+    coherent float *ptrObj1 = ptrStream + objId;
+    if (ptrObj1[0] != NODE_TYPE_OBJECT)
+    { discard; return; }
+  }
+
   //Loop from last to first object
   int objIndex1 = ptrCell[ CELL_COUNTER_PREV ];
   while (objIndex1 > -1)
@@ -44,6 +56,11 @@ void main()
       //Move to prev object
       objIndex2 = (int)ptrObj2[ 1 ];
     }
+
+    //If object has no segments it must occlude the cell entirely
+    //so discard the ones before it by relinking the indirection index
+    if ((int)ptrObj1[ 8 ] == -1)
+      ptrCell[ CELL_COUNTER_PREV ] = objIndex1;
 
     //Move to prev object
     objIndex1 = (int)ptrObj1[ 1 ];

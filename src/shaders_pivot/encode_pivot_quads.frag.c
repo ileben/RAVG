@@ -17,6 +17,7 @@ in layout( pixel_center_integer ) vec4 gl_FragCoord;
 flat in vec2 quad0;
 flat in vec2 quad1;
 flat in vec2 quad2;
+flat in ivec2 quadMin;
 
 int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell);
 int addQuad (vec2 q0, vec2 q1, vec2 q2, coherent int *ptrObjCell);
@@ -69,38 +70,42 @@ void main()
     atomicAdd( ptrObjCell + OBJCELL_COUNTER_WIND, 1 );
   }
 
-  //Check if start point inside
-  if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
-    inside = true;
-  else
+  //Check if cell within quad bounds
+  if (gridCoord.x >= quadMin.x)
   {
-    //Check if end point inside
-    if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
+    //Check if start point inside
+    if (q0.x >= 0.0 && q0.x <= 1.0 && q0.y >= 0.0 && q0.y <= 1.0)
       inside = true;
     else
     {
-      //Check if quad intersects top edge
-      quadIntersectionY( q0, q1, q2, 0.0, found1, found2, xx1, xx2 );
-      if ((found1 && xx1 >= 0.0 && xx1 <= 1.0) || (found2 && xx2 >= 0.0 && xx2 <= 1.0))
+      //Check if end point inside
+      if (q2.x >= 0.0 && q2.x <= 1.0 && q2.y >= 0.0 && q2.y <= 1.0)
         inside = true;
       else
       {
-        //Check if quad intersects bottom edge
-        quadIntersectionY( q0, q1, q2, 1.0, found1, found2, xx1, xx2 );
+        //Check if quad intersects top edge
+        quadIntersectionY( q0, q1, q2, 0.0, found1, found2, xx1, xx2 );
         if ((found1 && xx1 >= 0.0 && xx1 <= 1.0) || (found2 && xx2 >= 0.0 && xx2 <= 1.0))
           inside = true;
         else
         {
-          //Check if quad intersects left edge
-          quadIntersectionY( q0.yx, q1.yx, q2.yx, 0.0, found1, found2, yy1, yy2 );
-          if ((found1 && yy1 >= 0.0 && yy1 <= 1.0) || (found2 && yy2 >= 0.0 && yy2 <= 1.0))
+          //Check if quad intersects bottom edge
+          quadIntersectionY( q0, q1, q2, 1.0, found1, found2, xx1, xx2 );
+          if ((found1 && xx1 >= 0.0 && xx1 <= 1.0) || (found2 && xx2 >= 0.0 && xx2 <= 1.0))
             inside = true;
           else
           {
-            //Check if quad intersects right edge
-            quadIntersectionY( q0.yx, q1.yx, q2.yx, 1.0, found1, found2, yy1, yy2 );
+            //Check if quad intersects left edge
+            quadIntersectionY( q0.yx, q1.yx, q2.yx, 0.0, found1, found2, yy1, yy2 );
             if ((found1 && yy1 >= 0.0 && yy1 <= 1.0) || (found2 && yy2 >= 0.0 && yy2 <= 1.0))
               inside = true;
+            else
+            {
+              //Check if quad intersects right edge
+              quadIntersectionY( q0.yx, q1.yx, q2.yx, 1.0, found1, found2, yy1, yy2 );
+              if ((found1 && yy1 >= 0.0 && yy1 <= 1.0) || (found2 && yy2 >= 0.0 && yy2 <= 1.0))
+                inside = true;
+            }
           }
         }
       }

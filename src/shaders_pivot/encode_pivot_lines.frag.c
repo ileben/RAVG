@@ -17,6 +17,7 @@ uniform vec2 cellSize;
 in layout( pixel_center_integer ) vec4 gl_FragCoord;
 flat in vec2 line0;
 flat in vec2 line1;
+flat in ivec2 lineMin;
 
 int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell);
 void lineIntersectionY (vec2 l0, vec2 l1, float y, out bool found, out float x);
@@ -66,34 +67,38 @@ void main()
     atomicAdd( ptrObjCell + OBJCELL_COUNTER_WIND, 1 );
   }
 
-  //Check if start point inside
-  if (l0.x >= 0.0 && l0.x <= 1.0 && l0.y >= 0.0 && l0.y <= 1.0)
-    inside = true;
-  else
+  //Check if cell within line bounds
+  if (gridCoord.x >= lineMin.x)
   {
-    //Check if end point inside
-    if (l1.x >= 0.0 && l1.x <= 1.0 && l1.y >= 0.0 && l1.y <= 1.0)
+    //Check if start point inside
+    if (l0.x >= 0.0 && l0.x <= 1.0 && l0.y >= 0.0 && l0.y <= 1.0)
       inside = true;
     else
     {
-      //Check if line intersects top edge
-      lineIntersectionY( l0, l1, 0.0, found, xx );
-      if (found && xx >= 0.0 && xx <= 1.0) inside = true;
+      //Check if end point inside
+      if (l1.x >= 0.0 && l1.x <= 1.0 && l1.y >= 0.0 && l1.y <= 1.0)
+        inside = true;
       else
       {
-        //Check if line intersects bottom edge
-        lineIntersectionY( l0, l1, 1.0, found, xx );
+        //Check if line intersects top edge
+        lineIntersectionY( l0, l1, 0.0, found, xx );
         if (found && xx >= 0.0 && xx <= 1.0) inside = true;
         else
         {
-          //Check if line intersects left edge
-          lineIntersectionY( l0.yx, l1.yx, 0.0, found, yy );
-          if (found && yy >= 0.0 && yy <= 1.0) inside = true;
+          //Check if line intersects bottom edge
+          lineIntersectionY( l0, l1, 1.0, found, xx );
+          if (found && xx >= 0.0 && xx <= 1.0) inside = true;
           else
           {
-            //Check if line intersects right edge
-            lineIntersectionY( l0.yx, l1.yx, 1.0, found, yy );
+            //Check if line intersects left edge
+            lineIntersectionY( l0.yx, l1.yx, 0.0, found, yy );
             if (found && yy >= 0.0 && yy <= 1.0) inside = true;
+            else
+            {
+              //Check if line intersects right edge
+              lineIntersectionY( l0.yx, l1.yx, 1.0, found, yy );
+              if (found && yy >= 0.0 && yy <= 1.0) inside = true;
+            }
           }
         }
       }

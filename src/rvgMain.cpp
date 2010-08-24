@@ -2251,7 +2251,7 @@ int main (int argc, char **argv)
     obj->cubicsToQuads();
     image->objects.push_back( obj );
   }
-  
+
   image->updateBounds();
   //image->updateGrid();
   image->encodeCpuAux();
