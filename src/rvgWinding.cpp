@@ -105,34 +105,36 @@ int quadWinding (Vec2 q0, Vec2 q1, Vec2 q2, Vec2 p0, Vec2 p1)
   return w;
 }
 
-void lineIntersectionY (Vec2 l0, Vec2 l1, float y, float minX, float maxX,
-                        bool &found, float &x)
+void lineIntersectionY (vec2 l0, vec2 l1, float y, bool &found, float &x)
 {
   found = false;
+  x = 0.0;
 
   //Linear equation (0 = a*t + b)
   float a = l1.y - l0.y;
   float b = l0.y - y;
 
   //Check if equation constant
-  if (a != 0.0f)
+  if (a != 0.0)
   {
     //Find t of intersection
     float t = -b / a;
 
     //Plug into linear equation to find x of intersection
-    if (t >= 0.0f && t <= 1.0f) {
+    if (t >= 0.0 && t <= 1.0) {
       x = l0.x + t * (l1.x - l0.x);
-      if (x >= minX && x <= maxX) found = true;
+      found = true;
     }
   }
 }
 
-void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y, float minX, float maxX,
+void quadIntersectionY (vec2 q0, vec2 q1, vec2 q2, float y,
                         bool &found1, bool &found2, float &x1, float &x2)
 {
   found1 = false;
   found2 = false;
+  x1 = 0.0;
+  x2 = 0.0;
 
   //Quadratic equation (0 = a*t*t + b*t + c)
   float a = (q0.y - 2*q1.y + q2.y);
@@ -143,10 +145,10 @@ void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y, float minX, float ma
   float d = b*b - 4*a*c;
 
   //Find roots
-  if (d > 0.0f) {
+  if (d > 0.0) {
 
     float t1,t2;
-    
+
     //Find t of intersection
     if (a == 0.0)
     {
@@ -163,18 +165,18 @@ void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y, float minX, float ma
     }
     
     //Plug into bezier equation to find x of intersection
-    if (t1 >= 0.0f && t1 <= 1.0f) {
+    if (t1 >= 0.0 && t1 <= 1.0) {
       float t = t1;
       float one_t = 1.0f - t;
       x1 = one_t*one_t * q0.x + 2*t*one_t * q1.x + t*t * q2.x;
-      if (x1 >= minX && x1 <= maxX) found1 = true;
+      found1 = true;
     }
 
-    if (t2 >= 0.0f && t2 <= 1.0f) {
+    if (t2 >= 0.0 && t2 <= 1.0) {
       float t = t2;
       float one_t = 1.0f - t;
       x2 = one_t*one_t * q0.x + 2*t*one_t * q1.x + t*t * q2.x;
-      if (x2 >= minX && x2 <= maxX) found2 = true;
+      found2 = true;
     }
   }
 }

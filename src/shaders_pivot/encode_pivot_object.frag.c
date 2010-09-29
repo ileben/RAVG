@@ -38,7 +38,7 @@ void main()
   int   objGridOffset = ptrObj[4];
   
   //Get object grid pointer and coordinate
-  coherent int *ptrObjGrid = ptrObjectGrids + objGridOffset; */
+  coherent int *ptrObjGrid = ptrGrid + objGridOffset; */
 
   //Check object grid coordinate in range
   ivec2 objGridCoord = gridCoord - objGridOrigin;
@@ -59,7 +59,7 @@ void main()
 
   //Check if object has any segments or fully occludes this cell
   int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
-  if (prevOffset >= 0 || (wind % 2 == 1))
+  if (prevOffset >= 0 || (wind % 2) == 1)
   {
     //Add object data
     addObject( wind, color, prevOffset, ptrCell );

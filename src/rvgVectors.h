@@ -23,9 +23,8 @@ public:
 
   S x, y;
 
-  TVec2<int> toInt() const;
-  TVec2<float> toFloat() const;
-  TVec2<double> toDouble() const;
+  template <class T>
+  explicit TVec2 (const TVec2<T> &v);
 
   TVec2<S> yx () const;
 
@@ -69,9 +68,8 @@ public:
 
   S x, y, z;
 
-  TVec3<int> toInt() const;
-  TVec3<float> toFloat() const;
-  TVec3<double> toDouble() const;
+  template <class T>
+  explicit TVec3 (const TVec3<T> &v);
   
   TVec2<S> xy () const;
   TVec4<S> xyz (S w) const;
@@ -115,9 +113,8 @@ public:
 
   S x, y, z, w;
 
-  TVec4<int> toInt() const;
-  TVec4<float> toFloat() const;
-  TVec4<double> toDouble() const;
+  template <class T>
+  explicit TVec4 (const TVec4<T> &v);
   
   TVec2<S> xy () const;
   TVec3<S> xyz () const;
@@ -270,53 +267,25 @@ Quat operator* (const Quat &q1, const Quat &q2);
 Vec inline functions
 =============================================*/
 
-//Scalar conversions (don't want automatic conversions!)
+//Scalar conversions
 template <class S>
-inline TVec2<int> TVec2<S>::toInt() const {
-  return TVec2<int> ((int)x,(int)y);
+template <class T>
+inline TVec2<S>::TVec2 (const TVec2<T> &v) {
+  x=(S)v.x; y=(S)v.y;
 }
 
 template <class S>
-inline TVec3<int> TVec3<S>::toInt() const {
-  return TVec3<int> ((int)x,(int)y,(int)z);
+template <class T>
+inline TVec3<S>::TVec3 (const TVec3<T> &v) {
+  x=(S)v.x; y=(S)v.y; z=(S)v.z;
 }
 
 template <class S>
-inline TVec4<int> TVec4<S>::toInt() const {
-  return TVec4<int> ((int)x,(int)y,(int)z,(int)w);
+template <class T>
+inline TVec4<S>::TVec4 (const TVec4<T> &v) {
+  x=(S)v.x; y=(S)v.y; z=(S)v.z; w=(S)v.w;
 }
 
-
-template <class S>
-inline TVec2<float> TVec2<S>::toFloat() const {
-  return TVec2<float> ((float)x,(float)y);
-}
-
-template <class S>
-inline TVec3<float> TVec3<S>::toFloat() const {
-  return TVec3<float> ((float)x,(float)y,(float)z);
-}
-
-template <class S>
-inline TVec4<float> TVec4<S>::toFloat() const {
-  return TVec4<float> ((float)x,(float)y,(float)z,(float)w);
-}
-
-
-template <class S>
-inline TVec2<double> TVec2<S>::toDouble() const {
-  return TVec2<double> ((double)x,(double)y);
-}
-
-template <class S>
-inline TVec3<double> TVec3<S>::toDouble() const {
-  return TVec3<double> ((double)x,(double)y,(double)z);
-}
-
-template <class S>
-inline TVec4<double> TVec4<S>::toDouble() const {
-  return TVec4<double> ((double)x,(double)y,(double)z,(double)w);
-}
 
 //Swizzle
 template <class S>
@@ -324,7 +293,7 @@ inline TVec2<S> TVec2<S>::yx () const
   { return TVec2<S> (y,x); }
 
 
-//Conversions
+//Component conversions
 template <class S>
 inline TVec3<S> TVec2<S>::xy (S z) const
   { return TVec3<S> (x,y,z); }

@@ -191,6 +191,8 @@ public:
   void updateBuffers();
 };
 
+#include "rvgImageEncoder.h"
+
 class Image
 {
 public:
@@ -211,22 +213,21 @@ public:
   GLuint bufPivotWind;
   GLuint texGrid;
 
-  GLuint bufObjs;
-  GLuint bufObjInfos;
+  GLuint   bufObjs;
+  GLuint   bufObjInfos;
   GLuint64 ptrObjInfos;
-  
-  GLuint bufAuxGrid;
-  GLuint64 ptrAuxGrid;
-  GLuint bufAuxStream;
-  GLuint64 ptrAuxStream;
 
-  GLuint bufGpuAuxInfo;
-  GLuint64 ptrGpuAuxInfo;
-  GLuint bufGpuAuxGrid;
-  GLuint64 ptrGpuAuxGrid;
-  GLuint bufGpuAuxStream;
-  GLuint64 ptrGpuAuxStream;
+  GLuint   bufGpuInfo;
+  GLuint64 ptrGpuInfo;
+  GLuint   bufGpuGrid;
+  GLuint64 ptrGpuGrid;
+  GLuint   bufGpuStream;
+  GLuint64 ptrGpuStream;
   
+  int   *ptrCpuInfo;
+  int   *ptrCpuGrid;
+  float *ptrCpuStream;
+
   int cpuStreamLen;
 
 public:
@@ -234,84 +235,6 @@ public:
   std::vector< Obj > objs;
   std::vector< ObjInfo > objInfos;
   std::vector< Object* > objects;
-  int *cpuObjects;
-  int *cpuCounters;
-  float *cpuStream;
-
-#if(0)
-
-  ivec4 imageLoad (int* counters, const IVec3 &coord);
-  void imageStore (int* counters, const IVec3 &coord, const ivec4 &value);
-  int imageAtomicAdd (int* counters, const IVec3 &coord, int value);
-  int imageAtomicExchange (int* counters, const IVec3 &coord, int value);
-
-  void addLine (const Vec2 &l0, const Vec2 &l1, const IVec2 &gridCoord);
-  void addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, const IVec2 &gridCoord);
-  void addObject (const Vec4 &color, const IVec2 &gridCoord);
-
-  void encodeLine (const Vec2 &line0, const Vec2 &line1, const IVec2 &gridCoord, float *stream, int *counters);
-  void encodeQuad (const Vec2 &quad0, const Vec2 &quad1, const Vec2 &quad2, const IVec2 &gridCoord, float *stream, int *counters);
-  void encodeObject (const Vec4 &color, const IVec2 &gridCoord, float *stream, int *counters);
-
-#endif
-
-#if (1)
-
-  //Emulated GLSL functions
-  int atomicAdd (int *ptr, int value);
-  int atomicExchange (int *ptr, int value);
-
-  //Emulated uniform variables
-  int *ptrObjects;
-  int *ptrInfo;
-  int *ptrGrid;
-  float *ptrStream;
-
-  //Emulated shader utility functions
-  int addLine (const Vec2 &l0, const Vec2 &l1, int *ptrObjCell);
-  int addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell);
-  int addObject (int objectId, const Vec4 &color, int lastSegmentOffset, int *ptrCell);
-
-  //Emulated shader main() functions
-  void frag_encodeInit
-    (
-    const ivec2 &gridCoord
-    );
-
-  void frag_encodeInitObject
-    (
-    int objectId,
-    const ivec2 &gridCoord
-    );
-
-  void frag_encodeLine
-    (
-    int objectId,
-    const ivec2 &gridCoord,
-    const Vec2 &line0,
-    const Vec2 &line1
-    );
-
-  void frag_encodeQuad
-    (
-    int objectId,
-    const ivec2 &gridCoord,
-    const Vec2 &quad0,
-    const Vec2 &quad1,
-    const Vec2 &quad2
-    );
-  void frag_encodeObject
-    (
-    int objectId,
-    const Vec4 &color,
-    const ivec2 &gridCoord
-    );
-  void frag_encodeSort
-    (
-    const ivec2 &gridCoord
-    );
-
-#endif
 
 public:
 
@@ -320,7 +243,7 @@ public:
   void updateBounds();
   void updateGrid();
   void updateBuffers();
-  void encodeCpuAux();
+  void encodeCpu (ImageEncoder *encoder);
 };
 
 class Shader
@@ -383,10 +306,10 @@ public:
 int lineWinding (Vec2 l0, Vec2 l1, Vec2 p0, Vec2 p1);
 int quadWinding (Vec2 q0, Vec2 q1, Vec2 q2, Vec2 p0, Vec2 p1);
 
-void lineIntersectionY (Vec2 l0, Vec2 l1, float y, float minX, float maxX,
+void lineIntersectionY (Vec2 l0, Vec2 l1, float y,
                         bool &found, float &x);
 
-void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y, float minX, float maxX,
+void quadIntersectionY (Vec2 q0, Vec2 q1, Vec2 q2, float y,
                         bool &found1, bool &found2, float &x1, float &x2);
 
 bool pointInRect (const Vec2 &min, const Vec2 &max, const Vec2 &p);
@@ -438,8 +361,7 @@ extern const VGfloat*  styleArrays[];
 //Memory layout============================
 //ptrInfo:        |StreamSize|GridSize|
 //ptrObjects:     |Objects|...|...|...
-//ptrObjectGrids: |Grids|...|...|...
-//ptrGrid:        |Width*Height|
-//ptrStream:      |Lines|Quads|...|...|...
+//ptrGrid:        |Width*Height|ObjW*ObjH|...|...
+//ptrStream:      |Lines|Quads|...|...|...|...|...
 
 #endif//RVGMAIN_H

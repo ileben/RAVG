@@ -59,11 +59,11 @@ void main (void)
       {
         //Get color of the object
         int objId = (int) ptrObj[2];
-        vec4 objColor = vec4( ptrObj[3], ptrObj[4], ptrObj[5], ptrObj[6] );
         int objWinding = 0;
+        vec4 objColor = vec4( ptrObj[4], ptrObj[5], ptrObj[6], ptrObj[7] );
 
         //Loop until end of segment list
-        segIndex = (int) ptrObj[7];
+        segIndex = (int) ptrObj[8];
         while (segIndex != -1)
         {
           //Sanity check

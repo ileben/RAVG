@@ -22,7 +22,7 @@ uniform vec4 color;
 in layout( pixel_center_integer ) vec4 gl_FragCoord;
 
 int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell);
-int addObject (vec4 color, int lastSegmentOffset, coherent int *ptrCell);
+int addObject (int occlusion, vec4 color, int lastSegmentOffset, coherent int *ptrCell);
 
 void main()
 {
@@ -55,27 +55,23 @@ void main()
   coherent int *ptrCell = ptrGrid
     + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
 
-  //Get and reset auxiliary vertical counter
-  int aux = atomicExchange( ptrObjCell + OBJCELL_COUNTER_AUX, 0 );
-  bool anySegments = false;
+  //Get auxiliary vertical counter
+  int aux = ptrObjCell[ OBJCELL_COUNTER_AUX ];
 
-  //Check if object has any segments in this cell
+  //Check if object has any segments or fully occludes this cell
   int prevOffset = ptrObjCell[ OBJCELL_COUNTER_PREV ];
-  if (prevOffset >= 0) anySegments = true;
-
-  //Check if auxiliary counter parity is odd
-  if (aux % 2 == 1)
+  if (prevOffset >= 0 || (aux % 2) == 1)
   {
-    //Add auxiliary vertical segment
-    prevOffset = addLine( vec2( 1.0, 1.25 ), vec2( 1.0, -0.25 ), ptrObjCell );
+    //If no other segments mark cell occluded
+    int occlusion = (prevOffset == -1 ? 1 : 0);
 
-    //If no other segments, mark the cell fully occluded
-    //if (!anySegments) imageStore( counters, ivec3( gridCoord, 3 ), ivec4( 1 ) );
-    anySegments = true;
+    //Add auxiliary vertical segment if counter parity is odd
+    if ((aux % 2) == 1)
+      prevOffset = addLine( vec2( 1.0, 1.25 ), vec2( 1.0, -0.25 ), ptrObjCell );
+    
+    //Add object data
+    addObject( occlusion, color, prevOffset, ptrCell );
   }
-  
-  //Add object data if any of its segments in this cell
-  if (anySegments) addObject( color, prevOffset, ptrCell );
 
   discard;
 }
@@ -99,11 +95,11 @@ int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell)
   return nodeOffset;
 }
 
-int addObject (vec4 color, int lastSegmentOffset, coherent int *ptrCell)
+int addObject (int occlusion, vec4 color, int lastSegmentOffset, coherent int *ptrCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
-  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 8 );
+  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 9 );
   int prevOffset = atomicExchange( ptrCell + CELL_COUNTER_PREV, nodeOffset );
   coherent float *ptrNode = ptrStream + nodeOffset;
 
@@ -111,11 +107,12 @@ int addObject (vec4 color, int lastSegmentOffset, coherent int *ptrCell)
   ptrNode[ 0 ] = (float) NODE_TYPE_OBJECT;
   ptrNode[ 1 ] = (float) prevOffset;
   ptrNode[ 2 ] = (float) objectId;
-  ptrNode[ 3 ] = color.x;
-  ptrNode[ 4 ] = color.y;
-  ptrNode[ 5 ] = color.z;
-  ptrNode[ 6 ] = color.w;
-  ptrNode[ 7 ] = (float) lastSegmentOffset;
+  ptrNode[ 3 ] = (float) occlusion;
+  ptrNode[ 4 ] = color.x;
+  ptrNode[ 5 ] = color.y;
+  ptrNode[ 6 ] = color.z;
+  ptrNode[ 7 ] = color.w;
+  ptrNode[ 8 ] = (float) lastSegmentOffset;
 
   return nodeOffset;
 }

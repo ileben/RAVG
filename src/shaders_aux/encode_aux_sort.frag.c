@@ -23,6 +23,18 @@ void main()
   coherent int *ptrCell = ptrGrid
     + (gridCoord.y * gridSize.x + gridCoord.x) * NUM_CELL_COUNTERS;
 
+  //WTF: there are some invocations of the shader with erroneous data
+  //read from the buffer, despite the memory barrier. 
+
+  int objId = ptrCell[ CELL_COUNTER_PREV ];
+  //if (objId > 500000) { discard; return; }
+  if (objId > -1)
+  {
+    coherent float *ptrObj1 = ptrStream + objId;
+    if (ptrObj1[0] != NODE_TYPE_OBJECT)
+    { discard; return; }
+  }
+
   //Loop from last to first object
   int objIndex1 = ptrCell[ CELL_COUNTER_PREV ];
   while (objIndex1 > -1)
@@ -45,6 +57,11 @@ void main()
       objIndex2 = (int)ptrObj2[ 1 ];
     }
 
+    //If object has only an auxiliary segment it must occlude the cell entirely
+    //so discard the ones before it by relinking the indirection index
+    if ((int)ptrObj1[ 3 ] == 1)
+      ptrCell[ CELL_COUNTER_PREV ] = objIndex1;
+
     //Move to prev object
     objIndex1 = (int)ptrObj1[ 1 ];
   }
@@ -60,6 +77,7 @@ void swapObjects (coherent float *ptrObj1, coherent float *ptrObj2)
   float tmp5 = ptrObj1 [5];
   float tmp6 = ptrObj1 [6];
   float tmp7 = ptrObj1 [7];
+  float tmp8 = ptrObj1 [8];
 
   ptrObj1 [2] = ptrObj2 [2];
   ptrObj1 [3] = ptrObj2 [3];
@@ -67,6 +85,7 @@ void swapObjects (coherent float *ptrObj1, coherent float *ptrObj2)
   ptrObj1 [5] = ptrObj2 [5];
   ptrObj1 [6] = ptrObj2 [6];
   ptrObj1 [7] = ptrObj2 [7];
+  ptrObj1 [8] = ptrObj2 [8];
 
   ptrObj2 [2] = tmp2;
   ptrObj2 [3] = tmp3;
@@ -74,4 +93,5 @@ void swapObjects (coherent float *ptrObj1, coherent float *ptrObj2)
   ptrObj2 [5] = tmp5;
   ptrObj2 [6] = tmp6;
   ptrObj2 [7] = tmp7;
+  ptrObj2 [8] = tmp8;
 }

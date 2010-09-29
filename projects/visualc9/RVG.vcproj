@@ -185,11 +185,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgEncodeCpuPivot.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgGLHeaders.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\src\rvgGLInit.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgImageEncoder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgImageEncoder.h"
 				>
 			</File>
 			<File
