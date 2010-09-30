@@ -24,12 +24,22 @@ namespace Rep {
   };
 };
 
+namespace View {
+  enum Enum {
+    Classic         = 0,
+    RandomDirect    = 1,
+    RandomCylinder  = 2,
+    Count           = 3
+  };
+};
+
 int proc = Proc::Gpu;
 int rep = Rep::Pivot;
-bool encode = true;
+int view = View::RandomDirect;
+
+bool encode = false;
 bool draw = true;
 bool drawGrid = false;
-bool drawCylinder = false;
 
 MatrixStack matModelView;
 MatrixStack matProjection;
@@ -52,6 +62,10 @@ Shader *shaderEncodePivotObject;
 Shader *shaderEncodePivotSort;
 Shader *shaderRenderPivot;
 
+Shader *shaderClassicQuads;
+Shader *shaderClassicContour;
+Shader *shaderClassic;
+
 Object *object1;
 Object *object2;
 Image *image;
@@ -60,10 +74,14 @@ ImageEncoder *imageEncoderPivot;
 
 int mouseButton = 0;
 Vec2 mouseDown;
+
 Float angleX = 0.0f;
 Float angleY = 0.0f;
 Float zoomZ = 6.0f;
 
+Float panX = 0.0f;
+Float panY = 0.0f;
+Float zoomS = 1.0f;
 
 ///////////////////////////////////////////////////////////////////
 // Functions
@@ -133,6 +151,12 @@ Object::Object()
   buffersInit = false;
 
   gridWinding = NULL;
+}
+
+Object::~Object()
+{
+  for (Uint32 c=0; c<contours.size(); ++c)
+    delete contours[c];
 }
 
 void Object::moveTo( Float x, Float y,
@@ -246,20 +270,6 @@ bool intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 
     o1.y + t1*v1.y);
   return true;
 }
-/*
-Vec2 intersectLines (Vec2 p0, Vec2 p1, Vec2 p2, Vec2 p3)
-{
-  float a0 = (p0.y - p1.y) / (p0.x - p1.x);
-  float b0 = p0.y - a0 * p0.x;
-
-  float a1 = (p2.y - p3.y) / (p2.x - p3.x);
-  float b1 = (p2.y - a1 * p3.x);
-
-  Vec2 p;
-  p.x = (a0 - a1) / (b1 - b0);
-  p.y = a0 * p.x + b0;
-  return p;
-}*/
 
 void subdivCubic (const Cubic &c, Cubic &c1, Cubic &c2)
 {
@@ -281,70 +291,115 @@ void subdivCubic (const Cubic &c, Cubic &c1, Cubic &c2)
   c2.p3 = c.p3;
 }
 
-void Object::cubicsToQuads()
-{/*
+void cubicToQuads (const Cubic &cu, std::vector< Quad > &out)
+{
+  /*
   //Generic recursive subdivision
-  for (Uint32 i=0; i<cubics.size(); ++i)
+  Cubic c1,c2;
+  subdivCubic( cu, c1,c2 );
+  
+  Cubic cubics[4];
+  subdivCubic( c1, cubics[0], cubics[1] );
+  subdivCubic( c2, cubics[2], cubics[3] );
+
+  for (int j=0; j<4; ++j)
   {
-    Cubic c = cubics[i];
+    Cubic cj = cubics[j];
     
-    Cubic c1,c2;
-    subdivCubic( c, c1,c2 );
-    
-    Cubic cubics[4];
-    subdivCubic( c1, cubics[0], cubics[1] );
-    subdivCubic( c2, cubics[2], cubics[3] );
+    Quad quad;
+    quad.p0 = cj.p0;
+    quad.p2 = cj.p3;
 
-    for (int j=0; j<4; ++j)
-    {
-      Cubic cj = cubics[j];
-      
-      Quad quad;
-      quad.p0 = cj.p0;
-      quad.p2 = cj.p3;
+    if (! intersectLines( cj.p0, cj.p1, cj.p2, cj.p3, quad.p1 ))
+      quad.p1 = (cj.p1 + cj.p2) * 0.5f;
 
-      if (! intersectLines( cj.p0, cj.p1, cj.p2, cj.p3, quad.p1 ))
-        quad.p1 = (cj.p1 + cj.p2) * 0.5f;
-
-      quads.push_back( quad );
-    }
-  }*/
+    out.push_back( quad );
+  }
+  */
 
   //Fixed subdivision into 4 quads
-  for (Uint32 i=0; i<cubics.size(); ++i)
+  Vec2 p01 = (cu.p0 + cu.p1) * 0.5f;
+  Vec2 p12 = (cu.p1 + cu.p2) * 0.5f;
+  Vec2 p23 = (cu.p2 + cu.p3) * 0.5f;
+
+  Vec2 p001 = (cu.p0 + p01) * 0.5f;
+  Vec2 a = (p001 + p01) * 0.5f;
+
+  Vec2 p233 = (p23 + cu.p3) * 0.5f;
+  Vec2 d = (p23 + p233) * 0.5f;
+
+  Vec2 p0112 = (p01 + p12) * 0.5f;
+  Vec2 p1223 = (p12 + p23) * 0.5f;
+  Vec2 B = (p0112 + p1223) * 0.5f;
+
+  Vec2 p0112B = (p0112 + B) * 0.5f;
+  Vec2 b = (p0112 + p0112B) * 0.5f;
+
+  Vec2 pB1223 = (B + p1223) * 0.5f;
+  Vec2 c = (pB1223 + p1223) * 0.5f;
+
+  Vec2 A = (a + b) * 0.5f;
+  Vec2 C = (c + d) * 0.5f;
+
+  out.push_back( Quad( cu.p0, a, A ) );
+  out.push_back( Quad( A, b, B ) );
+  out.push_back( Quad( B, c, C ) );
+  out.push_back( Quad( C, d, cu.p3 ) );
+}
+
+Object* Object::cubicsToQuads()
+{
+  Object *obj = new Object();
+  obj->color = color;
+
+  std::vector< Quad > quadsFromCubic;
+
+  for (Uint32 c=0; c<contours.size(); ++c)
   {
-    Cubic cu = cubics[i];
+    Contour *cnt = contours[c];
+    int p=0;
 
-    Vec2 p01 = (cu.p0 + cu.p1) * 0.5f;
-    Vec2 p12 = (cu.p1 + cu.p2) * 0.5f;
-    Vec2 p23 = (cu.p2 + cu.p3) * 0.5f;
+    for (Uint32 s=0; s<cnt->segments.size(); ++s)
+    {
+      int seg = cnt->segments[s];
 
-    Vec2 p001 = (cu.p0 + p01) * 0.5f;
-    Vec2 a = (p001 + p01) * 0.5f;
+      if (seg & SegType::MoveTo) {
+        vec2 point0 = contour->points[ p ];
+        obj->moveTo( point0.x, point0.y );
+        p += 1;
 
-    Vec2 p233 = (p23 + cu.p3) * 0.5f;
-    Vec2 d = (p23 + p233) * 0.5f;
+      }else if (seg & SegType::LineTo) {
+        vec2 point0 = contour->points[ p ];
+        obj->lineTo( point0.x, point0.y );
+        p += 1;
 
-    Vec2 p0112 = (p01 + p12) * 0.5f;
-    Vec2 p1223 = (p12 + p23) * 0.5f;
-    Vec2 B = (p0112 + p1223) * 0.5f;
+      }else if (seg & SegType::QuadTo) {
+        vec2 point0 = contour->points[ p+0 ];
+        vec2 point1 = contour->points[ p+1 ];
+        obj->quadTo( point0.x, point0.y, point1.x, point1.y );
+        p += 2;
 
-    Vec2 p0112B = (p0112 + B) * 0.5f;
-    Vec2 b = (p0112 + p0112B) * 0.5f;
+      }else if (seg & SegType::CubicTo) {
 
-    Vec2 pB1223 = (B + p1223) * 0.5f;
-    Vec2 c = (pB1223 + p1223) * 0.5f;
+        Cubic cubic;
+        cubic.p0 = contour->points[ p-1 ];
+        cubic.p1 = contour->points[ p+0 ];
+        cubic.p2 = contour->points[ p+1 ];
+        cubic.p3 = contour->points[ p+2 ];
+        p += 3;
 
-    Vec2 A = (a + b) * 0.5f;
-    Vec2 C = (c + d) * 0.5f;
+        quadsFromCubic.clear();
+        cubicToQuads( cubic, quadsFromCubic );
+        for (Uint32 q=0; q<quadsFromCubic.size(); ++q) {
 
-    quads.push_back( Quad( cu.p0, a, A ) );
-    quads.push_back( Quad( A, b, B ) );
-    quads.push_back( Quad( B, c, C ) );
-    quads.push_back( Quad( C, d, cu.p3 ) );
+          Quad quad = quadsFromCubic[q];
+          obj->quadTo( quad.p1.x, quad.p1.y, quad.p2.x, quad.p2.y );
+        }
+      }
+    }
   }
 
-  cubics.clear();
+  return obj;
 }
 
 void Object::updateGrid()
@@ -396,10 +451,29 @@ void Object::updateBuffers()
     glGenBuffers( 1, &bufPivotWind );
     glGenBuffers( 1, &bufLinesQuads );
     glGenTextures( 1, &texGrid );
+
+    for (Uint32 c=0; c<contours.size(); ++c)
+      glGenBuffers( 1, &contours[c]->bufFlatPoints );
+
     buffersInit = true;
   }
 
   checkGlError( "Object::updateBuffers init" );
+
+  //////////////////////////////////////
+  //Contour flat points
+  
+  for (Uint32 c=0; c<contours.size(); ++c)
+  {
+    if (contours[c]->flatPoints.size() > 0)
+    {
+      Contour *cnt = contours[c];
+      glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
+      glBufferData( GL_ARRAY_BUFFER, cnt->flatPoints.size() * sizeof( vec2 ), &cnt->flatPoints[0], GL_STATIC_DRAW );
+    }
+
+    checkGlError( "Object::updateBuffers contours" );
+  }
 
   //////////////////////////////////////
   //Line control points
@@ -409,7 +483,7 @@ void Object::updateBuffers()
     glBindBuffer( GL_ARRAY_BUFFER, bufLines );
     glBufferData( GL_ARRAY_BUFFER, lines.size() * sizeof( Line ), &lines[0], GL_STATIC_DRAW );
 
-    checkGlError( "Object::updateBuffersGrid lines" );
+    checkGlError( "Object::updateBuffers lines" );
   }
 
   //////////////////////////////////////
@@ -697,250 +771,6 @@ void Image::updateBuffers ()
 
   checkGlError( "Image::updateBuffers gpuobjStream" );
 }
-
-std::vector< Shader::Def > Shader::defs;
-
-void Shader::Define (const std::string &key, const std::string &value)
-{
-  Def def;
-  def.key = key;
-  def.value = value;
-  defs.push_back( def );
-}
-
-std::string Shader::ApplyDefs (const std::string &source)
-{
-  std::string str = source;
-  
-  for (Uint32 d=0; d<defs.size(); ++d)
-  {
-    std::size_t x = 0;
-    while ((x = str.find( defs[d].key )) != std::string::npos)
-      str = str.replace( x, defs[d].key.length(), defs[d].value );
-  }
-
-  return str;
-}
-
-Shader::Shader (const std::string &vertFile, const std::string &fragFile)
-{
-  this->vertFile = vertFile;
-  this->fragFile = fragFile;
-
-  vertex = NULL;
-  geometry = NULL;
-  fragment = NULL;
-  program = NULL;
-}
-
-Shader::Shader (const std::string &vertFile, const std::string &geomFile, const std::string &fragFile)
-{
-  this->vertFile = vertFile;
-  this->geomFile = geomFile;
-  this->fragFile = fragFile;
-
-  vertex = NULL;
-  geometry = NULL;
-  fragment = NULL;
-  program = NULL;
-}
-
-Shader::~Shader ()
-{
-  if (vertex) delete vertex;
-  if (geometry) delete geometry;
-  if (fragment) delete fragment;
-  if (program) delete program;
-}
-
-std::string readFile (const std::string &filename)
-{
-  std::ifstream f;
-  f.open( filename.c_str(), std::ios::binary );
-  if (!f.is_open()) {
-    std::cout << "Failed opening file!" << std::endl;
-    return std::string( "" );
-  }
-
-  long begin = f.tellg();
-  f.seekg( 0, std::ios::end );
-  long end = f.tellg();
-  f.seekg( 0, std::ios::beg );
-  long size = end - begin;
-
-  if (size == 0) {
-    std::cout << "Zero file size!"  << std::endl;
-    return std::string( "" );
-  }
-
-  char *cstr = new char[ size+1 ];
-  f.read( cstr, size );
-  f.close();
-  cstr[ size ] = '\0';
-
-  std::string str( cstr );
-  delete[] cstr;
-
-  return str;
-}
-
-bool Shader::load()
-{
-  if (vertex) delete vertex;
-  if (geometry) delete geometry;
-  if (fragment) delete fragment;
-  if (program) delete program;
-
-  program = new GLProgram();
-  program->create();
-
-  //Vertex
-  if (vertFile != "")
-  {
-    vertex = new GLShader();
-    std::cout << "Loading shader " << vertFile << "..." << std::endl;
-    std::string vertString = readFile( vertFile );
-    vertString = Shader::ApplyDefs( vertString );
-
-    vertex->create( ShaderType::Vertex );
-    if (vertex->compile( vertString ))
-    {
-      std::cout << "Vertex compiled successfuly" << std::endl;
-      program->attach( vertex );
-    }
-    else std::cout << "Vertex compilation FAILED" << std::endl;
-
-    std::string vertLog = vertex->getInfoLog();
-    if (vertLog.length() > 0)
-      std::cout << vertLog << std::endl;
-  }
-
-  //Geometry
-  if (geomFile != "")
-  {
-    geometry = new GLShader();
-    std::cout << "Loading shader " << geomFile << "..." << std::endl;
-    std::string geomString = readFile( geomFile );
-    geomString = Shader::ApplyDefs( geomString );
-
-    geometry->create( ShaderType::Geometry );
-    if (geometry->compile( geomString ))
-    {
-      std::cout << "Geometry compiled successfuly" << std::endl;
-      program->attach( geometry );
-    }
-    else std::cout << "Geometry compilation FAILED" << std::endl;
-
-    std::string geomLog = geometry->getInfoLog();
-    if (geomLog.length() > 0)
-      std::cout << geomLog << std::endl;
-  }
-
-  //Fragment
-  if (fragFile != "")
-  {
-    fragment = new GLShader();
-    std::cout << "Loading shader " << fragFile << "..." << std::endl;
-    std::string fragString = readFile( fragFile );
-    fragString = Shader::ApplyDefs( fragString );
-
-    fragment->create( ShaderType::Fragment );
-    if (fragment->compile( fragString ))
-    {
-      std::cout << "Fragment compiled successfuly" << std::endl;
-      program->attach( fragment );
-    }
-    else std::cout << "Fragment compilation FAILED" << std::endl;
-    
-    std::string fragLog = fragment->getInfoLog();
-    if (fragLog.length() > 0)
-      std::cout << fragLog << std::endl;
-  }
-
-  //Link
-  if (program->link())
-    std::cout << "Program linked successfully" << std::endl;
-  else std::cout << "Program link FAILED" << std::endl;
-
-  std::string linkLog = program->getInfoLog();
-  if (linkLog.length() > 0)
-    std::cout << linkLog << std::endl;
-
-  return true;
-}
-
-void Shader::use()
-{
-  if (program) program->use();
-}
-
-/*
-void renderObjectOldSchool (Object *o)
-{
-  //-----------------------------------------------
-  
-  //Vertex data needs to come from a buffer for gl_VertexID to be defined in shaders
-  Shader *shader = shaderQuad;
-  shader->use();
-
-  //glEnable( GL_MULTISAMPLE );
-  //glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
-  
-  renderQuads( o, shader );
-
-  Int32 pos = shader->program->getAttribute( "in_pos" );
-  glEnableVertexAttribArray( pos );
-  glBindBuffer( GL_ARRAY_BUFFER, o->bufQuads );
-  glVertexAttribPointer( pos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
-  glDrawArrays( GL_TRIANGLES, 0, o->quads.size() * 3 );
-  glDisableVertexAttribArray( pos );
-  
-  //-----------------------------------------------
-
-  glEnable( GL_MULTISAMPLE );
-  glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
-
-  glEnable( GL_STENCIL_TEST );
-  glStencilFunc( GL_ALWAYS, 0, 1 );
-  glStencilOp( GL_INVERT, GL_INVERT, GL_INVERT );
-  glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
-
-  renderQuads( o, shader );
-
-  glDisable( GL_SAMPLE_ALPHA_TO_COVERAGE );
-
-  //-----------------------------------------------
-
-  shader = shader1;
-  shader->use();
-
-  Int32 pos = shader->program->getAttribute( "in_pos" );
-  glEnableVertexAttribArray( pos );
-  glBindBuffer( GL_ARRAY_BUFFER, 0 );
-
-  for (Uint32 c=0; c<o->contours.size(); ++c)
-  {
-    Contour *contour = o->contours[c];
-    glVertexAttribPointer( pos, 2, GL_FLOAT, false, sizeof( Vec2 ), &contour->flatPoints[0] );
-    glDrawArrays( GL_TRIANGLE_FAN, 0, contour->flatPoints.size() * 2 );
-  }
-
-  glDisableVertexAttribArray( pos );
-
-  //-----------------------------------------------
-
-  glStencilFunc( GL_EQUAL, 1, 1 );
-  glStencilOp( GL_ZERO, GL_ZERO, GL_ZERO );
-  glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
-
-  glBegin( GL_QUADS );
-  glVertex2f( o->min.x, o->min.y );
-  glVertex2f( o->max.x, o->min.y );
-  glVertex2f( o->max.x, o->max.y );
-  glVertex2f( o->min.x, o->max.y );
-  glEnd(); 
-}
-*/
 
 void renderFullScreenQuad (Shader *shader)
 {
@@ -1496,7 +1326,7 @@ void encodeImagePivot (Image *image)
   */
   
   /////////////////////////////////////////////////////
-  // Encode object properties into stream
+  // Encode object properties
   {
     Shader *shader = shaderEncodePivotObject;
     shader->use();
@@ -1594,9 +1424,9 @@ void Image::encodeCpu (ImageEncoder *encoder)
   ptrCpuInfo         = new int[ NUM_INFO_COUNTERS ];
   ptrCpuGrid         = new int[ 500000 ];
   ptrCpuStream       = new float[ 500000 ];
-  
-  //Emulate shaders
-  ////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////
+  // Init size counters and main grid
 
   encoder->ptrInfo = ptrCpuInfo;
   encoder->ptrGrid = ptrCpuGrid;
@@ -1609,7 +1439,9 @@ void Image::encodeCpu (ImageEncoder *encoder)
 
   encoder->encodeInit();
 
-  //Walk the list of objects
+  /////////////////////////////////////////////////////
+  // Init object grids
+
   for (int o=0; o<(int)image->objects.size(); ++o)
   {
     Object *obj = image->objects[o];
@@ -1619,12 +1451,13 @@ void Image::encodeCpu (ImageEncoder *encoder)
     encoder->encodeInitObject();
   }
 
-  //Walk the list of objects
+  /////////////////////////////////////////////////////
+  // Encode object lines
+
   for (int o=0; o<(int)image->objects.size(); ++o)
   {
     Object *obj = image->objects[o];
 
-    //Walk the list of line segments
     for (Uint32 l=0; l<obj->lines.size(); ++l)
     {
       Line &line = obj->lines[l];
@@ -1633,8 +1466,15 @@ void Image::encodeCpu (ImageEncoder *encoder)
       encoder->line1 = line.p1;
       encoder->encodeLine();
     }
+  }
 
-    //Walk the list of quad segments
+  /////////////////////////////////////////////////////
+  // Encode object quads
+
+  for (int o=0; o<(int)image->objects.size(); ++o)
+  {
+    Object *obj = image->objects[o];
+
     for (Uint32 q=0; q < obj->quads.size(); ++q)
     {
       Quad &quad= obj->quads[q];
@@ -1646,7 +1486,9 @@ void Image::encodeCpu (ImageEncoder *encoder)
     }
   }
 
-  //Walk the list of objects
+  /////////////////////////////////////////////////////
+  // Encode object properties
+
   for (int o=0; o<(int)image->objects.size(); ++o)
   {
     Object *obj = image->objects[o];
@@ -1657,17 +1499,19 @@ void Image::encodeCpu (ImageEncoder *encoder)
     encoder->encodeObject();
   }
 
+  /////////////////////////////////////////////////////
+  // Sort objects in every cell back to front
+
   encoder->encodeSort();
   
   //Measure data
   ////////////////////////////////////////////////////
-
+  
   cpuStreamLen = ptrCpuInfo[ INFO_COUNTER_STREAMLEN ];
 }
 
 void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 {
-  glColor3f( 0,0,0 );
   glEnable( GL_MULTISAMPLE );
   glEnable( GL_SAMPLE_SHADING );
   glMinSampleShading( 1.0f );
@@ -1709,6 +1553,123 @@ void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
   //glDisable( GL_BLEND );
 }
 
+void renderImageClassic (Image *image)
+{
+  matModelView.push();
+  matModelView.translate( panX, panY, 0 );
+  matModelView.translate( 180, 400, 0 );
+  matModelView.scale( 1.0f, -1.0f, 1.0f );
+  matModelView.scale( zoomS, zoomS, zoomS );
+
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
+
+  glDisable( GL_DEPTH_TEST );
+  glEnable( GL_STENCIL_TEST );
+
+  for (Uint32 o=0; o<image->objects.size(); ++o)
+  {
+    Object *obj = image->objects[o];
+
+    ///////////////////////////////////////////////
+    //Render into stencil
+
+    glStencilFunc( GL_ALWAYS, 0, 1 );
+    glStencilOp( GL_INVERT, GL_INVERT, GL_INVERT );
+    glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+
+    ///////////////////////////////////////////////
+    //Render quads
+    {
+      Shader *shader = shaderClassicQuads;
+      shader->use();
+      
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+      
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glEnableVertexAttribArray( aPos );
+      glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+      
+      glDrawArrays( GL_TRIANGLES, 0, obj->quads.size() * 3 );
+      glDisableVertexAttribArray( aPos );
+    }
+    
+    ///////////////////////////////////////////////
+    //Render contours
+    {
+      Shader *shader = shaderClassicContour;
+      shader->use();
+      
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+      for (Uint32 c=0; c<obj->contours.size(); ++c)
+      {
+        Contour *cnt = obj->contours[c];
+
+        Int32 aPos = shader->program->getAttribute( "in_pos" );
+        glEnableVertexAttribArray( aPos );
+        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
+        glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+        glDrawArrays( GL_TRIANGLE_FAN, 0, cnt->flatPoints.size() );
+        glDisableVertexAttribArray( aPos );
+      }
+    }
+
+    ///////////////////////////////////////////////
+    //Render through stencil
+
+    glStencilFunc( GL_EQUAL, 1, 1 );
+    glStencilOp( GL_ZERO, GL_ZERO, GL_ZERO );
+    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+
+    ///////////////////////////////////////////////
+    //Render boundbox quad
+    {
+      Shader *shader = shaderClassic;
+      shader->use();
+
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+      Int32 uColor = shader->program->getUniform( "color" );
+      glUniform4fv( uColor, 1, (GLfloat*) &obj->color );
+
+      Float coords[] = {
+        obj->min.x, obj->min.y,
+        obj->max.x, obj->min.y,
+        obj->max.x, obj->max.y,
+        obj->min.x, obj->max.y
+      };
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, 0 );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, 2 * sizeof( Float ), coords );
+
+      glEnableVertexAttribArray( aPos );
+      glDrawArrays( GL_QUADS, 0, 4 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  glDisable( GL_STENCIL_TEST );
+
+  matModelView.pop();
+}
+
 void renderImage1to1 ()
 {
   //Setup quad buffer
@@ -1748,9 +1709,10 @@ void renderImage1to1 ()
   //Render
 
   matModelView.push();
-  //matModelView.translate( 100, 100, 0 );
+  matModelView.translate( panX, panY, 0 );
   matModelView.translate( 180, 400, 0 );
   matModelView.scale( 1.0f, -1.0f, 1.0f );
+  matModelView.scale( zoomS, zoomS, zoomS );
 
   glDisable( GL_DEPTH_TEST );
 
@@ -1834,42 +1796,54 @@ void display ()
   glClearColor( 1,1,1,1 );
   glClear( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-  //Encode image
-  static int prevRep = rep;
-  static int prevProc = proc;
-  if (encode || rep != prevRep || proc != prevProc)
+  if (view == View::Classic)
   {
-    prevRep = rep;
-    prevProc = proc;
-    switch (proc)
-    {
-    case Proc::Cpu:
-
-      switch (rep) {
-      case Rep::Aux:   image->encodeCpu( imageEncoderAux ); break;
-      case Rep::Pivot: image->encodeCpu( imageEncoderPivot ); break;
-      }
-
-      glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuGrid );
-      glBufferSubData( GL_ARRAY_BUFFER, 0, image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS * sizeof(int), image->ptrCpuGrid );
-      glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuStream );
-      glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuStreamLen * sizeof(float), image->ptrCpuStream );
-      break;
-
-    case Proc::Gpu:
-
-      switch (rep) {
-      case Rep::Aux:   encodeImageAux( image ); break;
-      case Rep::Pivot: encodeImagePivot( image ); break;
-      } break;
-    }
+    //Render classic image
+    if (draw) renderImageClassic( image );
   }
-
-  //Render image
-  if (draw)
+  else
   {
-    if (drawCylinder) renderImageCylinder();
-    else renderImage1to1();
+    //Encode image
+    static bool first = true;
+    static int prevRep = rep;
+    static int prevProc = proc;
+    if (first || encode || rep != prevRep || proc != prevProc)
+    {
+      first = false;
+      prevRep = rep;
+      prevProc = proc;
+      switch (proc)
+      {
+      case Proc::Cpu:
+
+        switch (rep) {
+        case Rep::Aux:   image->encodeCpu( imageEncoderAux ); break;
+        case Rep::Pivot: image->encodeCpu( imageEncoderPivot ); break;
+        }
+
+        glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuGrid );
+        glBufferSubData( GL_ARRAY_BUFFER, 0, image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS * sizeof(int), image->ptrCpuGrid );
+        glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuStream );
+        glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuStreamLen * sizeof(float), image->ptrCpuStream );
+        break;
+
+      case Proc::Gpu:
+
+        switch (rep) {
+        case Rep::Aux:   encodeImageAux( image ); break;
+        case Rep::Pivot: encodeImagePivot( image ); break;
+        } break;
+      }
+    }
+
+    //Render image
+    if (draw)
+    {
+      switch (view) {
+      case View::RandomDirect:   renderImage1to1(); break;
+      case View::RandomCylinder: renderImageCylinder(); break;
+      }
+    }
   }
 
   //Check fps
@@ -1910,6 +1884,32 @@ void animate ()
   glutPostRedisplay();
 }
 
+void reportState ()
+{
+  std::cout << std::endl;
+
+  switch (proc) {
+  case Proc::Cpu: std::cout << "(F1) Using CPU encoding" << std::endl; break;
+  case Proc::Gpu: std::cout << "(F1) Using GPU encoding" << std::endl; break;
+  }
+
+  switch (rep) {
+  case Rep::Aux:   std::cout << "(F2) Using AUX representation" << std::endl; break;
+  case Rep::Pivot: std::cout << "(F2) Using PIVOT representation" << std::endl; break;
+  }
+
+  std::cout << (encode ? "(F3) Encoding ON" : "(F3) Encoding OFF" ) << std::endl;
+  std::cout << (draw ? "(F4) Drawing ON" : "(F4) Drawing OFF" ) << std::endl;
+
+  switch (view) {
+  case View::Classic:        std::cout << "(F5) View Classic 1:1" << std::endl; break;
+  case View::RandomDirect:   std::cout << "(F5) View Random 1:1" << std::endl; break;
+  case View::RandomCylinder: std::cout << "(F5) View Random Cylinder" << std::endl; break;
+  }
+
+  std::cout << std::endl;
+}
+
 void specialKey (int key, int x, int y)
 {
   if (key == GLUT_KEY_F7)
@@ -1922,28 +1922,22 @@ void specialKey (int key, int x, int y)
   else if (key == GLUT_KEY_F1)
   {
     proc = (proc + 1) % Proc::Count;
-    switch (proc) {
-    case Proc::Cpu: std::cout << "Using CPU processor" << std::endl; break;
-    case Proc::Gpu: std::cout << "Using GPU processor" << std::endl; break;
-    }
+    reportState();
   }
   else if (key == GLUT_KEY_F2)
   {
     rep = (rep + 1) % Rep::Count;
-    switch (rep) {
-    case Rep::Aux:   std::cout << "Using AUX representation" << std::endl; break;
-    case Rep::Pivot: std::cout << "Using PIVOT representation" << std::endl; break;
-    }
+    reportState();
   }
   else if (key == GLUT_KEY_F3)
   {
     encode = !encode;
-    std::cout << (encode ? "Encoding ON" : "Encoding OFF" ) << std::endl;
+    reportState();
   }
   else if (key == GLUT_KEY_F4)
   {
     draw = !draw;
-    std::cout << (draw ? "Drawing ON" : "Drawing OFF" ) << std::endl;
+    reportState();
   }/*
   else if (key == GLUT_KEY_F4)
   {
@@ -1952,8 +1946,8 @@ void specialKey (int key, int x, int y)
   }*/
   else if (key == GLUT_KEY_F5)
   {
-    drawCylinder = !drawCylinder;
-    std::cout << (drawCylinder ? "Drawing Cylinder" : "Drawing 1:1" ) << std::endl;
+    view = (view + 1) % View::Count;
+    reportState();
   }
 }
 
@@ -1969,14 +1963,29 @@ void mouseMove (int x, int y)
   Vec2 mouseDiff = mouse - mouseDown;
   mouseDown = mouse;
 
-  if (mouseButton == GLUT_LEFT_BUTTON)
+  if (view == View::RandomCylinder)
   {
-    angleX += -mouseDiff.x * 0.5f * (PI / 180);
-    angleY += -mouseDiff.y * 0.5f * (PI / 180);
+    if (mouseButton == GLUT_LEFT_BUTTON)
+    {
+      angleX += -mouseDiff.x * 0.5f * (PI / 180);
+      angleY += -mouseDiff.y * 0.5f * (PI / 180);
+    }
+    else if (mouseButton == GLUT_RIGHT_BUTTON)
+    {
+      zoomZ *= 1.0f + -mouseDiff.y / 100.0f;
+    }
   }
-  else if (mouseButton == GLUT_RIGHT_BUTTON)
+  else
   {
-    zoomZ *= 1.0f + -mouseDiff.y / 100.0f;
+    if (mouseButton == GLUT_LEFT_BUTTON)
+    {
+      panX += mouseDiff.x;
+      panY += -mouseDiff.y;
+    }
+    else if (mouseButton == GLUT_RIGHT_BUTTON)
+    {
+      zoomS *= 1.0f + mouseDiff.y / 100.0f;
+    }
   }
 }
 
@@ -2185,6 +2194,22 @@ int main (int argc, char **argv)
   shaderRenderPivot->load();
 
 
+  shaderClassicQuads = new Shader(
+    "shaders_classic/classic_quads.vert.c",
+    "shaders_classic/classic_quads.frag.c" );
+
+  shaderClassicContour = new Shader(
+    "shaders_classic/classic_contour.vert.c",
+    "shaders_classic/classic_contour.frag.c" );
+
+  shaderClassic = new Shader(
+    "shaders_classic/classic.vert.c",
+    "shaders_classic/classic.frag.c" );
+
+  shaderClassicQuads->load();
+  shaderClassicContour->load();
+  shaderClassic->load();
+
   imageEncoderAux = new ImageEncoderAux;
   imageEncoderPivot = new ImageEncoderPivot;
 
@@ -2217,19 +2242,21 @@ int main (int argc, char **argv)
   const int VG_FILL_PATH  (1 << 1);
   for (int i=0; i<pathCount; ++i)
   //for (int i=100; i<102; ++i)
-  //for (int i=12; i<14; ++i)
+  //for (int i=12; i<13; ++i)
   {
     const float *style = styleArrays[i];
     if (! (((int)style[9]) & VG_FILL_PATH)) continue;
 
-    Object *obj = new Object();
-    processCommands( obj, i );
+    Object *objCubic = new Object();
+    processCommands( objCubic, i );
+
+    Object *obj = objCubic->cubicsToQuads();
+    delete objCubic;
     
     obj->color.set( style[4], style[5], style[6], style[7] );
     //if (obj->color == Vec4( 1,1,1,1 ))
       //obj->color = Vec4( 0,0,0,1 );
 
-    obj->cubicsToQuads();
     image->objects.push_back( obj );
   }
 
@@ -2241,5 +2268,6 @@ int main (int argc, char **argv)
   std::cout << "Total stream len: " << image->cpuStreamLen << std::endl;
   //std::cout << "Maximum cell len: " << maxCellLen << std::endl;
   
+  reportState();
   glutMainLoop();
 }

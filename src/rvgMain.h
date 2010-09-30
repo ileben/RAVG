@@ -130,6 +130,8 @@ public:
   std::vector< int > segments;
   std::vector< Vec2 > points;
   std::vector< Vec2 > flatPoints;
+  
+  GLuint bufFlatPoints;
 
 public:
 };
@@ -170,6 +172,7 @@ public:
 public:
 
   Object();
+  ~Object();
 
   void moveTo( Float x, Float y,
     SegSpace::Enum space = SegSpace::Absolute );
@@ -185,13 +188,14 @@ public:
 
   void close();
 
-  void cubicsToQuads();
+  Object* cubicsToQuads();
   void updateBounds();
   void updateGrid();
   void updateBuffers();
 };
 
 #include "rvgImageEncoder.h"
+#include "rvgShader.h"
 
 class Image
 {
@@ -244,42 +248,6 @@ public:
   void updateGrid();
   void updateBuffers();
   void encodeCpu (ImageEncoder *encoder);
-};
-
-class Shader
-{
-  //Static /////////////
-private:
-
-  struct Def  { std::string key; std::string value; };
-  static std::vector< Def > defs;
-  static std::string ApplyDefs (const std::string &source);
-
-public:
-
-  static void Define( const std::string &key, const std::string &value );
-
-  //Non-static /////////
-private:
-
-  std::string vertFile;
-  std::string geomFile;
-  std::string fragFile;
-
-public:
-
-  GLProgram *program;
-  GLShader *vertex;
-  GLShader *geometry;
-  GLShader *fragment;
-
-public:
-
-  Shader (const std::string &vertFile, const std::string &fragFile);
-  Shader (const std::string &vertFile, const std::string &geomFile, const std::string &fragFile);
-  ~Shader ();
-  bool load ();
-  void use();
 };
 
 class Vertex
