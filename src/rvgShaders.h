@@ -1,15 +1,17 @@
 #ifndef __GESHADERS_H
 #define __GESHADERS_H
 
-/*================================
- * Forward declarations
- *================================*/
+/*
+================================
+Forward declarations
+================================*/
 
 class GLProgram;
 
-/*================================
- * Vertex or fragment shader
- *================================*/
+/*
+================================
+Shader
+================================*/
 
 namespace ShaderType {
   enum Enum
@@ -36,9 +38,10 @@ public:
   std::string getInfoLog ();
 };
 
-/*==============================
- * Shading program
- *==============================*/
+/*
+==============================
+Shading program
+==============================*/
 
 class GLProgram
 {
@@ -62,4 +65,46 @@ public:
   Int32 getAttribute (const char *name) const;
 };
 
-#endif /* __GESHADERS_H */
+/*
+==============================
+High-level Shader
+==============================*/
+
+class Shader
+{
+  //Static /////////////
+private:
+
+  struct Def  { std::string key; std::string value; };
+  static std::vector< Def > defs;
+  static std::string ApplyDefs (const std::string &source);
+
+public:
+
+  static void Define( const std::string &key, const std::string &value );
+  static void Define( const std::string &key, int value );
+
+  //Non-static /////////
+private:
+
+  std::string vertFile;
+  std::string geomFile;
+  std::string fragFile;
+
+public:
+
+  GLProgram *program;
+  GLShader *vertex;
+  GLShader *geometry;
+  GLShader *fragment;
+
+public:
+
+  Shader (const std::string &vertFile, const std::string &fragFile);
+  Shader (const std::string &vertFile, const std::string &geomFile, const std::string &fragFile);
+  ~Shader ();
+  bool load ();
+  void use();
+};
+
+#endif//__GESHADERS_H

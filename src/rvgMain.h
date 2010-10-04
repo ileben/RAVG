@@ -10,6 +10,7 @@
 #include "rvgVectors.h"
 #include "rvgMatrix.h"
 #include "rvgMatrixStack.h"
+#include "rvgVertexBuffer.h"
 
 ///////////////////////////////////////////////////////////////////
 //Typedef for vector names to match GLSL (easier translation)
@@ -196,8 +197,6 @@ public:
 };
 
 #include "rvgImageEncoder.h"
-#include "rvgShader.h"
-#include "rvgVertexBuffer.h"
 
 class Image
 {

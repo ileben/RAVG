@@ -229,14 +229,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\rvgShader.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgShader.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\src\rvgShaders.cpp"
 				>
 			</File>
