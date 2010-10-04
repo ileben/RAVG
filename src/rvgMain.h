@@ -303,13 +303,6 @@ extern const VGfloat*  styleArrays[];
 #define CPU_USE_AUX   1
 #define GPU_USE_AUX   1
 
-#define COUNTER_LEN               4
-#define MAX_STREAM_LEN            2000
-#define MAX_COMBINED_STREAM_LEN   500000
-
-#define MIX_OBJECT_LEN           500000
-#define MIX_STREAM_LEN           500000
-
 #define INFO_COUNTER_STREAMLEN   0
 #define INFO_COUNTER_GRIDLEN     1
 #define NUM_INFO_COUNTERS        2

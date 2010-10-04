@@ -7,6 +7,7 @@ int resX = 500;
 int resY = 600;
 int gridResX = 60;
 int gridResY = 60;
+const int MAX_STREAM_SIZE = 1000000;
 
 namespace Proc {
   enum Enum {
@@ -37,7 +38,7 @@ int proc = Proc::Gpu;
 int rep = Rep::Pivot;
 int view = View::RandomDirect;
 
-bool encode = false;
+bool encode = true;
 bool draw = true;
 bool drawGrid = false;
 
@@ -758,14 +759,14 @@ void Image::updateBuffers ()
   checkGlError( "Image::updateBuffers gpuobjInfo" );
 
   glBindBuffer( GL_ARRAY_BUFFER, bufGpuGrid );
-  glBufferData( GL_ARRAY_BUFFER, 500000 * sizeof(int), 0, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, MAX_STREAM_SIZE * sizeof(int), 0, GL_STATIC_DRAW );
   glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
   glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuGrid );
 
   checkGlError( "Image::updateBuffers gpuobjGrid" );
 
   glBindBuffer( GL_ARRAY_BUFFER, bufGpuStream );
-  glBufferData( GL_ARRAY_BUFFER, 500000 * sizeof(float), 0, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, MAX_STREAM_SIZE * sizeof(float), 0, GL_STATIC_DRAW );
   glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
   glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuStream );
 
@@ -1422,8 +1423,8 @@ void Image::encodeCpu (ImageEncoder *encoder)
 
   //Init new buffers
   ptrCpuInfo         = new int[ NUM_INFO_COUNTERS ];
-  ptrCpuGrid         = new int[ 500000 ];
-  ptrCpuStream       = new float[ 500000 ];
+  ptrCpuGrid         = new int[ MAX_STREAM_SIZE ];
+  ptrCpuStream       = new float[ MAX_STREAM_SIZE ];
 
   /////////////////////////////////////////////////////
   // Init size counters and main grid
