@@ -99,50 +99,7 @@ void checkGlError (const std::string &text)
   glGetError();
 }
 
-VertexBuffer::VertexBuffer()
-{
-  onGpu = false;
-  gpuId = 0;
-}
 
-void VertexBuffer::toGpu()
-{
-  if (onGpu) return;
-  onGpu = true;
-
-  glGenBuffers( 1, &gpuId );
-  glBindBuffer( GL_ARRAY_BUFFER, gpuId );
-  glBufferData( GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), &verts[0], GL_STATIC_DRAW );
-  
-  checkGlError( "VertexBuffer::toGpu" );
-}
-
-void renderVertexBuffer ( Shader *shader, VertexBuffer *buf, GLenum mode )
-{
-  Int32 pos = shader->program->getAttribute( "in_pos" );
-  Int32 tex = shader->program->getAttribute( "in_tex" );
-
-  if (buf->onGpu)
-  {
-    glBindBuffer( GL_ARRAY_BUFFER, buf->gpuId );
-    glVertexAttribPointer( pos, 3, GL_FLOAT, false, sizeof(Vertex), 0 );
-    glVertexAttribPointer( tex, 2, GL_FLOAT, false, sizeof(Vertex), (void*) sizeof(Vec3) );
-  }
-  else
-  {
-    glBindBuffer( GL_ARRAY_BUFFER, 0 );
-    glVertexAttribPointer( pos, 3, GL_FLOAT, false, sizeof(Vertex), &buf->verts[0] );
-    glVertexAttribPointer( tex, 2, GL_FLOAT, false, sizeof(Vertex), ((Uint8*)&buf->verts[0]) + sizeof(Vec3) );
-  }
-
-  glEnableVertexAttribArray( pos );
-  glEnableVertexAttribArray( tex );
-  glDrawArrays( mode, 0, buf->verts.size() );
-  glDisableVertexAttribArray( pos );
-  glDisableVertexAttribArray( tex );
-
-  checkGlError( "renderVertexBuffer" );
-}
 
 Object::Object()
 {
@@ -1563,7 +1520,7 @@ void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
   Int32 viewSize = shader->program->getUniform( "viewSize" );
   glUniform2f( viewSize, (float) resX, (float) resY );
   
-  renderVertexBuffer( shader, buf, mode );
+  buf->render( shader, mode );
 
   //glDisable( GL_BLEND );
 }
@@ -2303,10 +2260,9 @@ int main (int argc, char **argv)
   image->encodeCpu( imageEncoderPivot );
   image->updateBuffers();
 
-  std::string str1 = bytesToString( image->cpuTotalStreamLen * 4 );
-  std::string str2 = bytesToString( image->cpuMaxCellLen * 4 );
-  std::cout << "Total stream bytes: " << str1 << std::endl;
-  std::cout << "Max cell bytes: " << str2 << std::endl;
+  std::cout << "Total stream bytes: " << bytesToString( image->cpuTotalStreamLen * 4 ) << std::endl;
+  std::cout << "Max cell bytes: " << bytesToString( image->cpuMaxCellLen * 4 ) << std::endl;
+  std::cout << "Max cell words: " << image->cpuMaxCellLen << std::endl;
   std::cout << "Max cell objects: " << image->cpuMaxCellObjects << std::endl;
   std::cout << "Max cell segments: " << image->cpuMaxCellSegments << std::endl;
   

@@ -197,6 +197,7 @@ public:
 
 #include "rvgImageEncoder.h"
 #include "rvgShader.h"
+#include "rvgVertexBuffer.h"
 
 class Image
 {
@@ -254,23 +255,7 @@ public:
   void encodeCpu (ImageEncoder *encoder);
 };
 
-class Vertex
-{
-public:
-  Vec3 coord;
-  Vec2 texcoord;
-};
-
-class VertexBuffer
-{
-public:
-  bool onGpu;
-  GLuint gpuId;
-  std::vector< Vertex > verts;
-
-  VertexBuffer();
-  void toGpu();
-};
+void checkGlError (const std::string &text);
 
 /////////////////////////////////////////////////////////////////////////////////
 //Winding utilities

@@ -253,6 +253,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgVertexBuffer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgVertexBuffer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgWinding.cpp"
 				>
 			</File>
