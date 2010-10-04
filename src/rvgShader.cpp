@@ -10,6 +10,18 @@ void Shader::Define (const std::string &key, const std::string &value)
   defs.push_back( def );
 }
 
+void Shader::Define (const std::string &key, int value)
+{
+  std::ostringstream s;
+  if (s << value)
+  {
+    Def def;
+    def.key = key;
+    def.value = s.str();
+    defs.push_back( def );
+  }
+}
+
 std::string Shader::ApplyDefs (const std::string &source)
 {
   std::string str = source;

@@ -59,7 +59,7 @@ void main()
 
     //If object has no segments it must occlude the cell entirely
     //so discard the ones before it by relinking the indirection index
-    if ((int)ptrObj1[ 8 ] == -1)
+    if ((int)ptrObj1[ 4 ] == -1)
       ptrCell[ CELL_COUNTER_PREV ] = objIndex1;
 
     //Move to prev object
@@ -74,24 +74,12 @@ void swapObjects (coherent float *ptrObj1, coherent float *ptrObj2)
   float tmp2 = ptrObj1 [2];
   float tmp3 = ptrObj1 [3];
   float tmp4 = ptrObj1 [4];
-  float tmp5 = ptrObj1 [5];
-  float tmp6 = ptrObj1 [6];
-  float tmp7 = ptrObj1 [7];
-  float tmp8 = ptrObj1 [8];
 
   ptrObj1 [2] = ptrObj2 [2];
   ptrObj1 [3] = ptrObj2 [3];
   ptrObj1 [4] = ptrObj2 [4];
-  ptrObj1 [5] = ptrObj2 [5];
-  ptrObj1 [6] = ptrObj2 [6];
-  ptrObj1 [7] = ptrObj2 [7];
-  ptrObj1 [8] = ptrObj2 [8];
 
   ptrObj2 [2] = tmp2;
   ptrObj2 [3] = tmp3;
   ptrObj2 [4] = tmp4;
-  ptrObj2 [5] = tmp5;
-  ptrObj2 [6] = tmp6;
-  ptrObj2 [7] = tmp7;
-  ptrObj2 [8] = tmp8;
 }

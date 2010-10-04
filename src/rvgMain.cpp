@@ -566,7 +566,6 @@ Image::Image()
   ptrCpuInfo = NULL;
   ptrCpuGrid = NULL;
   ptrCpuStream = NULL;
-  cpuStreamLen = 0;
 }
 
 void Image::updateBounds()
@@ -635,6 +634,7 @@ void Image::updateBounds()
     objInfo.gridOrigin = objGridOrigin;
     objInfo.gridSize = objGridSize;
     objInfo.gridOffset = objGridOffset;
+    objInfo.color = object->color;
     image->objInfos.push_back( objInfo );
   }
 }
@@ -975,7 +975,6 @@ void encodeImageAux (Image *image)
     for (int o=0; o<(int)image->objects.size(); ++o)
     {
       Object *object = image->objects[o];
-      ObjInfo &obj = image->objInfos[o];
 
       Int32 uObjectId = shader->program->getUniform( "objectId" );
       glUniform1i( uObjectId, o );
@@ -1020,7 +1019,6 @@ void encodeImageAux (Image *image)
     for (int o=0; o<(int)image->objects.size(); ++o)
     {
       Object *object = image->objects[o];
-      ObjInfo &obj = image->objInfos[o];
 
       Int32 uObjectId = shader->program->getUniform( "objectId" );
       glUniform1i( uObjectId, o );
@@ -1238,7 +1236,6 @@ void encodeImagePivot (Image *image)
     for (int o=0; o<(int)image->objects.size(); ++o)
     {
       Object *object = image->objects[o];
-      ObjInfo &obj = image->objInfos[o];
 
       Int32 uObjectId = shader->program->getUniform( "objectId" );
       glUniform1i( uObjectId, o );
@@ -1283,7 +1280,6 @@ void encodeImagePivot (Image *image)
     for (int o=0; o<(int)image->objects.size(); ++o)
     {
       Object *object = image->objects[o];
-      ObjInfo &obj = image->objInfos[o];
 
       Int32 uObjectId = shader->program->getUniform( "objectId" );
       glUniform1i( uObjectId, o );
@@ -1508,7 +1504,22 @@ void Image::encodeCpu (ImageEncoder *encoder)
   //Measure data
   ////////////////////////////////////////////////////
   
-  cpuStreamLen = ptrCpuInfo[ INFO_COUNTER_STREAMLEN ];
+  encoder->getTotalStreamInfo( cpuTotalStreamLen );
+  
+  cpuMaxCellLen = 0;
+  cpuMaxCellObjects = 0;
+  cpuMaxCellSegments = 0;
+
+  for (int x=0; x<image->gridSize.x; ++x) {
+    for (int y=0; y<image->gridSize.y; ++y) {
+
+      Uint32 cellLen = 0, cellObjects = 0, cellSegments = 0;
+      encoder->getCellStreamInfo( x, y, cellLen, cellObjects, cellSegments );
+
+      if (cellLen > cpuMaxCellLen) cpuMaxCellLen = cellLen;
+      if (cellObjects > cpuMaxCellObjects) cpuMaxCellObjects = cellObjects;
+      if (cellSegments > cpuMaxCellSegments) cpuMaxCellSegments = cellSegments;
+    }}
 }
 
 void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
@@ -1533,6 +1544,9 @@ void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 
   Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
   glUniformui64( uPtrStream, image->ptrGpuStream );
+
+  Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+  glUniformui64( uPtrObjects, image->ptrObjInfos );
 
   Int32 cellSize = shader->program->getUniform( "cellSize" );
   glUniform2f( cellSize, image->cellSize.x, image->cellSize.y );
@@ -1825,7 +1839,7 @@ void display ()
         glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuGrid );
         glBufferSubData( GL_ARRAY_BUFFER, 0, image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS * sizeof(int), image->ptrCpuGrid );
         glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuStream );
-        glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuStreamLen * sizeof(float), image->ptrCpuStream );
+        glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuTotalStreamLen * sizeof(float), image->ptrCpuStream );
         break;
 
       case Proc::Gpu:
@@ -1907,6 +1921,9 @@ void reportState ()
   case View::RandomDirect:   std::cout << "(F5) View Random 1:1" << std::endl; break;
   case View::RandomCylinder: std::cout << "(F5) View Random Cylinder" << std::endl; break;
   }
+
+  ivec2 screenSize = ivec2( (image->max - image->min) * zoomS );
+  std::cout << "Image screen size: " << screenSize.x << "x" << screenSize.y << "px" << std::endl;
 
   std::cout << std::endl;
 }
@@ -2089,27 +2106,47 @@ void processCommands (Object *o, int i)
     //o->close();
 }
 
+std::string bytesToString (Uint64 bytes)
+{
+  double f = (double)bytes;
+  int u = 0;
+  std::string units[] = { "b", "KB", "MB", "GB", "TB" };
+
+  while (f > 1024.0)
+  {
+    f /= 1024;
+    u++;
+  }
+
+  std::ostringstream out;
+  out.precision( 2 );
+  out << std::fixed << f << units[ u ];
+  return out.str();
+}
+
 int main (int argc, char **argv)
 {
   rvgGlutInit( argc, argv );
   rvgGLInit();
   wglSwapInterval( 0 );
 
-  Shader::Define( "INFO_COUNTER_STREAMLEN", "0" );
-  Shader::Define( "INFO_COUNTER_GRIDLEN",   "1" );
-  Shader::Define( "NUM_INFO_COUNTERS",      "2" );
+  Shader::Define( "INFO_COUNTER_STREAMLEN", INFO_COUNTER_STREAMLEN );
+  Shader::Define( "NUM_INFO_COUNTERS",      NUM_INFO_COUNTERS );
 
-  Shader::Define( "OBJCELL_COUNTER_PREV",   "0" );
-  Shader::Define( "OBJCELL_COUNTER_AUX",    "1" );
-  Shader::Define( "OBJCELL_COUNTER_WIND",   "1" );
-  Shader::Define( "NUM_OBJCELL_COUNTERS",   "2" );
+  Shader::Define( "OBJCELL_COUNTER_PREV",   OBJCELL_COUNTER_PREV );
+  Shader::Define( "OBJCELL_COUNTER_AUX",    OBJCELL_COUNTER_AUX );
+  Shader::Define( "OBJCELL_COUNTER_WIND",   OBJCELL_COUNTER_WIND );
+  Shader::Define( "NUM_OBJCELL_COUNTERS",   NUM_OBJCELL_COUNTERS );
 
-  Shader::Define( "CELL_COUNTER_PREV",      "0" );
-  Shader::Define( "NUM_CELL_COUNTERS",      "1" );
+  Shader::Define( "CELL_COUNTER_PREV",      CELL_COUNTER_PREV );
+  Shader::Define( "NUM_CELL_COUNTERS",      NUM_CELL_COUNTERS );
 
-  Shader::Define( "NODE_TYPE_LINE",         "1" );
-  Shader::Define( "NODE_TYPE_QUAD",         "2" );
-  Shader::Define( "NODE_TYPE_OBJECT",       "3" );
+  Shader::Define( "NODE_TYPE_LINE",         NODE_TYPE_LINE );
+  Shader::Define( "NODE_TYPE_QUAD",         NODE_TYPE_QUAD );
+  Shader::Define( "NODE_TYPE_OBJECT",       NODE_TYPE_OBJECT );
+
+  Shader::Define( "NODE_SIZE_OBJINFO",      NODE_SIZE_OBJINFO );
+
 
   shaderGrid = new Shader(
     "shaders/grid.vert.c",
@@ -2263,11 +2300,15 @@ int main (int argc, char **argv)
 
   image->updateBounds();
   //image->updateGrid();
-  image->encodeCpu( imageEncoderAux );
+  image->encodeCpu( imageEncoderPivot );
   image->updateBuffers();
 
-  std::cout << "Total stream len: " << image->cpuStreamLen << std::endl;
-  //std::cout << "Maximum cell len: " << maxCellLen << std::endl;
+  std::string str1 = bytesToString( image->cpuTotalStreamLen * 4 );
+  std::string str2 = bytesToString( image->cpuMaxCellLen * 4 );
+  std::cout << "Total stream bytes: " << str1 << std::endl;
+  std::cout << "Max cell bytes: " << str2 << std::endl;
+  std::cout << "Max cell objects: " << image->cpuMaxCellObjects << std::endl;
+  std::cout << "Max cell segments: " << image->cpuMaxCellSegments << std::endl;
   
   reportState();
   glutMainLoop();

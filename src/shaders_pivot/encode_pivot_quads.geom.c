@@ -27,7 +27,7 @@ void main()
   quad2 = gl_in[2].gl_Position.xy;
 
   //Get object pointer and grid info
-  int *ptrObj = ptrObjects + objectId * 5;
+  int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
 
   //Find the bounds of the input triangle

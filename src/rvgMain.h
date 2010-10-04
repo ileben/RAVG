@@ -120,6 +120,7 @@ struct ObjInfo
   ivec2 gridOrigin;
   ivec2 gridSize;
   int   gridOffset;
+  vec4  color;
 };
 
 class Contour
@@ -232,7 +233,10 @@ public:
   int   *ptrCpuGrid;
   float *ptrCpuStream;
 
-  int cpuStreamLen;
+  Uint32 cpuTotalStreamLen;
+  Uint32 cpuMaxCellLen;
+  Uint32 cpuMaxCellObjects;
+  Uint32 cpuMaxCellSegments;
 
 public:
 
@@ -304,8 +308,7 @@ extern const VGfloat*  styleArrays[];
 #define GPU_USE_AUX   1
 
 #define INFO_COUNTER_STREAMLEN   0
-#define INFO_COUNTER_GRIDLEN     1
-#define NUM_INFO_COUNTERS        2
+#define NUM_INFO_COUNTERS        1
 
 #define OBJCELL_COUNTER_PREV     0
 #define OBJCELL_COUNTER_AUX      1
@@ -319,8 +322,13 @@ extern const VGfloat*  styleArrays[];
 #define NODE_TYPE_QUAD           2
 #define NODE_TYPE_OBJECT         3
 
+#define NODE_SIZE_OBJINFO        9
+#define NODE_SIZE_LINE           //TODO
+#define NODE_SIZE_QUAD           //TODO
+#define NODE_SIZE_OBJECT         //TODO
+
 //Memory layout============================
-//ptrInfo:        |StreamSize|GridSize|
+//ptrInfo:        |StreamSize|
 //ptrObjects:     |Objects|...|...|...
 //ptrGrid:        |Width*Height|ObjW*ObjH|...|...
 //ptrStream:      |Lines|Quads|...|...|...|...|...

@@ -19,7 +19,6 @@ flat in vec2 quad1;
 flat in vec2 quad2;
 flat in ivec2 quadMin;
 
-int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell);
 int addQuad (vec2 q0, vec2 q1, vec2 q2, coherent int *ptrObjCell);
 void quadIntersectionY (vec2 q0, vec2 q1, vec2 q2, float y,
                         out bool found1, out bool found2, out float x1, out float x2);
@@ -36,7 +35,7 @@ void main()
   float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
 
   //Get object pointer and object grid info
-  int *ptrObj = ptrObjects + objectId * 5;
+  int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -119,25 +118,6 @@ void main()
   }
 
   discard;
-}
-
-int addLine (vec2 l0, vec2 l1, coherent int *ptrObjCell)
-{
-  //Get stream size and previous node offset
-  //Store new stream size and current node offset
-  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 6 );
-  int prevOffset = atomicExchange( ptrObjCell + OBJCELL_COUNTER_PREV, nodeOffset );
-  coherent float *ptrNode = ptrStream + nodeOffset;
-
-  //Store line data
-  ptrNode[ 0 ] = (float) NODE_TYPE_LINE;
-  ptrNode[ 1 ] = (float) prevOffset;
-  ptrNode[ 2 ] = l0.x;
-  ptrNode[ 3 ] = l0.y;
-  ptrNode[ 4 ] = l1.x;
-  ptrNode[ 5 ] = l1.y;
-
-  return nodeOffset;
 }
 
 int addQuad (vec2 q0, vec2 q1, vec2 q2, coherent int *ptrObjCell)

@@ -32,7 +32,7 @@ void main()
   { discard; return; }
 /*
   //Get object pointer and object grid info
-  coherent int *ptrObj = ptrObjects + objectId * 5;
+  coherent int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -72,21 +72,16 @@ int addObject (int wind, vec4 color, int lastSegmentOffset, coherent int *ptrCel
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
-  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 9 );
+  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 5 );
   int prevOffset = atomicExchange( ptrCell + CELL_COUNTER_PREV, nodeOffset );
   coherent float *ptrNode = ptrStream + nodeOffset;
 
   //Store object data
-  
   ptrNode[ 0 ] = (float) NODE_TYPE_OBJECT;
   ptrNode[ 1 ] = (float) prevOffset;
   ptrNode[ 2 ] = (float) objectId;
   ptrNode[ 3 ] = (float) wind;
-  ptrNode[ 4 ] = color.x;
-  ptrNode[ 5 ] = color.y;
-  ptrNode[ 6 ] = color.z;
-  ptrNode[ 7 ] = color.w;
-  ptrNode[ 8 ] = (float) lastSegmentOffset;
+  ptrNode[ 4 ] = (float) lastSegmentOffset;
 
   return nodeOffset;
 }

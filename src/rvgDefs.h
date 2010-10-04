@@ -22,14 +22,17 @@
 #include <deque>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 
 //Types
-typedef int             Int32;
-typedef unsigned int    Uint32;
-typedef char            Int8;
-typedef unsigned char   Uint8;
-typedef float           Float;
+typedef long long int            Int64;
+typedef unsigned long long int   Uint64;
+typedef int                      Int32;
+typedef unsigned int             Uint32;
+typedef char                     Int8;
+typedef unsigned char            Uint8;
+typedef float                    Float;
 
 //Functions
 #define PI              3.1415926535f

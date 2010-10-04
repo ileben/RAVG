@@ -12,7 +12,6 @@ in layout( pixel_center_integer ) vec4 gl_FragCoord;
 void main()
 {
   ptrInfo[ INFO_COUNTER_STREAMLEN ] = 0; //This should be done only once instead
-  ptrInfo[ INFO_COUNTER_GRIDLEN ] = 0; //This should be done only once instead
   
   //Check grid coordinate in range
   ivec2 gridCoord = ivec2( gl_FragCoord.xy );

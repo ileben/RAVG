@@ -5,6 +5,7 @@
 
 uniform int* ptrGrid;
 uniform float *ptrStream;
+uniform float* ptrObjects;
 uniform vec2 cellSize;
 uniform ivec2 gridSize;
 uniform vec2 gridOrigin;
@@ -57,13 +58,16 @@ void main (void)
       //Check object type
       if (objType == NODE_TYPE_OBJECT)
       {
-        //Get color of the object
+        //Get object id
         int objId = (int) ptrObj[2];
         int objWinding = 0;
-        vec4 objColor = vec4( ptrObj[4], ptrObj[5], ptrObj[6], ptrObj[7] );
+
+        //Get object color
+        float* ptrObjInfo = ptrObjects + objId * NODE_SIZE_OBJINFO;
+        vec4 objColor = vec4( ptrObjInfo[5], ptrObjInfo[6], ptrObjInfo[7], ptrObjInfo[8] );
 
         //Loop until end of segment list
-        segIndex = (int) ptrObj[8];
+        segIndex = (int) ptrObj[4];
         while (segIndex != -1)
         {
           //Sanity check

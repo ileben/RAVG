@@ -13,6 +13,7 @@ private:
 public:
 
   static void Define( const std::string &key, const std::string &value );
+  static void Define( const std::string &key, int value );
 
   //Non-static /////////
 private:

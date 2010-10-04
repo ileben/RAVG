@@ -46,6 +46,10 @@ public:
   virtual void encodeQuad () = 0;
   virtual void encodeObject () = 0;
   virtual void encodeSort () = 0;
+
+  //Feedback functions
+  virtual void getTotalStreamInfo (Uint32 &bytes) = 0;
+  virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments) = 0;
 };
 
 class ImageEncoderAux : public ImageEncoder
@@ -70,6 +74,10 @@ class ImageEncoderAux : public ImageEncoder
   virtual void encodeQuad ();
   virtual void encodeObject ();
   virtual void encodeSort ();
+
+  //Feedback functions
+  virtual void getTotalStreamInfo (Uint32 &bytes);
+  virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments);
 };
 
 class ImageEncoderPivot : public ImageEncoder
@@ -94,6 +102,10 @@ class ImageEncoderPivot : public ImageEncoder
   virtual void encodeQuad ();
   virtual void encodeObject ();
   virtual void encodeSort ();
+
+  //Feedback functions
+  virtual void getTotalStreamInfo (Uint32 &bytes);
+  virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments);
 };
 
 #endif//RVGIMAGEENCODER_H

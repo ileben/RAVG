@@ -35,7 +35,7 @@ void main()
   float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
 
   //Get object pointer and object grid info
-  int *ptrObj = ptrObjects + objectId * 5;
+  int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];

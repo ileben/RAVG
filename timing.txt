@@ -1,18 +1,49 @@
-40x40 grid
-============
-Drawing:
+Numbers (60x60 grid):
+=====================
 
-Encoding:
+Gpu, Pivot:
+Rendering 700 fps
+Encoding 454 fps
 
-Drawing + Encoding:
+Gpu, Aux:
+Rendering 633 fps
+Encoding 427 fps
 
-60x60 grid
-============
-Drawing:
-268 (1xMS) / 284 (front-to-back)
+Stream: 673,79KB
+Max cell objects: 18
+Max cell segments: 61
 
-Encoding:
-100 / 98 (back-to-front)
+Thesis benchmarks:
+=====================
 
-Drawing + Encoding:
-75 (1xMS)
+x: lattice resolution, y: total stream length
+- auxiliary
+- pivot
+- classic RGB image size
+
+x: lattice resolution, y: cell stream length
+- auxiliary, maximum
+- pivot, maximum
+
+x: lattice resolution, y: encoding time
+- cpu auxiliary
+- cpu pivot
+- gpu auxiliary
+- gpu pivot
+
+x: lattice resolution, y: rendering time
+- cpu auxiliary
+- cpu pivot
+- gpu auxiliary
+- gpu pivot
+
+x: lattice resolution, y: encoding + rendering time
+- cpu auxilary
+- cpu pivot
+- gpu auxiliary
+- gpu pivot
+
+x: screen image size, y: rendering time
+- classic
+- auxiliary
+- pivot

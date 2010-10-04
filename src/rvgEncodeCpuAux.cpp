@@ -44,7 +44,7 @@ int ImageEncoderAux::addObject (int objectId, int occlusion, const Vec4 &color, 
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
-  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 9 );
+  int nodeOffset = atomicAdd( ptrInfo + INFO_COUNTER_STREAMLEN, 5 );
   int prevOffset = atomicExchange( ptrCell + CELL_COUNTER_PREV, nodeOffset );
   float *ptrNode = ptrStream + nodeOffset;
 
@@ -53,11 +53,7 @@ int ImageEncoderAux::addObject (int objectId, int occlusion, const Vec4 &color, 
   ptrNode[ 1 ] = (float) prevOffset;
   ptrNode[ 2 ] = (float) objectId;
   ptrNode[ 3 ] = (float) occlusion;
-  ptrNode[ 4 ] = color.x;
-  ptrNode[ 5 ] = color.y;
-  ptrNode[ 6 ] = color.z;
-  ptrNode[ 7 ] = color.w;
-  ptrNode[ 8 ] = (float) lastSegmentOffset;
+  ptrNode[ 4 ] = (float) lastSegmentOffset;
 
   return nodeOffset;
 }
@@ -67,35 +63,19 @@ static void swapObjects (float *ptrObj1, float *ptrObj2)
   float tmp2 = ptrObj1 [2];
   float tmp3 = ptrObj1 [3];
   float tmp4 = ptrObj1 [4];
-  float tmp5 = ptrObj1 [5];
-  float tmp6 = ptrObj1 [6];
-  float tmp7 = ptrObj1 [7];
-  float tmp8 = ptrObj1 [8];
 
   ptrObj1 [2] = ptrObj2 [2];
   ptrObj1 [3] = ptrObj2 [3];
   ptrObj1 [4] = ptrObj2 [4];
-  ptrObj1 [5] = ptrObj2 [5];
-  ptrObj1 [6] = ptrObj2 [6];
-  ptrObj1 [7] = ptrObj2 [7];
-  ptrObj1 [8] = ptrObj2 [8];
 
   ptrObj2 [2] = tmp2;
   ptrObj2 [3] = tmp3;
   ptrObj2 [4] = tmp4;
-  ptrObj2 [5] = tmp5;
-  ptrObj2 [6] = tmp6;
-  ptrObj2 [7] = tmp7;
-  ptrObj2 [8] = tmp8;
 }
 
-void ImageEncoderAux::frag_encodeInit
-(
- //const ivec2 &gridCoord
-)
+void ImageEncoderAux::frag_encodeInit ()
 {
   ptrInfo[ INFO_COUNTER_STREAMLEN ] = 0; //This should be done only once instead
-  ptrInfo[ INFO_COUNTER_GRIDLEN ] = 0; //This should be done only once instead
 
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -109,18 +89,14 @@ void ImageEncoderAux::frag_encodeInit
   ptrCell[ CELL_COUNTER_PREV ] = -1;
 }
 
-void ImageEncoderAux::frag_encodeInitObject
-(
- //int objectId//,
- //const ivec2 &gridCoord
-)
+void ImageEncoderAux::frag_encodeInitObject ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
       return;
 
   //Get object pointer and object grid info
-  int  *ptrObj        = ptrObjects + objectId * 5;
+  int  *ptrObj        = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -138,14 +114,7 @@ void ImageEncoderAux::frag_encodeInitObject
   ptrObjCell[ OBJCELL_COUNTER_AUX ] = 0;
 }
 
-void ImageEncoderAux::frag_encodeLine
-(
- //int objectId,
- //const ivec2 &gridCoord,
- //const vec2 &line0,
- //const vec2 &line1,
- //const ivec2 &lineMin
- )
+void ImageEncoderAux::frag_encodeLine ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -155,7 +124,7 @@ void ImageEncoderAux::frag_encodeLine
   float yy = 0.0f, xx = 0.0f;
 
   //Get object pointer and object grid info
-  int  *ptrObj        = ptrObjects + objectId * 5;
+  int  *ptrObj        = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -234,15 +203,7 @@ void ImageEncoderAux::frag_encodeLine
   }
 }
 
-void ImageEncoderAux::frag_encodeQuad
-(
-  //int objectId,
-  //const ivec2 &gridCoord,
-  //const vec2 &quad0,
-  //const vec2 &quad1,
-  //const vec2 &quad2,
-  //const ivec2 &quadMin
-)
+void ImageEncoderAux::frag_encodeQuad ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -252,7 +213,7 @@ void ImageEncoderAux::frag_encodeQuad
   float yy1=0.0, yy2=0.0, xx1=0.0, xx2=0.0;
 
   //Get object pointer and object grid info
-  int  *ptrObj        = ptrObjects + objectId * 5;
+  int  *ptrObj        = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -343,19 +304,14 @@ void ImageEncoderAux::frag_encodeQuad
   }
 }
 
-void ImageEncoderAux::frag_encodeObject
-(
-  //int objectId,
-  //const Vec4 &color//,
-  //const ivec2 &gridCoord
-)
+void ImageEncoderAux::frag_encodeObject ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
       return;
 
   //Get object pointer and object grid info
-  int  *ptrObj        = ptrObjects + objectId * 5;
+  int  *ptrObj        = ptrObjects + objectId * NODE_SIZE_OBJINFO;
   ivec2 objGridOrigin = ivec2( ptrObj[0], ptrObj[1] );
   ivec2 objGridSize   = ivec2( ptrObj[2], ptrObj[3] );
   int   objGridOffset = ptrObj[4];
@@ -396,10 +352,7 @@ void ImageEncoderAux::frag_encodeObject
   }
 }
 
-void ImageEncoderAux::frag_encodeSort
-(
- //const ivec2 &gridCoord
-)
+void ImageEncoderAux::frag_encodeSort ()
 {
   if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
       gridCoord.y >= 0 && gridCoord.y < gridSize.y)
@@ -545,5 +498,65 @@ void ImageEncoderAux::encodeSort ()
       gridCoord = ivec2(x,y);
       frag_encodeSort();
     }
+  }
+}
+
+
+void ImageEncoderAux::getTotalStreamInfo (Uint32 &length)
+{
+  length = ptrInfo[ INFO_COUNTER_STREAMLEN ];
+}
+
+void ImageEncoderAux::getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments)
+{
+  length = 0;
+  objects = 0;
+  segments = 0;
+
+  //Loop until end of object list
+  int objIndex = ptrGrid[ (y * gridSize.x + x) * NUM_CELL_COUNTERS ];
+  while (objIndex != -1)
+  {
+    //Sanity check
+    //if (++safetyCounter >= 10000) break;
+
+    //Get object type and link to previous object
+    float *ptrObj = ptrStream + objIndex;
+    int objType = (int) ptrObj[0];
+    objIndex = (int) ptrObj[1];
+
+    //Check object type
+    if (objType == NODE_TYPE_OBJECT)
+    {
+      length += 5;
+      objects += 1;
+
+      //Get color of the object
+      int objId = (int) ptrObj[2];
+
+      //Loop until end of segment list
+      int segIndex = (int) ptrObj[4];
+      while (segIndex != -1)
+      {
+        //Get segment type and link to previous segment
+        float *ptrSeg = ptrStream + segIndex;
+        int segType = (int) ptrSeg[0];
+        segIndex = (int) ptrSeg[1];
+
+        //Check segment type
+        if (segType == NODE_TYPE_LINE)
+        {
+          length += 6;
+          segments += 1;
+        }
+        else if (segType == NODE_TYPE_QUAD)
+        {
+          length += 8;
+          segments += 1;
+        }
+        else break;
+      }
+    }
+    else break;
   }
 }
