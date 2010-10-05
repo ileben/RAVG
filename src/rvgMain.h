@@ -24,7 +24,8 @@ typedef IVec3 ivec3;
 typedef IVec4 ivec4;
 
 #include "rvgImage.h"
-#include "rvgImageEncoder.h"
+#include "rvgImageEncoderCpu.h"
+#include "rvgImageEncoderGpu.h"
 
 /////////////////////////////////////////////////////////////////////
 //GL utilities

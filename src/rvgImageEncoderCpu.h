@@ -1,5 +1,5 @@
-#ifndef RVGIMAGEENCODER_H
-#define RVGIMAGEENCODER_H 1
+#ifndef RVGIMAGEENCODERCPU_H
+#define RVGIMAGEENCODERCPU_H 1
 
 class Image;
 
@@ -108,4 +108,4 @@ class ImageEncoderPivot : public ImageEncoder
   virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments);
 };
 
-#endif//RVGIMAGEENCODER_H
+#endif//RVGIMAGEENCODERCPU_H
