@@ -11,6 +11,6 @@ smooth out vec2 f_tex;
 
 void main (void)
 {
-  f_tex = (vec4( in_tex, 0,1 ) * matTexture).xy;
+  f_tex = (matTexture * vec4( in_tex, 0.0, 1.0 )).xy;
   gl_Position = projection * modelview * vec4( in_pos, 1 );
 }

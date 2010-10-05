@@ -949,14 +949,19 @@ int main (int argc, char **argv)
   // Text
 
   Font *f = new Font( "Timeless.ttf" );
+
+/*
   Object *g = f->getGlyph( 'g' );
   Object *objA = g->cubicsToQuads();
   objA->color = Vec4( 0,0,0,1 );
   delete g;
-
+  
   imageText = new Image();
   imageText->objects.push_back( objA );
-  imageText->updateBounds( 10, 10 );
+*/
+
+  imageText = f->getWord( "Hello" );
+  imageText->updateBounds( 50, 10 );
   imageText->updateBuffers();
   //imageText->encodeGpu( imageEncoderGpuPivot );
   

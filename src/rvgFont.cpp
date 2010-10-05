@@ -56,44 +56,44 @@ Vec2 ftVecToFloat (const FT_Vector *v)
 
 int ftMoveTo (const FT_Vector *v1, void *user)
 {
-  Vec2 p1 = ftVecToFloat( v1 );
+  Font *font = (Font*) user;
+  Vec2 p1 = ftVecToFloat( v1 ) + font->offset;
 
-  Object *obj = (Object*) user;
-  obj->moveTo( p1.x, p1.y );
+  font->object->moveTo( p1.x, p1.y );
   return 0;
 }
 
 int ftLineTo (const FT_Vector *v1, void *user)
 {
-  Vec2 p1 = ftVecToFloat( v1 );
+  Font *font = (Font*) user;
+  Vec2 p1 = ftVecToFloat( v1 ) + font->offset;
 
-  Object *obj = (Object*) user;
-  obj->lineTo( p1.x, p1.y );
+  font->object->lineTo( p1.x, p1.y );
   return 0;
 }
 
 int ftQuadTo (const FT_Vector *v1, const FT_Vector *v2, void *user)
 {
-  Vec2 p1 = ftVecToFloat( v1 );
-  Vec2 p2 = ftVecToFloat( v2 );
+  Font *font = (Font*) user;
+  Vec2 p1 = ftVecToFloat( v1 ) + font->offset;
+  Vec2 p2 = ftVecToFloat( v2 ) + font->offset;
 
-  Object *obj = (Object*) user;
-  obj->quadTo( p1.x, p1.y, p2.x, p2.y );
+  font->object->quadTo( p1.x, p1.y, p2.x, p2.y );
   return 0;
 }
 
 int ftCubicTo (const FT_Vector *v1, const FT_Vector *v2, const FT_Vector *v3, void *user)
 {
-  Vec2 p1 = ftVecToFloat( v1 );
-  Vec2 p2 = ftVecToFloat( v2 );
-  Vec2 p3 = ftVecToFloat( v3 );
+  Font *font = (Font*) user;
+  Vec2 p1 = ftVecToFloat( v1 ) + font->offset;
+  Vec2 p2 = ftVecToFloat( v2 ) + font->offset;
+  Vec2 p3 = ftVecToFloat( v3 ) + font->offset;
 
-  Object *obj = (Object*) user;
-  obj->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y );
+  font->object->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y );
   return 0;
 }
 
-Object* Font::getGlyph (char code)
+Object* Font::getGlyph (char code, const Vec2 &offset)
 {
   FT_Error ftErr;
   FT_Glyph ftGlyph;
@@ -125,8 +125,6 @@ Object* Font::getGlyph (char code)
   }
 
   //Construct outline
-  Object *obj = new Object;
-
   FT_Outline_Funcs ftFuncs;
   ftFuncs.move_to = ftMoveTo;
   ftFuncs.line_to = ftLineTo;
@@ -135,11 +133,32 @@ Object* Font::getGlyph (char code)
   ftFuncs.shift = 0;
   ftFuncs.delta = 0;
   
-  ftErr = FT_Outline_Decompose( &ftOutlineGlyph->outline, &ftFuncs, obj );
+  Object *object = new Object;
+  this->object = object;
+  this->offset = offset;
+  ftErr = FT_Outline_Decompose( &ftOutlineGlyph->outline, &ftFuncs, this );
 
   //Cleanup
   std::cout << "All good" << std::endl;
   FT_Done_Glyph( ftGlyph );
 
-  return obj;
+  return object;
+}
+
+Image* Font::getWord (const std::string &word)
+{
+  Image *img = new Image;
+
+  Vec2 off( 0, 0 );
+  const char *cword = word.c_str();
+  for (int c=0; cword[c] != '\0'; ++c)
+  {
+    Object *o = getGlyph( cword[c], off );
+    img->objects.push_back( o->cubicsToQuads() );
+    delete o;
+
+    off.x += ft266ToFloat( ftFace->glyph->metrics.horiAdvance );
+  }
+
+  return img;
 }

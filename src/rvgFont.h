@@ -12,10 +12,14 @@ class Font
   FT_Face ftFace;
 
 public:
+  Object *object;
+  Vec2 offset;
+
   Font (const std::string &filename);
   ~Font();
 
-  Object* getGlyph (char code);
+  Object* getGlyph (char code, const Vec2 &offset);
+  Image* getWord (const std::string &word);
 };
 
 #endif//RVGFONT_H
