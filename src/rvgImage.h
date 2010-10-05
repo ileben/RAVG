@@ -205,6 +205,7 @@ public:
 
   void updateBounds (int gridResX, int gridResY);
   void updateBuffers();
+
   void encodeCpu (ImageEncoder *encoder);
   void encodeGpu (ImageEncoderGpu *encoder);
 };

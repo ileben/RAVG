@@ -501,7 +501,6 @@ void ImageEncoderAux::encodeSort ()
   }
 }
 
-
 void ImageEncoderAux::getTotalStreamInfo (Uint32 &length)
 {
   length = ptrInfo[ INFO_COUNTER_STREAMLEN ];

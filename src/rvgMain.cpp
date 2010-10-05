@@ -461,13 +461,7 @@ void display ()
         switch (rep) {
         case Rep::Aux:   image->encodeCpu( imageEncoderAux ); break;
         case Rep::Pivot: image->encodeCpu( imageEncoderPivot ); break;
-        }
-
-        glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuGrid );
-        glBufferSubData( GL_ARRAY_BUFFER, 0, image->gridSize.x * image->gridSize.y * NUM_CELL_COUNTERS * sizeof(int), image->ptrCpuGrid );
-        glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuStream );
-        glBufferSubData( GL_ARRAY_BUFFER, 0, image->cpuTotalStreamLen * sizeof(float), image->ptrCpuStream );
-        break;
+        } break;
 
       case Proc::Gpu:
 
@@ -751,6 +745,33 @@ std::string bytesToString (Uint64 bytes)
   return out.str();
 }
 
+void measureData (ImageEncoder *encoder)
+{
+  Uint32 cpuTotalStreamLen;
+  encoder->getTotalStreamInfo( cpuTotalStreamLen );
+  
+  Uint32 cpuMaxCellLen = 0;
+  Uint32 cpuMaxCellObjects = 0;
+  Uint32 cpuMaxCellSegments = 0;
+
+  for (int x=0; x < gridResX; ++x) {
+    for (int y=0; y < gridResY; ++y) {
+
+      Uint32 cellLen = 0, cellObjects = 0, cellSegments = 0;
+      encoder->getCellStreamInfo( x, y, cellLen, cellObjects, cellSegments );
+
+      if (cellLen > cpuMaxCellLen) cpuMaxCellLen = cellLen;
+      if (cellObjects > cpuMaxCellObjects) cpuMaxCellObjects = cellObjects;
+      if (cellSegments > cpuMaxCellSegments) cpuMaxCellSegments = cellSegments;
+    }}
+
+  std::cout << "Total stream bytes: " << bytesToString( cpuTotalStreamLen * 4 ) << std::endl;
+  std::cout << "Max cell bytes: " << bytesToString( cpuMaxCellLen * 4 ) << std::endl;
+  std::cout << "Max cell words: " << cpuMaxCellLen << std::endl;
+  std::cout << "Max cell objects: " << cpuMaxCellObjects << std::endl;
+  std::cout << "Max cell segments: " << cpuMaxCellSegments << std::endl;
+}
+
 int main (int argc, char **argv)
 {
   rvgGlutInit( argc, argv );
@@ -857,14 +878,9 @@ int main (int argc, char **argv)
   }
 
   image->updateBounds( gridResX, gridResY );
-  image->encodeCpu( imageEncoderPivot );
   image->updateBuffers();
-
-  std::cout << "Total stream bytes: " << bytesToString( image->cpuTotalStreamLen * 4 ) << std::endl;
-  std::cout << "Max cell bytes: " << bytesToString( image->cpuMaxCellLen * 4 ) << std::endl;
-  std::cout << "Max cell words: " << image->cpuMaxCellLen << std::endl;
-  std::cout << "Max cell objects: " << image->cpuMaxCellObjects << std::endl;
-  std::cout << "Max cell segments: " << image->cpuMaxCellSegments << std::endl;
+  image->encodeCpu( imageEncoderPivot );
+  measureData( imageEncoderPivot );
   
   reportState();
   glutMainLoop();

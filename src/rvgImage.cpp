@@ -259,8 +259,6 @@ Object* Object::cubicsToQuads()
 
 void Object::updateBuffers()
 {
-  checkGlError( "updateBuffersGrid start" );
-
   if (!buffersInit)
   {
     glGenBuffers( 1, &bufLines );
@@ -567,25 +565,17 @@ void Image::encodeCpu (ImageEncoder *encoder)
 
   encoder->encodeSort();
   
-  //Measure data
-  ////////////////////////////////////////////////////
-  
-  encoder->getTotalStreamInfo( cpuTotalStreamLen );
-  
-  cpuMaxCellLen = 0;
-  cpuMaxCellObjects = 0;
-  cpuMaxCellSegments = 0;
+  /////////////////////////////////////////////////////
+  // Upload data
 
-  for (int x=0; x < gridSize.x; ++x) {
-    for (int y=0; y < gridSize.y; ++y) {
+  Uint32 streamLen = 0;
+  encoder->getTotalStreamInfo( streamLen );
 
-      Uint32 cellLen = 0, cellObjects = 0, cellSegments = 0;
-      encoder->getCellStreamInfo( x, y, cellLen, cellObjects, cellSegments );
-
-      if (cellLen > cpuMaxCellLen) cpuMaxCellLen = cellLen;
-      if (cellObjects > cpuMaxCellObjects) cpuMaxCellObjects = cellObjects;
-      if (cellSegments > cpuMaxCellSegments) cpuMaxCellSegments = cellSegments;
-    }}
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuGrid );
+  glBufferSubData( GL_ARRAY_BUFFER, 0, gridSize.x * gridSize.y * NUM_CELL_COUNTERS * sizeof(int), ptrCpuGrid );
+  glBindBuffer( GL_ARRAY_BUFFER, bufGpuStream );
+  glBufferSubData( GL_ARRAY_BUFFER, 0, streamLen * sizeof(float), ptrCpuStream );
+  checkGlError( "Image::encodeCpu upload" );
 }
 
 
