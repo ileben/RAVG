@@ -344,7 +344,7 @@ Image::Image()
 void Image::updateBounds (int gridResX, int gridResY)
 {
   /////////////////////////////////////////////////////
-  // Find min/max
+  // Find bounds
 
   for (Uint32 o=0; o<objects.size(); ++o)
   {
@@ -365,6 +365,9 @@ void Image::updateBounds (int gridResX, int gridResY)
     if (obj->max.y > max.y) max.y = obj->max.y;
   }
   
+  //////////////////////////////////////////////////////
+  // Format grid
+
   gridSize.x = gridResX;
   gridSize.y = gridResY;
   gridOrigin.x = min.x;
@@ -372,9 +375,8 @@ void Image::updateBounds (int gridResX, int gridResY)
   cellSize.x = (max.x - min.x) / gridSize.x;
   cellSize.y = (max.y - min.y) / gridSize.y;
 
-
   /////////////////////////////////////////////////////
-  // Update object data
+  // Init object info
 
   objs.clear();
   objInfos.clear();
@@ -397,12 +399,13 @@ void Image::updateBounds (int gridResX, int gridResY)
     int objGridOffset = gridOffset;
     gridOffset += objGridSize.x * objGridSize.y * NUM_OBJCELL_COUNTERS;
 
-    //Store object data
+    //Store object coords
     Obj obj;
     obj.min = vec3( object->min, (float) o );
     obj.max = vec3( object->max, (float) o );
     objs.push_back( obj );
 
+    //Store object info
     ObjInfo objInfo;
     objInfo.gridOrigin = objGridOrigin;
     objInfo.gridSize = objGridSize;
