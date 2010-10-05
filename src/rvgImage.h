@@ -20,8 +20,8 @@ namespace SegSpace {
 
 namespace SegType {
   enum Enum {
+
     Close        = 0,
-    
     MoveTo       = 1,
     LineTo       = 2,
     QuadTo       = 3,

@@ -34,9 +34,18 @@ namespace View {
   };
 };
 
+namespace Source {
+  enum Enum {
+    Tiger = 0,
+    Text  = 1,
+    Count = 2
+  };
+};
+
 int proc = Proc::Gpu;
 int rep = Rep::Pivot;
 int view = View::RandomDirect;
+int source = Source::Tiger;
 
 bool encode = true;
 bool draw = true;
@@ -44,6 +53,7 @@ bool drawGrid = false;
 
 MatrixStack matModelView;
 MatrixStack matProjection;
+MatrixStack matTexture;
 
 Shader *shaderGrid;
 
@@ -54,13 +64,13 @@ Shader *shaderClassicQuads;
 Shader *shaderClassicContour;
 Shader *shaderClassic;
 
-Object *object1;
-Object *object2;
-Image *image;
 ImageEncoder *imageEncoderAux;
 ImageEncoder *imageEncoderPivot;
 ImageEncoderGpu *imageEncoderGpuAux;
 ImageEncoderGpu *imageEncoderGpuPivot;
+
+Image *imageTiger;
+Image *imageText;
 
 int mouseButton = 0;
 Vec2 mouseDown;
@@ -151,7 +161,7 @@ void checkGridBuffers (Image *image)
 }
 */
 
-void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
+void renderImageRandom (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 {
   glEnable( GL_MULTISAMPLE );
   glEnable( GL_SAMPLE_SHADING );
@@ -167,6 +177,9 @@ void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 
   Int32 uProjection = shader->program->getUniform( "projection" );
   glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+  Int32 uMatTexture = shader->program->getUniform( "matTexture" );
+  glUniformMatrix4fv( uMatTexture, 1, false, (GLfloat*) matTexture.top().m );
 
   Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
   glUniformui64( uPtrGrid, image->ptrGpuGrid );
@@ -193,12 +206,6 @@ void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 
 void renderImageClassic (Image *image)
 {
-  matModelView.push();
-  matModelView.translate( panX, panY, 0 );
-  matModelView.translate( 180, 400, 0 );
-  matModelView.scale( 1.0f, -1.0f, 1.0f );
-  matModelView.scale( zoomS, zoomS, zoomS );
-
   glEnable( GL_MULTISAMPLE );
   glEnable( GL_SAMPLE_SHADING );
   glMinSampleShading( 1.0f );
@@ -304,29 +311,35 @@ void renderImageClassic (Image *image)
   }
 
   glDisable( GL_STENCIL_TEST );
+}
+
+void renderImageClassic1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool invert=false)
+{
+  //Render using current pan and zoom
+
+  glViewport( 0,0, resX, resY );
+  glDisable( GL_DEPTH_TEST );
+  
+  matModelView.push();
+  matModelView.translate( offX, offY, 0 );
+  matModelView.translate( panX, panY, 0 );
+  matModelView.scale( zoomS, zoomS, zoomS );
+  if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
+
+  renderImageClassic( image );
 
   matModelView.pop();
 }
 
-void renderImage1to1 ()
+void renderImageRandom1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool invert=false)
 {
   //Setup quad buffer
 
-  Vec2 off( 0, 0 );
-  Vec2 sz = image->max - image->min;
-
   Vec2 coords[] = {
-    Vec2( off.x,        off.y ),
-    Vec2( off.x + sz.x, off.y ),
-    Vec2( off.x + sz.x, off.y + sz.y ),
-    Vec2( off.x,        off.y + sz.y )
-  };
-
-  Vec2 texcoords[] = {
-    Vec2( image->min.x, image->min.y ),
-    Vec2( image->max.x, image->min.y ),
-    Vec2( image->max.x, image->max.y ),
-    Vec2( image->min.x, image->max.y )
+    Vec2( 0, 0 ),
+    Vec2( 1, 0 ),
+    Vec2( 1, 1 ),
+    Vec2( 0, 1 )
   };
 
   static bool bufInit = false;
@@ -337,34 +350,43 @@ void renderImage1to1 ()
     for (int v=0; v<4; ++v)
     {
       Vertex vert;
-      vert.coord = texcoords[v].xy( 0.0f );
-      vert.texcoord = texcoords[v];
+      vert.coord = coords[v].xy( 0.0f );
+      vert.texcoord = coords[v];
       buf.verts.push_back( vert );
     }
     buf.toGpu();
   }
 
-  //Render
+  //Render using current pan and zoom
 
   glViewport( 0,0, resX, resY );
-
-  matModelView.push();
-  matModelView.translate( panX, panY, 0 );
-  matModelView.translate( 180, 400, 0 );
-  matModelView.scale( 1.0f, -1.0f, 1.0f );
-  matModelView.scale( zoomS, zoomS, zoomS );
-
   glDisable( GL_DEPTH_TEST );
 
+  matModelView.push();
+  matModelView.translate( offX, offY, 0 );
+  matModelView.translate( panX, panY, 0 );
+  matModelView.scale( zoomS, zoomS, zoomS );
+  if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
+
+  Vec2 sz = image->max - image->min;
+  matModelView.translate( image->min.x, image->min.y, 0.0f );
+  matModelView.scale( sz.x, sz.y, 1.0f );
+
+  matTexture.push();
+  matTexture.identity();
+  matTexture.translate( image->min.x, image->min.y, 0.0f );
+  matTexture.scale( sz.x, sz.y, 1.0f );
+
   switch (rep) {
-  case Rep::Aux:   renderImage( shaderRenderAux, image, &buf, GL_QUADS );  break;
-  case Rep::Pivot: renderImage( shaderRenderPivot, image, &buf, GL_QUADS ); break;
+  case Rep::Aux:   renderImageRandom( shaderRenderAux, image, &buf, GL_QUADS );  break;
+  case Rep::Pivot: renderImageRandom( shaderRenderPivot, image, &buf, GL_QUADS ); break;
   }
   
+  matTexture.pop();
   matModelView.pop();
 }
 
-void renderImageCylinder()
+void renderImageRandomCylinder (Image *image, bool invert)
 {
   //Setup cylinder buffer
 
@@ -390,12 +412,8 @@ void renderImageCylinder()
       vertTop.coord.set( -sina, +1.0f, cosa );
       vertBtm.coord.set( -sina, -1.0f, cosa );
 
-      vertTop.texcoord.set( t, 0.0f );
-      vertBtm.texcoord.set( t, 1.0f );
-
-      Vec2 sz = image->max - image->min;
-      vertTop.texcoord = image->min + vertTop.texcoord * sz;
-      vertBtm.texcoord = image->min + vertBtm.texcoord * sz;
+      vertTop.texcoord.set( t, 1.0f );
+      vertBtm.texcoord.set( t, 0.0f );
       
       buf.verts.push_back( vertTop );
       buf.verts.push_back( vertBtm );
@@ -404,33 +422,44 @@ void renderImageCylinder()
     buf.toGpu();
   }
 
-  //Render
+  //Render using current rotation and zoom
 
   glViewport( 0,0, resX, resY );
+  glEnable( GL_DEPTH_TEST );
+  glDisable( GL_CULL_FACE );
 
   matProjection.push();
   matModelView.push();
+  matTexture.push();
 
   Matrix4x4 mproj;
   mproj.setPerspectiveFovLH( PI/4, (float)resX/resY, 0.01f, 1000.0f );
-
   matProjection.load( mproj );
+
   matModelView.identity();
   matModelView.translate( 0.0f, 0.0f, zoomZ );
   matModelView.rotate( 1.0f, 0.0f, 0.0f, angleY );
   matModelView.rotate( 0.0f, 1.0f, 0.0f, angleX );
   matModelView.scale( 1.0f, 2.0f, 1.0f );
 
-  glEnable( GL_DEPTH_TEST );
-  glDisable( GL_CULL_FACE );
+  Vec2 sz = image->max - image->min;
+  matTexture.identity();
+  matTexture.translate( image->min.x, image->min.y, 0.0f );
+  matTexture.scale( sz.x, sz.y, 1.0f );
+
+  if (invert) {
+    matTexture.translate( 0.0f, 1.0f, 0.0f );
+    matTexture.scale( 1.0f, -1.0, 1.0f );
+  }
 
   switch (rep) {
-  case Rep::Aux:   renderImage( shaderRenderAux, image, &buf, GL_TRIANGLE_STRIP );  break;
-  case Rep::Pivot: renderImage( shaderRenderPivot, image, &buf, GL_TRIANGLE_STRIP ); break;
+  case Rep::Aux:   renderImageRandom( shaderRenderAux, image, &buf, GL_TRIANGLE_STRIP );  break;
+  case Rep::Pivot: renderImageRandom( shaderRenderPivot, image, &buf, GL_TRIANGLE_STRIP ); break;
   }
 
   matProjection.pop();
   matModelView.pop();
+  matTexture.pop();
 }
 
 void display ()
@@ -438,10 +467,27 @@ void display ()
   glClearColor( 1,1,1,1 );
   glClear( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+  Image *image;
+  float offX=0.0f, offY=0.0f;
+  bool invert=false;
+
+  switch (source) {
+  case Source::Tiger:
+    image = imageTiger;
+    offX = 180.0f;
+    offY = 400.0f;
+    invert = true;
+    break;
+  
+  case Source::Text:
+    image = imageText;
+    break;
+  }
+  
   if (view == View::Classic)
   {
-    //Render classic image
-    if (draw) renderImageClassic( image );
+    //Render image classic
+    if (draw) renderImageClassic1to1( image, offX, offY, invert );
   }
   else
   {
@@ -449,11 +495,13 @@ void display ()
     static bool first = true;
     static int prevRep = rep;
     static int prevProc = proc;
-    if (first || encode || rep != prevRep || proc != prevProc)
+    static int prevSource = source;
+    if (first || encode || rep != prevRep || proc != prevProc || source != prevSource)
     {
       first = false;
       prevRep = rep;
       prevProc = proc;
+      prevSource = source;
       switch (proc)
       {
       case Proc::Cpu:
@@ -472,12 +520,12 @@ void display ()
       }
     }
 
-    //Render image
+    //Render image random-access
     if (draw)
     {
       switch (view) {
-      case View::RandomDirect:   renderImage1to1(); break;
-      case View::RandomCylinder: renderImageCylinder(); break;
+      case View::RandomDirect:   renderImageRandom1to1( image, offX, offY, invert ); break;
+      case View::RandomCylinder: renderImageRandomCylinder( image, invert ); break;
       }
     }
   }
@@ -543,7 +591,12 @@ void reportState ()
   case View::RandomCylinder: std::cout << "(F5) View Random Cylinder" << std::endl; break;
   }
 
-  ivec2 screenSize = ivec2( (image->max - image->min) * zoomS );
+  switch (source) {
+  case Source::Tiger: std::cout << "(F6) Image Tiger" << std::endl; break;
+  case Source::Text:  std::cout << "(F6) Image Text" << std::endl; break;
+  }
+
+  ivec2 screenSize = ivec2( (imageTiger->max - imageTiger->min) * zoomS );
   std::cout << "Image screen size: " << screenSize.x << "x" << screenSize.y << "px" << std::endl;
 
   std::cout << std::endl;
@@ -586,6 +639,11 @@ void specialKey (int key, int x, int y)
   else if (key == GLUT_KEY_F5)
   {
     view = (view + 1) % View::Count;
+    reportState();
+  }
+  else if (key == GLUT_KEY_F6)
+  {
+    source = (source + 1) % Source::Count;
     reportState();
   }
 }
@@ -830,11 +888,12 @@ int main (int argc, char **argv)
     "shaders/grid.frag.c" );
   shaderGrid->load();
 
-  object1 = new Object();
-  object2 = new Object();
-  image = new Image();
+
+  ///////////////////////////////////////////////////////
+  // Debug object
 
   /*
+  //Object *object1 = new Object();
   object1->moveTo( 100,100 );
   object1->quadTo( 150,140, 200,100 );
   object1->lineTo( 150,150 );
@@ -852,6 +911,10 @@ int main (int argc, char **argv)
   //object1->cubicsToQuads();
   //image->objects.push_back( object1 );
 
+  ///////////////////////////////////////////////////////
+  // Tiger
+
+  imageTiger = new Image();
   
   GLint param;
   glGetIntegerv( GL_MAX_TEXTURE_SIZE, &param);
@@ -874,13 +937,31 @@ int main (int argc, char **argv)
     //if (obj->color == Vec4( 1,1,1,1 ))
       //obj->color = Vec4( 0,0,0,1 );
 
-    image->objects.push_back( obj );
+    imageTiger->objects.push_back( obj );
   }
 
-  image->updateBounds( gridResX, gridResY );
-  image->updateBuffers();
-  image->encodeCpu( imageEncoderPivot );
+  imageTiger->updateBounds( gridResX, gridResY );
+  imageTiger->updateBuffers();
+  imageTiger->encodeCpu( imageEncoderPivot );
   measureData( imageEncoderPivot );
+
+  ///////////////////////////////////////////////////////
+  // Text
+
+  Font *f = new Font( "Timeless.ttf" );
+  Object *g = f->getGlyph( 'g' );
+  Object *objA = g->cubicsToQuads();
+  objA->color = Vec4( 0,0,0,1 );
+  delete g;
+
+  imageText = new Image();
+  imageText->objects.push_back( objA );
+  imageText->updateBounds( 10, 10 );
+  imageText->updateBuffers();
+  //imageText->encodeGpu( imageEncoderGpuPivot );
+  
+  ///////////////////////////////////////////////////////
+  // Main loop
   
   reportState();
   glutMainLoop();

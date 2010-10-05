@@ -217,30 +217,38 @@ Object* Object::cubicsToQuads()
     for (Uint32 s=0; s<cnt->segments.size(); ++s)
     {
       int seg = cnt->segments[s];
+      int segType = seg & 0x7F;
+      switch (segType)
+      {
+      case SegType::MoveTo:{
 
-      if (seg & SegType::MoveTo) {
-        vec2 point0 = contour->points[ p ];
-        obj->moveTo( point0.x, point0.y );
+        vec2 p0 = cnt->points[ p ];
+        obj->moveTo( p0.x, p0.y );
         p += 1;
 
-      }else if (seg & SegType::LineTo) {
-        vec2 point0 = contour->points[ p ];
-        obj->lineTo( point0.x, point0.y );
+        break;}
+      case SegType::LineTo:{
+
+        vec2 p0 = cnt->points[ p ];
+        obj->lineTo( p0.x, p0.y );
         p += 1;
 
-      }else if (seg & SegType::QuadTo) {
-        vec2 point0 = contour->points[ p+0 ];
-        vec2 point1 = contour->points[ p+1 ];
-        obj->quadTo( point0.x, point0.y, point1.x, point1.y );
+        break;}
+      case SegType::QuadTo:{
+
+        vec2 p0 = cnt->points[ p+0 ];
+        vec2 p1 = cnt->points[ p+1 ];
+        obj->quadTo( p0.x, p0.y, p1.x, p1.y );
         p += 2;
 
-      }else if (seg & SegType::CubicTo) {
+        break;}
+      case SegType::CubicTo:{
 
         Cubic cubic;
-        cubic.p0 = contour->points[ p-1 ];
-        cubic.p1 = contour->points[ p+0 ];
-        cubic.p2 = contour->points[ p+1 ];
-        cubic.p3 = contour->points[ p+2 ];
+        cubic.p0 = cnt->points[ p-1 ];
+        cubic.p1 = cnt->points[ p+0 ];
+        cubic.p2 = cnt->points[ p+1 ];
+        cubic.p3 = cnt->points[ p+2 ];
         p += 3;
 
         quadsFromCubic.clear();
@@ -250,9 +258,11 @@ Object* Object::cubicsToQuads()
           Quad quad = quadsFromCubic[q];
           obj->quadTo( quad.p1.x, quad.p1.y, quad.p2.x, quad.p2.y );
         }
+        
+        break;}
       }
-    }
-  }
+    }//segments
+  }//contours
 
   return obj;
 }
