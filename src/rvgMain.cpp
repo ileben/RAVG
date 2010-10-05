@@ -151,242 +151,6 @@ void checkGridBuffers (Image *image)
 }
 */
 
-void encodeImageGpu (Image *image, ImageEncoderGpu *encoder)
-{ 
-  glViewport( 0, 0, image->gridSize.x, image->gridSize.y );
-  glDisable( GL_DEPTH_TEST );
-  glDisable( GL_MULTISAMPLE );
-  
-  /////////////////////////////////////////////////////
-  // Init size counters and main grid
-  {
-    Shader *shader = encoder->shaderInit;
-    shader->use();
-
-    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, image->ptrGpuInfo );
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    renderFullScreenQuad( shader );
-  }
-
-  /////////////////////////////////////////////////////
-  // Init object grids
-  {
-    Shader *shader = encoder->shaderInitObject;
-    shader->use();
-    
-    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, image->ptrObjInfos );
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
-    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    Int32 uCellSize = shader->program->getUniform( "cellSize" );
-    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
-
-    Int32 aPos = shader->program->getAttribute( "in_pos" );
-    glBindBuffer( GL_ARRAY_BUFFER, image->bufObjs );
-    glVertexAttribPointer( aPos, 3, GL_FLOAT, false, sizeof(vec3), 0 );
-
-    glEnableVertexAttribArray( aPos );
-    glDrawArrays( GL_LINES, 0, image->objs.size() * 2 );
-    glDisableVertexAttribArray( aPos );
-  }
-
-  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
-  checkGlError( "encodeImage init" );
-  
-  /////////////////////////////////////////////////////
-  // Encode object lines
-  {
-    Shader *shader = encoder->shaderLines;
-    shader->use();
-
-    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, image->ptrObjInfos );
-
-    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, image->ptrGpuInfo );
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, image->ptrGpuStream );
-
-    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
-    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    Int32 uCellSize = shader->program->getUniform( "cellSize" );
-    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
-
-    for (int o=0; o<(int)image->objects.size(); ++o)
-    {
-      Object *object = image->objects[o];
-
-      Int32 uObjectId = shader->program->getUniform( "objectId" );
-      glUniform1i( uObjectId, o );
-
-      Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glBindBuffer( GL_ARRAY_BUFFER, object->bufLines );
-      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
-
-      glEnableVertexAttribArray( aPos );      
-      glDrawArrays( GL_LINES, 0, object->lines.size() * 2 );
-      glDisableVertexAttribArray( aPos );
-    }
-  }
-
-  /////////////////////////////////////////////////////
-  // Encode object quads
-  {
-    Shader *shader = encoder->shaderQuads;
-    shader->use();
-
-    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, image->ptrObjInfos );
-
-    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, image->ptrGpuInfo );
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, image->ptrGpuStream );
-
-    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
-    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    Int32 uCellSize = shader->program->getUniform( "cellSize" );
-    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
-
-    for (int o=0; o<(int)image->objects.size(); ++o)
-    {
-      Object *object = image->objects[o];
-
-      Int32 uObjectId = shader->program->getUniform( "objectId" );
-      glUniform1i( uObjectId, o );
-
-      Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glBindBuffer( GL_ARRAY_BUFFER, object->bufQuads );
-      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
-
-      glEnableVertexAttribArray( aPos );
-      glDrawArrays( GL_TRIANGLES, 0, object->quads.size() * 3 );
-      glDisableVertexAttribArray( aPos );
-    }
-  }
-
-  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
-  checkGlError( "encodeImage lines quads" );
-  
-  /////////////////////////////////////////////////////
-  // Encode object properties
-  {
-    Shader *shader = encoder->shaderObject;
-    shader->use();
-
-    Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, image->ptrObjInfos );
-
-    Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, image->ptrGpuInfo );
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, image->ptrGpuStream );
-
-    Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
-    glUniform2f( uGridOrigin, image->gridOrigin.x, image->gridOrigin.y );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    Int32 uCellSize = shader->program->getUniform( "cellSize" );
-    glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
-
-    for (int o=0; o<(int)image->objects.size(); ++o)
-    {
-      Object *object = image->objects[o];
-      ObjInfo &obj = image->objInfos[o];
-
-      //
-      Int32 uPtrObjGrid = shader->program->getUniform( "ptrObjGrid" );
-      glUniformui64( uPtrObjGrid, image->ptrGpuGrid + obj.gridOffset * sizeof(int) );
-
-      Int32 uObjGridOrigin = shader->program->getUniform( "objGridOrigin" );
-      glUniform2i( uObjGridOrigin, obj.gridOrigin.x, obj.gridOrigin.y );
-
-      Int32 uObjGridSize = shader->program->getUniform( "objGridSize" );
-      glUniform2i( uObjGridSize, obj.gridSize.x, obj.gridSize.y );
-      //
-
-      Int32 uObjectId = shader->program->getUniform( "objectId" );
-      glUniform1i( uObjectId, o );
-
-      Int32 uColor = shader->program->getUniform( "color" );
-      glUniform4fv( uColor, 1, (GLfloat*) &object->color );
-      
-      //Transform and round object bounds to grid space
-      Vec2 min = Vec::Floor( (object->min - image->gridOrigin) / image->cellSize );
-      Vec2 max = Vec::Ceil( (object->max - image->gridOrigin) / image->cellSize );
-
-      //Transform to [-1,1] normalized coordinates (glViewport will transform back)
-      min = (min / vec2( image->gridSize )) * 2.0f - Vec2(1.0f,1.0f);
-      max = (max / vec2( image->gridSize )) * 2.0f - Vec2(1.0f,1.0f);
-
-      renderQuad( shader, min, max );
-    }
-  }
-
-  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
-  checkGlError( "encodeImage object" );
-
-  /////////////////////////////////////////////////////
-  // Sort objects in every cell back to front
-  {
-    Shader *shader = encoder->shaderSort;
-    shader->use();
-
-    Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-    Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, image->ptrGpuStream );
-
-    Int32 uGridSize = shader->program->getUniform( "gridSize" );
-    glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-    renderFullScreenQuad( shader );
-  }
-
-  glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
-  checkGlError( "encodeImage sort" );
-
-  glViewport( 0,0, resX, resY );
-}
-
 void renderImage (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 {
   glEnable( GL_MULTISAMPLE );
@@ -582,6 +346,8 @@ void renderImage1to1 ()
 
   //Render
 
+  glViewport( 0,0, resX, resY );
+
   matModelView.push();
   matModelView.translate( panX, panY, 0 );
   matModelView.translate( 180, 400, 0 );
@@ -594,8 +360,6 @@ void renderImage1to1 ()
   case Rep::Aux:   renderImage( shaderRenderAux, image, &buf, GL_QUADS );  break;
   case Rep::Pivot: renderImage( shaderRenderPivot, image, &buf, GL_QUADS ); break;
   }
-
-  //if (drawGrid) renderGrid( image );
   
   matModelView.pop();
 }
@@ -603,9 +367,9 @@ void renderImage1to1 ()
 void renderImageCylinder()
 {
   //Setup cylinder buffer
+
   static bool bufInit = false;
   static VertexBuffer buf;
-
   if (!bufInit)
   {
     bufInit = true;
@@ -639,6 +403,10 @@ void renderImageCylinder()
 
     buf.toGpu();
   }
+
+  //Render
+
+  glViewport( 0,0, resX, resY );
 
   matProjection.push();
   matModelView.push();
@@ -704,8 +472,8 @@ void display ()
       case Proc::Gpu:
 
         switch (rep) {
-        case Rep::Aux:   encodeImageGpu( image, imageEncoderGpuAux ); break;
-        case Rep::Pivot: encodeImageGpu( image, imageEncoderGpuPivot ); break;
+        case Rep::Aux:   image->encodeGpu( imageEncoderGpuAux ); break;
+        case Rep::Pivot: image->encodeGpu( imageEncoderGpuPivot ); break;
         } break;
       }
     }
@@ -749,8 +517,8 @@ void reshape (int w, int h)
   matProjection.clear();
   matProjection.load( m );
   matModelView.clear();
-  
-  glViewport( 0,0,w,h );
+
+  glViewport( 0,0, resX, resY );
 }
 
 void animate ()

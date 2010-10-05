@@ -26,7 +26,12 @@ typedef IVec4 ivec4;
 #include "rvgImage.h"
 #include "rvgImageEncoder.h"
 
+/////////////////////////////////////////////////////////////////////
+//GL utilities
+
 void checkGlError (const std::string &text);
+void renderFullScreenQuad (Shader *shader);
+void renderQuad (Shader *shader, Vec2 min, Vec2 max);
 
 /////////////////////////////////////////////////////////////////////////////////
 //Winding utilities
