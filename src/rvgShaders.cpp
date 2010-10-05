@@ -224,7 +224,7 @@ std::string readFile (const std::string &filename)
   std::ifstream f;
   f.open( filename.c_str(), std::ios::binary );
   if (!f.is_open()) {
-    std::cout << "Failed opening file!" << std::endl;
+    std::cout << "Shader: Failed opening file!" << std::endl;
     return std::string( "" );
   }
 
@@ -235,7 +235,7 @@ std::string readFile (const std::string &filename)
   long size = end - begin;
 
   if (size == 0) {
-    std::cout << "Zero file size!"  << std::endl;
+    std::cout << "Shader: Zero file size!"  << std::endl;
     return std::string( "" );
   }
 

@@ -197,6 +197,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgImage.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgImage.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgImageEncoder.cpp"
 				>
 			</File>
