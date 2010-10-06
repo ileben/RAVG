@@ -830,6 +830,16 @@ void measureData (ImageEncoder *encoder)
   std::cout << "Max cell segments: " << cpuMaxCellSegments << std::endl;
 }
 
+const char *loremIpsum =
+"Lorem ipsum dolor sit amet, consectetur adipisicing elit,\n"
+"sed do eiusmod tempor incididunt ut labore et dolore magna\n"
+"aliqua. Ut enim ad minim veniam, quis nostrud exercitation\n"
+"ullamco laboris nisi ut aliquip ex ea commodo consequat.\n"
+"Duis aute irure dolor in reprehenderit in voluptate velit\n"
+"esse cillum dolore eu fugiat nulla pariatur. Excepteur sint\n"
+"occaecat cupidatat non proident, sunt in culpa qui officia\n"
+"deserunt mollit anim id est laborum.";
+
 int main (int argc, char **argv)
 {
   rvgGlutInit( argc, argv );
@@ -949,19 +959,10 @@ int main (int argc, char **argv)
   // Text
 
   Font *f = new Font( "Timeless.ttf" );
-
-/*
-  Object *g = f->getGlyph( 'g' );
-  Object *objA = g->cubicsToQuads();
-  objA->color = Vec4( 0,0,0,1 );
-  delete g;
-  
-  imageText = new Image();
-  imageText->objects.push_back( objA );
-*/
-
-  imageText = f->getWord( "Hello" );
-  imageText->updateBounds( 50, 10 );
+  //imageText = f->getWord( "Hello\nWorld" );
+  //imageText->updateBounds( 50, 10 );
+  imageText = f->getWord( loremIpsum );
+  imageText->updateBounds( 100, 50 );
   imageText->updateBuffers();
   //imageText->encodeGpu( imageEncoderGpuPivot );
   

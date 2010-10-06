@@ -10,6 +10,7 @@
 class Font
 {
   FT_Face ftFace;
+  float size;
 
 public:
   Object *object;
@@ -18,6 +19,7 @@ public:
   Font (const std::string &filename);
   ~Font();
 
+  void setSize (float size);
   Object* getGlyph (char code, const Vec2 &offset);
   Image* getWord (const std::string &word);
 };

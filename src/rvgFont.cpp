@@ -15,43 +15,52 @@ void initFreetype()
   ftInit = true;
 }
 
-Font::Font (const std::string &filename)
-{
-  if (!ftInit) initFreetype();
-
-  FT_Error ftErr;
-
-  //Create font face from file
-  ftErr = FT_New_Face( ftLib, filename.c_str(), 0, &ftFace );
-  if (ftErr)
-  {
-    std::cout << "Error while loading font file '" << filename << "'" << std::endl;
-    return;
-  }
-
-  //Set glyph size
-  FT_F26Dot6 size = 100 << 6;
-  ftErr = FT_Set_Char_Size( ftFace, size, size, 72, 72 );
-  if (ftErr)
-  {
-    std::cout << "Error while setting char size!" << std::endl;
-    return;
-  }
-}
-
-Font::~Font ()
-{
-  FT_Done_Face( ftFace );
-}
-
 float ft266ToFloat (FT_F26Dot6 f)
 {
-  return float(f >> 6) + float(f & 0x3F) / 64;
+  return float(f) / 64;
+}
+
+FT_F26Dot6 ftFloatTo266 (float f)
+{
+  return int( f * 64 );
+}
+
+FT_F26Dot6 ftIntTo266 (int i)
+{
+  return i >> 6;
 }
 
 Vec2 ftVecToFloat (const FT_Vector *v)
 {
   return Vec2( ft266ToFloat( v->x ), ft266ToFloat( v->y ) );
+}
+
+
+Font::Font (const std::string &filename)
+{
+  //Init size
+  size = 100.0f;
+
+  //Init FreeType lib
+  if (!ftInit) initFreetype();
+
+  //Create font face from file
+  FT_Error ftErr = FT_New_Face( ftLib, filename.c_str(), 0, &ftFace );
+  if (ftErr)
+  {
+    std::cout << "Error while loading font file '" << filename << "'" << std::endl;
+    return;
+  }
+}
+
+void Font::setSize (float size)
+{
+  this->size = size;
+}
+
+Font::~Font ()
+{
+  FT_Done_Face( ftFace );
 }
 
 int ftMoveTo (const FT_Vector *v1, void *user)
@@ -99,6 +108,15 @@ Object* Font::getGlyph (char code, const Vec2 &offset)
   FT_Glyph ftGlyph;
   FT_OutlineGlyph ftOutlineGlyph;
 
+  //Set glyph size
+  FT_F26Dot6 sz = ftFloatTo266( size );
+  ftErr = FT_Set_Char_Size( ftFace, sz, sz, 72, 72 );
+  if (ftErr)
+  {
+    std::cout << "Error while setting char size!" << std::endl;
+    return NULL;
+  }
+
   //Load glyph data into font face
   FT_UInt ftGlyphIndex = FT_Get_Char_Index( ftFace, (FT_ULong)code );
   ftErr = FT_Load_Glyph( ftFace, ftGlyphIndex, FT_LOAD_DEFAULT );
@@ -139,9 +157,7 @@ Object* Font::getGlyph (char code, const Vec2 &offset)
   ftErr = FT_Outline_Decompose( &ftOutlineGlyph->outline, &ftFuncs, this );
 
   //Cleanup
-  std::cout << "All good" << std::endl;
   FT_Done_Glyph( ftGlyph );
-
   return object;
 }
 
@@ -153,6 +169,12 @@ Image* Font::getWord (const std::string &word)
   const char *cword = word.c_str();
   for (int c=0; cword[c] != '\0'; ++c)
   {
+    if (cword[c] == '\n') {
+      off.y -= size;
+      off.x = 0;
+      continue;
+    }
+
     Object *o = getGlyph( cword[c], off );
     img->objects.push_back( o->cubicsToQuads() );
     delete o;
