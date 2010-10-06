@@ -822,3 +822,31 @@ void Image::encodeGpu (ImageEncoderGpu *encoder)
   glMemoryBarrier( GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV );
   checkGlError( "encodeImage sort" );
 }
+
+/*
+void checkGridBuffers (Image *image)
+{
+  glFinish();
+
+  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuObjGrid );
+  glMakeBufferNonResident( GL_ARRAY_BUFFER );
+  int *ptr = (int*) glMapBuffer( GL_ARRAY_BUFFER, GL_READ_ONLY );
+  checkGlError( "encodeImage map" );
+
+  for (int o=0; o<(int)image->objInfos.size(); ++o)
+  {
+    ObjInfo &obj = image->objInfos[o];
+    int *ptrObjGrid = ptr + obj.gridOffset;
+    for (int x=0; x<obj.gridSize.x; ++x) {
+      for (int y=0; y<obj.gridSize.y; ++y) {
+
+        int *ptrObjCell = ptrObjGrid + (y * obj.gridSize.x + x) * NUM_OBJCELL_COUNTERS;
+        std::cout << ptrObjCell[0] << "," << ptrObjCell[1] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+  }
+  glUnmapBuffer( GL_ARRAY_BUFFER );
+}
+*/

@@ -47,3 +47,12 @@ x: screen image size, y: rendering time
 - classic
 - auxiliary
 - pivot
+
+------------------------------------------
+All of the above for both tiger and text!
+------------------------------------------
+
+x: number of letters in text, y: rendering time
+- classic
+- auxiliary
+- pivot

@@ -133,33 +133,6 @@ void renderQuad (Shader *shader, Vec2 min, Vec2 max)
   glDrawArrays( GL_QUADS, 0, 4 );
   glDisableVertexAttribArray( pos );
 }
-/*
-void checkGridBuffers (Image *image)
-{
-  glFinish();
-
-  glBindBuffer( GL_ARRAY_BUFFER, image->bufGpuObjGrid );
-  glMakeBufferNonResident( GL_ARRAY_BUFFER );
-  int *ptr = (int*) glMapBuffer( GL_ARRAY_BUFFER, GL_READ_ONLY );
-  checkGlError( "encodeImage map" );
-
-  for (int o=0; o<(int)image->objInfos.size(); ++o)
-  {
-    ObjInfo &obj = image->objInfos[o];
-    int *ptrObjGrid = ptr + obj.gridOffset;
-    for (int x=0; x<obj.gridSize.x; ++x) {
-      for (int y=0; y<obj.gridSize.y; ++y) {
-
-        int *ptrObjCell = ptrObjGrid + (y * obj.gridSize.x + x) * NUM_OBJCELL_COUNTERS;
-        std::cout << ptrObjCell[0] << "," << ptrObjCell[1] << " ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-  }
-  glUnmapBuffer( GL_ARRAY_BUFFER );
-}
-*/
 
 void renderImageRandom (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
 {
@@ -830,7 +803,7 @@ void measureData (ImageEncoder *encoder)
   std::cout << "Max cell segments: " << cpuMaxCellSegments << std::endl;
 }
 
-const char *loremIpsum =
+const std::string loremIpsum =
 "Lorem ipsum dolor sit amet, consectetur adipisicing elit,\n"
 "sed do eiusmod tempor incididunt ut labore et dolore magna\n"
 "aliqua. Ut enim ad minim veniam, quis nostrud exercitation\n"
@@ -961,8 +934,8 @@ int main (int argc, char **argv)
   Font *f = new Font( "Timeless.ttf" );
   //imageText = f->getWord( "Hello\nWorld" );
   //imageText->updateBounds( 50, 10 );
-  imageText = f->getWord( loremIpsum );
-  imageText->updateBounds( 100, 50 );
+  imageText = f->getWord( loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum );
+  imageText->updateBounds( 200, 200 );
   imageText->updateBuffers();
   //imageText->encodeGpu( imageEncoderGpuPivot );
   
