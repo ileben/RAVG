@@ -8,6 +8,34 @@ int resY = 600;
 int gridResX = 60;
 int gridResY = 60;
 
+namespace Opt {
+  enum Enum {
+    Draw    = 0,
+    Encode  = 1,
+    Proc    = 2,
+    Rep     = 3,
+    Render  = 4,
+    View    = 5,
+    Source  = 6,
+    Count   = 7
+  };
+};
+
+namespace Draw {
+  enum Enum {
+    False = 0,
+    True  = 1,
+    Count = 2
+  };
+};
+
+namespace Encode {
+  enum Enum {
+    False = 0,
+    True  = 1,
+    Count = 2
+  };
+};
 
 namespace Proc {
   enum Enum {
@@ -25,49 +53,55 @@ namespace Rep {
   };
 };
 
+namespace Render {
+  enum Enum {
+    Classic  = 0,
+    Random   = 1,
+    Count    = 2
+  };
+};
+
 namespace View {
   enum Enum {
-    Classic         = 0,
-    RandomDirect    = 1,
-    RandomCylinder  = 2,
-    Count           = 3
+    Flat      = 0,
+    Cylinder  = 1,
+    Count     = 2
   };
 };
 
 namespace Source {
   enum Enum {
-    Tiger = 0,
-    Text  = 1,
-    Count = 2
+    Tiger  = 0,
+    Text   = 1,
+    Count  = 2
   };
 };
 
-int proc = Proc::Gpu;
-int rep = Rep::Pivot;
-int view = View::RandomDirect;
-int source = Source::Tiger;
-
-bool encode = true;
-bool draw = true;
-bool drawGrid = false;
+int options[ Opt::Count ];
+int optionsCount[ Opt::Count ];
 
 MatrixStack matModelView;
 MatrixStack matProjection;
 MatrixStack matTexture;
 
 Shader *shaderGrid;
-
+/*
 Shader *shaderRenderAux;
 Shader *shaderRenderPivot;
 
 Shader *shaderClassicQuads;
 Shader *shaderClassicContour;
 Shader *shaderClassic;
+*/
 
 ImageEncoder *imageEncoderAux;
 ImageEncoder *imageEncoderPivot;
 ImageEncoderGpu *imageEncoderGpuAux;
 ImageEncoderGpu *imageEncoderGpuPivot;
+
+RendererRandom *rendererRandomAux;
+RendererRandom *rendererRandomPivot;
+RendererClassic *rendererClassic;
 
 Image *imageTiger;
 Image *imageText;
@@ -85,6 +119,40 @@ Float zoomS = 1.0f;
 
 ///////////////////////////////////////////////////////////////////
 // Functions
+
+void initOptions ()
+{
+  options[ Opt::Encode ]  = Encode::True;
+  options[ Opt::Draw ]    = Draw::True;
+  options[ Opt::Proc ]    = Proc::Gpu;
+  options[ Opt::Rep ]     = Rep::Pivot;
+  options[ Opt::Render ]  = Render::Random;
+  options[ Opt::View ]    = View::Flat;
+  options[ Opt::Source]   = Source::Tiger;
+
+  optionsCount[ Opt::Encode ]  = Encode::Count;
+  optionsCount[ Opt::Draw ]    = Draw::Count;
+  optionsCount[ Opt::Proc ]    = Proc::Count;
+  optionsCount[ Opt::Rep ]     = Rep::Count;
+  optionsCount[ Opt::Render ]  = Render::Count;
+  optionsCount[ Opt::View ]    = View::Count;
+  optionsCount[ Opt::Source]   = Source::Count;
+}
+
+void setOptions (int *optTo, int *optFrom)
+{
+  for (int o=0; o<Opt::Count; ++o)
+    optTo[ o ] = optFrom[ o ];
+}
+
+bool optionsChanged (int *opt1, int *opt2)
+{
+  for (int o=0; o<Opt::Count; ++o)
+    if (opt1[ o ] != opt2[ o ])
+      return true;
+
+  return false;
+}
 
 void checkGlError (const std::string &text)
 {
@@ -134,158 +202,6 @@ void renderQuad (Shader *shader, Vec2 min, Vec2 max)
   glDisableVertexAttribArray( pos );
 }
 
-void renderImageRandom (Shader *shader, Image *image, VertexBuffer *buf, GLenum mode)
-{
-  glEnable( GL_MULTISAMPLE );
-  glEnable( GL_SAMPLE_SHADING );
-  glMinSampleShading( 1.0f );
-  
-  //glEnable( GL_BLEND );
-  //glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-
-  shader->use();
-
-  Int32 uModelview = shader->program->getUniform( "modelview" );
-  glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
-
-  Int32 uProjection = shader->program->getUniform( "projection" );
-  glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
-
-  Int32 uMatTexture = shader->program->getUniform( "matTexture" );
-  glUniformMatrix4fv( uMatTexture, 1, false, (GLfloat*) matTexture.top().m );
-
-  Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-  glUniformui64( uPtrGrid, image->ptrGpuGrid );
-
-  Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-  glUniformui64( uPtrStream, image->ptrGpuStream );
-
-  Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-  glUniformui64( uPtrObjects, image->ptrObjInfos );
-
-  Int32 uCellSize = shader->program->getUniform( "cellSize" );
-  glUniform2f( uCellSize, image->cellSize.x, image->cellSize.y );
-
-  Int32 uGridSize = shader->program->getUniform( "gridSize" );
-  glUniform2i( uGridSize, image->gridSize.x, image->gridSize.y );
-
-  Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
-  glUniform2f( uGridOrigin, image->min.x, image->min.y );
-  
-  buf->render( shader, mode );
-
-  //glDisable( GL_BLEND );
-}
-
-void renderImageClassic (Image *image)
-{
-  glEnable( GL_MULTISAMPLE );
-  glEnable( GL_SAMPLE_SHADING );
-  glMinSampleShading( 1.0f );
-
-  glDisable( GL_DEPTH_TEST );
-  glEnable( GL_STENCIL_TEST );
-
-  for (Uint32 o=0; o<image->objects.size(); ++o)
-  {
-    Object *obj = image->objects[o];
-
-    ///////////////////////////////////////////////
-    //Render into stencil
-
-    glStencilFunc( GL_ALWAYS, 0, 1 );
-    glStencilOp( GL_INVERT, GL_INVERT, GL_INVERT );
-    glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
-
-    ///////////////////////////////////////////////
-    //Render quads
-    {
-      Shader *shader = shaderClassicQuads;
-      shader->use();
-      
-      Int32 uModelview = shader->program->getUniform( "modelview" );
-      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
-
-      Int32 uProjection = shader->program->getUniform( "projection" );
-      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
-      
-      Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glEnableVertexAttribArray( aPos );
-      glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads );
-      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
-      
-      glDrawArrays( GL_TRIANGLES, 0, obj->quads.size() * 3 );
-      glDisableVertexAttribArray( aPos );
-    }
-    
-    ///////////////////////////////////////////////
-    //Render contours
-    {
-      Shader *shader = shaderClassicContour;
-      shader->use();
-      
-      Int32 uModelview = shader->program->getUniform( "modelview" );
-      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
-
-      Int32 uProjection = shader->program->getUniform( "projection" );
-      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
-
-      for (Uint32 c=0; c<obj->contours.size(); ++c)
-      {
-        Contour *cnt = obj->contours[c];
-
-        Int32 aPos = shader->program->getAttribute( "in_pos" );
-        glEnableVertexAttribArray( aPos );
-        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
-        glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
-
-        glDrawArrays( GL_TRIANGLE_FAN, 0, cnt->flatPoints.size() );
-        glDisableVertexAttribArray( aPos );
-      }
-    }
-
-    ///////////////////////////////////////////////
-    //Render through stencil
-
-    glStencilFunc( GL_EQUAL, 1, 1 );
-    glStencilOp( GL_ZERO, GL_ZERO, GL_ZERO );
-    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
-
-    ///////////////////////////////////////////////
-    //Render boundbox quad
-    {
-      Shader *shader = shaderClassic;
-      shader->use();
-
-      Int32 uModelview = shader->program->getUniform( "modelview" );
-      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
-
-      Int32 uProjection = shader->program->getUniform( "projection" );
-      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
-
-      Int32 uColor = shader->program->getUniform( "color" );
-      glUniform4fv( uColor, 1, (GLfloat*) &obj->color );
-
-      Float coords[] = {
-        obj->min.x, obj->min.y,
-        obj->max.x, obj->min.y,
-        obj->max.x, obj->max.y,
-        obj->min.x, obj->max.y
-      };
-
-      Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glBindBuffer( GL_ARRAY_BUFFER, 0 );
-      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, 2 * sizeof( Float ), coords );
-
-      glEnableVertexAttribArray( aPos );
-      glDrawArrays( GL_QUADS, 0, 4 );
-      glDisableVertexAttribArray( aPos );
-    }
-  }
-
-  glDisable( GL_STENCIL_TEST );
-}
-
 void renderImageClassic1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool invert=false)
 {
   //Render using current pan and zoom
@@ -299,7 +215,7 @@ void renderImageClassic1to1 (Image *image, float offX=0.0f, float offY=0.0f, boo
   matModelView.scale( zoomS, zoomS, zoomS );
   if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
 
-  renderImageClassic( image );
+  image->renderClassic( rendererClassic );
 
   matModelView.pop();
 }
@@ -350,9 +266,9 @@ void renderImageRandom1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool
   matTexture.translate( image->min.x, image->min.y, 0.0f );
   matTexture.scale( sz.x, sz.y, 1.0f );
 
-  switch (rep) {
-  case Rep::Aux:   renderImageRandom( shaderRenderAux, image, &buf, GL_QUADS );  break;
-  case Rep::Pivot: renderImageRandom( shaderRenderPivot, image, &buf, GL_QUADS ); break;
+  switch (options[ Opt::Rep ]) {
+  case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_QUADS );  break;
+  case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_QUADS ); break;
   }
   
   matTexture.pop();
@@ -425,9 +341,9 @@ void renderImageRandomCylinder (Image *image, bool invert)
     matTexture.scale( 1.0f, -1.0, 1.0f );
   }
 
-  switch (rep) {
-  case Rep::Aux:   renderImageRandom( shaderRenderAux, image, &buf, GL_TRIANGLE_STRIP );  break;
-  case Rep::Pivot: renderImageRandom( shaderRenderPivot, image, &buf, GL_TRIANGLE_STRIP ); break;
+  switch (options[ Opt::Rep ]) {
+  case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_TRIANGLE_STRIP );  break;
+  case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_TRIANGLE_STRIP ); break;
   }
 
   matProjection.pop();
@@ -444,7 +360,7 @@ void display ()
   float offX=0.0f, offY=0.0f;
   bool invert=false;
 
-  switch (source) {
+  switch (options[ Opt::Source ]) {
   case Source::Tiger:
     image = imageTiger;
     offX = 180.0f;
@@ -457,36 +373,34 @@ void display ()
     break;
   }
   
-  if (view == View::Classic)
+  if (options[ Opt::Render ] == Render::Classic)
   {
     //Render image classic
-    if (draw) renderImageClassic1to1( image, offX, offY, invert );
+    if (options[ Opt::Draw ])
+      renderImageClassic1to1( image, offX, offY, invert );
   }
-  else
+  else if (options[ Opt::Render ] == Render::Random)
   {
     //Encode image
     static bool first = true;
-    static int prevRep = rep;
-    static int prevProc = proc;
-    static int prevSource = source;
-    if (first || encode || rep != prevRep || proc != prevProc || source != prevSource)
+    static int prevOptions[ Opt::Count ];
+    if (first) setOptions( prevOptions, options );
+    if (first || optionsChanged( prevOptions, options ) || options[ Opt::Encode ])
     {
+      setOptions( prevOptions, options );
       first = false;
-      prevRep = rep;
-      prevProc = proc;
-      prevSource = source;
-      switch (proc)
-      {
+
+      switch (options[ Opt::Proc ]) {
       case Proc::Cpu:
 
-        switch (rep) {
+        switch (options[ Opt::Rep ]) {
         case Rep::Aux:   image->encodeCpu( imageEncoderAux ); break;
         case Rep::Pivot: image->encodeCpu( imageEncoderPivot ); break;
         } break;
 
       case Proc::Gpu:
 
-        switch (rep) {
+        switch (options[ Opt::Rep ]) {
         case Rep::Aux:   image->encodeGpu( imageEncoderGpuAux ); break;
         case Rep::Pivot: image->encodeGpu( imageEncoderGpuPivot ); break;
         } break;
@@ -494,11 +408,10 @@ void display ()
     }
 
     //Render image random-access
-    if (draw)
-    {
-      switch (view) {
-      case View::RandomDirect:   renderImageRandom1to1( image, offX, offY, invert ); break;
-      case View::RandomCylinder: renderImageRandomCylinder( image, invert ); break;
+    if (options[ Opt::Draw ]) {
+      switch (options[ Opt::View ]) {
+      case View::Flat:     renderImageRandom1to1( image, offX, offY, invert ); break;
+      case View::Cylinder: renderImageRandomCylinder( image, invert ); break;
       }
     }
   }
@@ -545,28 +458,32 @@ void reportState ()
 {
   std::cout << std::endl;
 
-  switch (proc) {
-  case Proc::Cpu: std::cout << "(F1) Using CPU encoding" << std::endl; break;
-  case Proc::Gpu: std::cout << "(F1) Using GPU encoding" << std::endl; break;
+  std::cout << (options[ Opt::Draw ] ? "(F1) Drawing ON" : "(F1) Drawing OFF" ) << std::endl;
+  std::cout << (options[ Opt::Encode ] ? "(F2) Encoding ON" : "(F2) Encoding OFF" ) << std::endl;
+
+  switch (options[ Opt::Proc ]) {
+  case Proc::Cpu: std::cout << "(F3) Encoding with CPU" << std::endl; break;
+  case Proc::Gpu: std::cout << "(F3) Encoding with GPU" << std::endl; break;
   }
 
-  switch (rep) {
-  case Rep::Aux:   std::cout << "(F2) Using AUX representation" << std::endl; break;
-  case Rep::Pivot: std::cout << "(F2) Using PIVOT representation" << std::endl; break;
+  switch (options[ Opt::Rep ]) {
+  case Rep::Aux:   std::cout << "(F4) Representation AUX" << std::endl; break;
+  case Rep::Pivot: std::cout << "(F4) Representation PIVOT" << std::endl; break;
   }
 
-  std::cout << (encode ? "(F3) Encoding ON" : "(F3) Encoding OFF" ) << std::endl;
-  std::cout << (draw ? "(F4) Drawing ON" : "(F4) Drawing OFF" ) << std::endl;
-
-  switch (view) {
-  case View::Classic:        std::cout << "(F5) View Classic 1:1" << std::endl; break;
-  case View::RandomDirect:   std::cout << "(F5) View Random 1:1" << std::endl; break;
-  case View::RandomCylinder: std::cout << "(F5) View Random Cylinder" << std::endl; break;
+  switch (options[ Opt::Render ]) {
+  case Render::Classic:  std::cout << "(F5) Renderer Classic" << std::endl; break;
+  case Render::Random:   std::cout << "(F5) Renderer Random-Access" << std::endl; break;
   }
 
-  switch (source) {
-  case Source::Tiger: std::cout << "(F6) Image Tiger" << std::endl; break;
-  case Source::Text:  std::cout << "(F6) Image Text" << std::endl; break;
+  switch (options[ Opt::View ]) {
+  case View::Flat:     std::cout << "(F6) View Flat" << std::endl; break;
+  case View::Cylinder: std::cout << "(F6) View Cylinder" << std::endl; break;
+  }
+
+  switch (options[ Opt::Source ]) {
+  case Source::Tiger: std::cout << "(F7) Image Tiger" << std::endl; break;
+  case Source::Text:  std::cout << "(F7) Image Text" << std::endl; break;
   }
 
   ivec2 screenSize = ivec2( (imageTiger->max - imageTiger->min) * zoomS );
@@ -577,46 +494,19 @@ void reportState ()
 
 void specialKey (int key, int x, int y)
 {
+  /*
   if (key == GLUT_KEY_F7)
   {
     std::cout << "Compiling..." << std::endl;
     //shader1->load();
     //shaderQuad->load();
     //shaderStream->load();
-  }
-  else if (key == GLUT_KEY_F1)
-  {
-    proc = (proc + 1) % Proc::Count;
-    reportState();
-  }
-  else if (key == GLUT_KEY_F2)
-  {
-    rep = (rep + 1) % Rep::Count;
-    reportState();
-  }
-  else if (key == GLUT_KEY_F3)
-  {
-    encode = !encode;
-    reportState();
-  }
-  else if (key == GLUT_KEY_F4)
-  {
-    draw = !draw;
-    reportState();
-  }/*
-  else if (key == GLUT_KEY_F4)
-  {
-    drawGrid = !drawGrid;
-    std::cout << (drawGrid ? "Grid ON" : "Grid OFF" ) << std::endl;
   }*/
-  else if (key == GLUT_KEY_F5)
+
+  if (key >= GLUT_KEY_F1 && key < GLUT_KEY_F1 + Opt::Count)
   {
-    view = (view + 1) % View::Count;
-    reportState();
-  }
-  else if (key == GLUT_KEY_F6)
-  {
-    source = (source + 1) % Source::Count;
+    int opt = key - GLUT_KEY_F1;
+    options[ opt ] = (options[ opt ] + 1) % optionsCount[ opt ];
     reportState();
   }
 }
@@ -633,7 +523,7 @@ void mouseMove (int x, int y)
   Vec2 mouseDiff = mouse - mouseDown;
   mouseDown = mouse;
 
-  if (view == View::RandomCylinder)
+  if (options[ Opt::View ] == View::Cylinder)
   {
     if (mouseButton == GLUT_LEFT_BUTTON)
     {
@@ -645,7 +535,7 @@ void mouseMove (int x, int y)
       zoomZ *= 1.0f + -mouseDiff.y / 100.0f;
     }
   }
-  else
+  else if (options[ Opt::View ] == View::Flat)
   {
     if (mouseButton == GLUT_LEFT_BUTTON)
     {
@@ -815,6 +705,7 @@ const std::string loremIpsum =
 
 int main (int argc, char **argv)
 {
+  initOptions();
   rvgGlutInit( argc, argv );
   rvgGLInit();
   wglSwapInterval( 0 );
@@ -841,30 +732,9 @@ int main (int argc, char **argv)
   imageEncoderAux = new ImageEncoderAux;
   imageEncoderPivot = new ImageEncoderPivot;
 
-  shaderRenderAux = new Shader(
-    "shaders_aux/render_aux.vert.c",
-    "shaders_aux/render_aux.frag.c" );
-  shaderRenderAux->load();
-  
-  shaderRenderPivot = new Shader(
-    "shaders_pivot/render_pivot.vert.c",
-    "shaders_pivot/render_pivot.frag.c" );
-  shaderRenderPivot->load();
-
-  shaderClassicQuads = new Shader(
-    "shaders_classic/classic_quads.vert.c",
-    "shaders_classic/classic_quads.frag.c" );
-  shaderClassicQuads->load();
-
-  shaderClassicContour = new Shader(
-    "shaders_classic/classic_contour.vert.c",
-    "shaders_classic/classic_contour.frag.c" );
-  shaderClassicContour->load();
-
-  shaderClassic = new Shader(
-    "shaders_classic/classic.vert.c",
-    "shaders_classic/classic.frag.c" );
-  shaderClassic->load();
+  rendererRandomAux = new RendererRandomAux;
+  rendererRandomPivot = new RendererRandomPivot;
+  rendererClassic = new RendererClassic;
 
   shaderGrid = new Shader(
     "shaders/grid.vert.c",

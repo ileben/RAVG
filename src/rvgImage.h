@@ -8,6 +8,8 @@ class Contour;
 class Object;
 class ImageEncoder;
 class ImageEncoderGpu;
+class RendererRandom;
+class RendererClassic;
 
 ///////////////////////////////////////////////////////////////////
 
@@ -169,7 +171,7 @@ public:
   Vec2 gridOrigin;
   Vec2 cellSize;
 
-public:
+private:
 
   bool buffersInit;
 
@@ -188,11 +190,6 @@ public:
   int   *ptrCpuGrid;
   float *ptrCpuStream;
 
-  Uint32 cpuTotalStreamLen;
-  Uint32 cpuMaxCellLen;
-  Uint32 cpuMaxCellObjects;
-  Uint32 cpuMaxCellSegments;
-
 public:
 
   std::vector< Obj > objs;
@@ -208,6 +205,9 @@ public:
 
   void encodeCpu (ImageEncoder *encoder);
   void encodeGpu (ImageEncoderGpu *encoder);
+
+  void renderClassic (RendererClassic *renderer);
+  void renderRandom (RendererRandom *renderer, VertexBuffer *buf, GLenum mode);
 };
 
 //Defs

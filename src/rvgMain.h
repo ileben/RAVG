@@ -23,9 +23,17 @@ typedef IVec2 ivec2;
 typedef IVec3 ivec3;
 typedef IVec4 ivec4;
 
+///////////////////////////////////////////////////////////////////
+//Kinda hax but this would be "global" anyway before OpenGL 3.0
+
+extern MatrixStack matModelView;
+extern MatrixStack matProjection;
+extern MatrixStack matTexture;
+
 #include "rvgImage.h"
 #include "rvgImageEncoderCpu.h"
 #include "rvgImageEncoderGpu.h"
+#include "rvgRenderer.h"
 #include "rvgFont.h"
 
 /////////////////////////////////////////////////////////////////////

@@ -850,3 +850,156 @@ void checkGridBuffers (Image *image)
   glUnmapBuffer( GL_ARRAY_BUFFER );
 }
 */
+
+void Image::renderRandom (RendererRandom *renderer, VertexBuffer *buf, GLenum mode)
+{
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
+  
+  //glEnable( GL_BLEND );
+  //glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
+  Shader *shader = renderer->shader;
+  shader->use();
+
+  Int32 uModelview = shader->program->getUniform( "modelview" );
+  glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+  Int32 uProjection = shader->program->getUniform( "projection" );
+  glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+  Int32 uMatTexture = shader->program->getUniform( "matTexture" );
+  glUniformMatrix4fv( uMatTexture, 1, false, (GLfloat*) matTexture.top().m );
+
+  Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
+  glUniformui64( uPtrGrid, ptrGpuGrid );
+
+  Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
+  glUniformui64( uPtrStream, ptrGpuStream );
+
+  Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
+  glUniformui64( uPtrObjects, ptrObjInfos );
+
+  Int32 uCellSize = shader->program->getUniform( "cellSize" );
+  glUniform2f( uCellSize, cellSize.x, cellSize.y );
+
+  Int32 uGridSize = shader->program->getUniform( "gridSize" );
+  glUniform2i( uGridSize, gridSize.x, gridSize.y );
+
+  Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
+  glUniform2f( uGridOrigin, min.x, min.y );
+  
+  buf->render( shader, mode );
+
+  //glDisable( GL_BLEND );
+}
+
+void Image::renderClassic (RendererClassic *renderer)
+{
+  glEnable( GL_MULTISAMPLE );
+  glEnable( GL_SAMPLE_SHADING );
+  glMinSampleShading( 1.0f );
+
+  glDisable( GL_DEPTH_TEST );
+  glEnable( GL_STENCIL_TEST );
+
+  for (Uint32 o=0; o<objects.size(); ++o)
+  {
+    Object *obj = objects[o];
+
+    ///////////////////////////////////////////////
+    //Render into stencil
+
+    glStencilFunc( GL_ALWAYS, 0, 1 );
+    glStencilOp( GL_INVERT, GL_INVERT, GL_INVERT );
+    glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+
+    ///////////////////////////////////////////////
+    //Render quads
+    {
+      Shader *shader = renderer->shaderQuads;
+      shader->use();
+      
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+      
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glEnableVertexAttribArray( aPos );
+      glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+      
+      glDrawArrays( GL_TRIANGLES, 0, obj->quads.size() * 3 );
+      glDisableVertexAttribArray( aPos );
+    }
+    
+    ///////////////////////////////////////////////
+    //Render contours
+    {
+      Shader *shader = renderer->shaderContour;
+      shader->use();
+      
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+      for (Uint32 c=0; c<obj->contours.size(); ++c)
+      {
+        Contour *cnt = obj->contours[c];
+
+        Int32 aPos = shader->program->getAttribute( "in_pos" );
+        glEnableVertexAttribArray( aPos );
+        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
+        glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
+
+        glDrawArrays( GL_TRIANGLE_FAN, 0, cnt->flatPoints.size() );
+        glDisableVertexAttribArray( aPos );
+      }
+    }
+
+    ///////////////////////////////////////////////
+    //Render through stencil
+
+    glStencilFunc( GL_EQUAL, 1, 1 );
+    glStencilOp( GL_ZERO, GL_ZERO, GL_ZERO );
+    glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+
+    ///////////////////////////////////////////////
+    //Render boundbox quad
+    {
+      Shader *shader = renderer->shader;
+      shader->use();
+
+      Int32 uModelview = shader->program->getUniform( "modelview" );
+      glUniformMatrix4fv( uModelview, 1, false, (GLfloat*) matModelView.top().m );
+
+      Int32 uProjection = shader->program->getUniform( "projection" );
+      glUniformMatrix4fv( uProjection, 1, false, (GLfloat*) matProjection.top().m );
+
+      Int32 uColor = shader->program->getUniform( "color" );
+      glUniform4fv( uColor, 1, (GLfloat*) &obj->color );
+
+      Float coords[] = {
+        obj->min.x, obj->min.y,
+        obj->max.x, obj->min.y,
+        obj->max.x, obj->max.y,
+        obj->min.x, obj->max.y
+      };
+
+      Int32 aPos = shader->program->getAttribute( "in_pos" );
+      glBindBuffer( GL_ARRAY_BUFFER, 0 );
+      glVertexAttribPointer( aPos, 2, GL_FLOAT, false, 2 * sizeof( Float ), coords );
+
+      glEnableVertexAttribArray( aPos );
+      glDrawArrays( GL_QUADS, 0, 4 );
+      glDisableVertexAttribArray( aPos );
+    }
+  }
+
+  glDisable( GL_STENCIL_TEST );
+}

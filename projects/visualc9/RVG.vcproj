@@ -253,6 +253,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgRenderer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgRenderer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgShaders.cpp"
 				>
 			</File>
