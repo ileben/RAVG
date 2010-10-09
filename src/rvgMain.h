@@ -31,8 +31,8 @@ extern MatrixStack matProjection;
 extern MatrixStack matTexture;
 
 #include "rvgImage.h"
-#include "rvgImageEncoderCpu.h"
-#include "rvgImageEncoderGpu.h"
+#include "rvgEncoderCpu.h"
+#include "rvgEncoderGpu.h"
 #include "rvgRenderer.h"
 #include "rvgFont.h"
 

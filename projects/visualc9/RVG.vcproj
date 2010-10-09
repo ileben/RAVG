@@ -181,6 +181,30 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgEncoderCpu.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgEncoderCpu.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgEncoderCpuAux.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgEncoderCpuPivot.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgEncoderGpu.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgEncoderGpu.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgFont.cpp"
 				>
 			</File>
@@ -202,30 +226,6 @@
 			</File>
 			<File
 				RelativePath="..\..\src\rvgImage.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderCpu.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderCpu.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderCpuAux.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderCpuPivot.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderGpu.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\rvgImageEncoderGpu.h"
 				>
 			</File>
 			<File
