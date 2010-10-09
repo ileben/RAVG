@@ -484,7 +484,7 @@ void Image::updateBuffers ()
 }
 
 
-void Image::encodeCpu (ImageEncoder *encoder)
+void Image::encodeCpu (ImageEncoderCpu *encoder)
 {
   //Reset buffers
   if (ptrCpuInfo)        delete[] ptrCpuInfo;

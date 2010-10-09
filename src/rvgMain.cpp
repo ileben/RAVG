@@ -94,8 +94,8 @@ Shader *shaderClassicContour;
 Shader *shaderClassic;
 */
 
-ImageEncoder *imageEncoderAux;
-ImageEncoder *imageEncoderPivot;
+ImageEncoderCpu *imageEncoderCpuAux;
+ImageEncoderCpu *imageEncoderCpuPivot;
 ImageEncoderGpu *imageEncoderGpuAux;
 ImageEncoderGpu *imageEncoderGpuPivot;
 
@@ -394,8 +394,8 @@ void display ()
       case Proc::Cpu:
 
         switch (options[ Opt::Rep ]) {
-        case Rep::Aux:   image->encodeCpu( imageEncoderAux ); break;
-        case Rep::Pivot: image->encodeCpu( imageEncoderPivot ); break;
+        case Rep::Aux:   image->encodeCpu( imageEncoderCpuAux ); break;
+        case Rep::Pivot: image->encodeCpu( imageEncoderCpuPivot ); break;
         } break;
 
       case Proc::Gpu:
@@ -666,7 +666,7 @@ std::string bytesToString (Uint64 bytes)
   return out.str();
 }
 
-void measureData (ImageEncoder *encoder)
+void measureData (ImageEncoderCpu *encoder)
 {
   Uint32 cpuTotalStreamLen;
   encoder->getTotalStreamInfo( cpuTotalStreamLen );
@@ -729,8 +729,8 @@ int main (int argc, char **argv)
 
   imageEncoderGpuAux = new ImageEncoderGpuAux;
   imageEncoderGpuPivot = new ImageEncoderGpuPivot;
-  imageEncoderAux = new ImageEncoderAux;
-  imageEncoderPivot = new ImageEncoderPivot;
+  imageEncoderCpuAux = new ImageEncoderCpuAux;
+  imageEncoderCpuPivot = new ImageEncoderCpuPivot;
 
   rendererRandomAux = new RendererRandomAux;
   rendererRandomPivot = new RendererRandomPivot;
@@ -795,8 +795,8 @@ int main (int argc, char **argv)
 
   imageTiger->updateBounds( gridResX, gridResY );
   imageTiger->updateBuffers();
-  imageTiger->encodeCpu( imageEncoderPivot );
-  measureData( imageEncoderPivot );
+  imageTiger->encodeCpu( imageEncoderCpuPivot );
+  measureData( imageEncoderCpuPivot );
 
   ///////////////////////////////////////////////////////
   // Text

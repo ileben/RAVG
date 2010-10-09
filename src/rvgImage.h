@@ -6,7 +6,7 @@
 
 class Contour;
 class Object;
-class ImageEncoder;
+class ImageEncoderCpu;
 class ImageEncoderGpu;
 class RendererRandom;
 class RendererClassic;
@@ -203,7 +203,7 @@ public:
   void updateBounds (int gridResX, int gridResY);
   void updateBuffers();
 
-  void encodeCpu (ImageEncoder *encoder);
+  void encodeCpu (ImageEncoderCpu *encoder);
   void encodeGpu (ImageEncoderGpu *encoder);
 
   void renderClassic (RendererClassic *renderer);
