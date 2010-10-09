@@ -3,11 +3,11 @@
 
 class Image;
 
-class ImageEncoderCpu
+class EncoderCpu
 {
 public:
 
-  ImageEncoderCpu();
+  EncoderCpu();
 
   //Emulated uniform and varying variables
   int *ptrObjects;
@@ -52,7 +52,7 @@ public:
   virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments) = 0;
 };
 
-class ImageEncoderCpuAux : public ImageEncoderCpu
+class EncoderCpuAux : public EncoderCpu
 {
   //Emulated shader utility functions
   int addLine (const Vec2 &l0, const Vec2 &l1, int *ptrObjCell);
@@ -80,7 +80,7 @@ class ImageEncoderCpuAux : public ImageEncoderCpu
   virtual void getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments);
 };
 
-class ImageEncoderCpuPivot : public ImageEncoderCpu
+class EncoderCpuPivot : public EncoderCpu
 {
   //Emulated shader utility functions
   int addLine (const Vec2 &l0, const Vec2 &l1, int *ptrObjCell);

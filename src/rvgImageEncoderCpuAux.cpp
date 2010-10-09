@@ -1,6 +1,6 @@
 #include "rvgMain.h"
 
-int ImageEncoderCpuAux::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCell)
+int EncoderCpuAux::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -19,7 +19,7 @@ int ImageEncoderCpuAux::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCell
   return nodeOffset;
 }
 
-int ImageEncoderCpuAux::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell)
+int EncoderCpuAux::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -40,7 +40,7 @@ int ImageEncoderCpuAux::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2,
   return nodeOffset;
 }
 
-int ImageEncoderCpuAux::addObject (int objectId, int occlusion, const Vec4 &color, int lastSegmentOffset, int *ptrCell)
+int EncoderCpuAux::addObject (int objectId, int occlusion, const Vec4 &color, int lastSegmentOffset, int *ptrCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -73,7 +73,7 @@ static void swapObjects (float *ptrObj1, float *ptrObj2)
   ptrObj2 [4] = tmp4;
 }
 
-void ImageEncoderCpuAux::frag_encodeInit ()
+void EncoderCpuAux::frag_encodeInit ()
 {
   ptrInfo[ INFO_COUNTER_STREAMLEN ] = 0; //This should be done only once instead
 
@@ -89,7 +89,7 @@ void ImageEncoderCpuAux::frag_encodeInit ()
   ptrCell[ CELL_COUNTER_PREV ] = -1;
 }
 
-void ImageEncoderCpuAux::frag_encodeInitObject ()
+void EncoderCpuAux::frag_encodeInitObject ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -114,7 +114,7 @@ void ImageEncoderCpuAux::frag_encodeInitObject ()
   ptrObjCell[ OBJCELL_COUNTER_AUX ] = 0;
 }
 
-void ImageEncoderCpuAux::frag_encodeLine ()
+void EncoderCpuAux::frag_encodeLine ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -203,7 +203,7 @@ void ImageEncoderCpuAux::frag_encodeLine ()
   }
 }
 
-void ImageEncoderCpuAux::frag_encodeQuad ()
+void EncoderCpuAux::frag_encodeQuad ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -304,7 +304,7 @@ void ImageEncoderCpuAux::frag_encodeQuad ()
   }
 }
 
-void ImageEncoderCpuAux::frag_encodeObject ()
+void EncoderCpuAux::frag_encodeObject ()
 {
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
       gridCoord.y < 0 || gridCoord.y >= gridSize.y)
@@ -352,7 +352,7 @@ void ImageEncoderCpuAux::frag_encodeObject ()
   }
 }
 
-void ImageEncoderCpuAux::frag_encodeSort ()
+void EncoderCpuAux::frag_encodeSort ()
 {
   if (gridCoord.x >= 0 && gridCoord.x < gridSize.x &&
       gridCoord.y >= 0 && gridCoord.y < gridSize.y)
@@ -395,7 +395,7 @@ void ImageEncoderCpuAux::frag_encodeSort ()
 }
 
 
-void ImageEncoderCpuAux::encodeInit ()
+void EncoderCpuAux::encodeInit ()
 {
   //Walk the cells of the grid
   for (int x=0; x < gridSize.x; ++x) {
@@ -409,7 +409,7 @@ void ImageEncoderCpuAux::encodeInit ()
   }
 }
 
-void ImageEncoderCpuAux::encodeInitObject ()
+void EncoderCpuAux::encodeInitObject ()
 {
   //Transform object bounds into grid space
   ivec2 gridMin = (ivec2) Vec::Floor( (objMin - gridOrigin) / cellSize );
@@ -426,7 +426,7 @@ void ImageEncoderCpuAux::encodeInitObject ()
   }
 }
 
-void ImageEncoderCpuAux::encodeLine ()
+void EncoderCpuAux::encodeLine ()
 {
   //Find line bounds
   Vec2 lmin = Vec::Min( line0, line1 );
@@ -448,7 +448,7 @@ void ImageEncoderCpuAux::encodeLine ()
   }//x
 }
 
-void ImageEncoderCpuAux::encodeQuad ()
+void EncoderCpuAux::encodeQuad ()
 {
   //Find quad bounds
   vec2 qmin = Vec::Min( quad0, Vec::Min( quad1, quad2 ) );
@@ -470,7 +470,7 @@ void ImageEncoderCpuAux::encodeQuad ()
   }//x
 }
 
-void ImageEncoderCpuAux::encodeObject ()
+void EncoderCpuAux::encodeObject ()
 {
   //Transform object bounds into grid space
   ivec2 gridMin = (ivec2) Vec::Floor( (objMin - gridOrigin) / cellSize );
@@ -488,7 +488,7 @@ void ImageEncoderCpuAux::encodeObject ()
   }//x
 }
 
-void ImageEncoderCpuAux::encodeSort ()
+void EncoderCpuAux::encodeSort ()
 {
   //Walk the cells of the grid
   for (int x=0; x < gridSize.x; ++x) {
@@ -501,12 +501,12 @@ void ImageEncoderCpuAux::encodeSort ()
   }
 }
 
-void ImageEncoderCpuAux::getTotalStreamInfo (Uint32 &length)
+void EncoderCpuAux::getTotalStreamInfo (Uint32 &length)
 {
   length = ptrInfo[ INFO_COUNTER_STREAMLEN ];
 }
 
-void ImageEncoderCpuAux::getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments)
+void EncoderCpuAux::getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments)
 {
   length = 0;
   objects = 0;

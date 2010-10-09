@@ -6,8 +6,8 @@
 
 class Contour;
 class Object;
-class ImageEncoderCpu;
-class ImageEncoderGpu;
+class EncoderCpu;
+class EncoderGpu;
 class RendererRandom;
 class RendererClassic;
 
@@ -203,8 +203,8 @@ public:
   void updateBounds (int gridResX, int gridResY);
   void updateBuffers();
 
-  void encodeCpu (ImageEncoderCpu *encoder);
-  void encodeGpu (ImageEncoderGpu *encoder);
+  void encodeCpu (EncoderCpu *encoder);
+  void encodeGpu (EncoderGpu *encoder);
 
   void renderClassic (RendererClassic *renderer);
   void renderRandom (RendererRandom *renderer, VertexBuffer *buf, GLenum mode);

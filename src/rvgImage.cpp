@@ -484,7 +484,7 @@ void Image::updateBuffers ()
 }
 
 
-void Image::encodeCpu (ImageEncoderCpu *encoder)
+void Image::encodeCpu (EncoderCpu *encoder)
 {
   //Reset buffers
   if (ptrCpuInfo)        delete[] ptrCpuInfo;
@@ -589,7 +589,7 @@ void Image::encodeCpu (ImageEncoderCpu *encoder)
 }
 
 
-void Image::encodeGpu (ImageEncoderGpu *encoder)
+void Image::encodeGpu (EncoderGpu *encoder)
 { 
   glViewport( 0, 0, gridSize.x, gridSize.y );
   glDisable( GL_DEPTH_TEST );

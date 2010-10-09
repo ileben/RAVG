@@ -94,10 +94,10 @@ Shader *shaderClassicContour;
 Shader *shaderClassic;
 */
 
-ImageEncoderCpu *imageEncoderCpuAux;
-ImageEncoderCpu *imageEncoderCpuPivot;
-ImageEncoderGpu *imageEncoderGpuAux;
-ImageEncoderGpu *imageEncoderGpuPivot;
+EncoderCpu *encoderCpuAux;
+EncoderCpu *encoderCpuPivot;
+EncoderGpu *encoderGpuAux;
+EncoderGpu *encoderGpuPivot;
 
 RendererRandom *rendererRandomAux;
 RendererRandom *rendererRandomPivot;
@@ -394,15 +394,15 @@ void display ()
       case Proc::Cpu:
 
         switch (options[ Opt::Rep ]) {
-        case Rep::Aux:   image->encodeCpu( imageEncoderCpuAux ); break;
-        case Rep::Pivot: image->encodeCpu( imageEncoderCpuPivot ); break;
+        case Rep::Aux:   image->encodeCpu( encoderCpuAux ); break;
+        case Rep::Pivot: image->encodeCpu( encoderCpuPivot ); break;
         } break;
 
       case Proc::Gpu:
 
         switch (options[ Opt::Rep ]) {
-        case Rep::Aux:   image->encodeGpu( imageEncoderGpuAux ); break;
-        case Rep::Pivot: image->encodeGpu( imageEncoderGpuPivot ); break;
+        case Rep::Aux:   image->encodeGpu( encoderGpuAux ); break;
+        case Rep::Pivot: image->encodeGpu( encoderGpuPivot ); break;
         } break;
       }
     }
@@ -666,7 +666,7 @@ std::string bytesToString (Uint64 bytes)
   return out.str();
 }
 
-void measureData (ImageEncoderCpu *encoder)
+void measureData (EncoderCpu *encoder)
 {
   Uint32 cpuTotalStreamLen;
   encoder->getTotalStreamInfo( cpuTotalStreamLen );
@@ -727,10 +727,10 @@ int main (int argc, char **argv)
 
   Shader::Define( "NODE_SIZE_OBJINFO",      NODE_SIZE_OBJINFO );
 
-  imageEncoderGpuAux = new ImageEncoderGpuAux;
-  imageEncoderGpuPivot = new ImageEncoderGpuPivot;
-  imageEncoderCpuAux = new ImageEncoderCpuAux;
-  imageEncoderCpuPivot = new ImageEncoderCpuPivot;
+  encoderGpuAux = new EncoderGpuAux;
+  encoderGpuPivot = new EncoderGpuPivot;
+  encoderCpuAux = new EncoderCpuAux;
+  encoderCpuPivot = new EncoderCpuPivot;
 
   rendererRandomAux = new RendererRandomAux;
   rendererRandomPivot = new RendererRandomPivot;
@@ -795,8 +795,8 @@ int main (int argc, char **argv)
 
   imageTiger->updateBounds( gridResX, gridResY );
   imageTiger->updateBuffers();
-  imageTiger->encodeCpu( imageEncoderCpuPivot );
-  measureData( imageEncoderCpuPivot );
+  imageTiger->encodeCpu( encoderCpuPivot );
+  measureData( encoderCpuPivot );
 
   ///////////////////////////////////////////////////////
   // Text
@@ -807,7 +807,7 @@ int main (int argc, char **argv)
   imageText = f->getWord( loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum );
   imageText->updateBounds( 200, 200 );
   imageText->updateBuffers();
-  //imageText->encodeGpu( imageEncoderGpuPivot );
+  //imageText->encodeGpu( encoderGpuPivot );
   
   ///////////////////////////////////////////////////////
   // Main loop

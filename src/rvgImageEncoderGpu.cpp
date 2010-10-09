@@ -1,6 +1,6 @@
 #include "rvgMain.h"
 
-ImageEncoderGpuAux::ImageEncoderGpuAux()
+EncoderGpuAux::EncoderGpuAux()
 {
   shaderInit = new Shader(
     "shaders_aux/encode_aux_init.vert.c",
@@ -37,7 +37,7 @@ ImageEncoderGpuAux::ImageEncoderGpuAux()
   shaderSort->load();
 }
 
-ImageEncoderGpuPivot::ImageEncoderGpuPivot()
+EncoderGpuPivot::EncoderGpuPivot()
 {
   shaderInit = new Shader(
     "shaders_pivot/encode_pivot_init.vert.c",

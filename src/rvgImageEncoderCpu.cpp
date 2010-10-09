@@ -1,6 +1,6 @@
 #include "rvgMain.h"
 
-ImageEncoderCpu::ImageEncoderCpu()
+EncoderCpu::EncoderCpu()
 {
   ptrInfo = NULL;
   ptrGrid = NULL;
@@ -8,14 +8,14 @@ ImageEncoderCpu::ImageEncoderCpu()
   ptrObjects = NULL;
 }
 
-int ImageEncoderCpu::atomicAdd (int *ptr, int value)
+int EncoderCpu::atomicAdd (int *ptr, int value)
 {
   int oldValue = *ptr;
   *ptr += value;
   return oldValue;
 }
 
-int ImageEncoderCpu::atomicExchange (int *ptr, int value)
+int EncoderCpu::atomicExchange (int *ptr, int value)
 {
   int oldValue = *ptr;
   *ptr = value;

@@ -1,6 +1,6 @@
 #include "rvgMain.h"
 
-int ImageEncoderCpuPivot::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCell)
+int EncoderCpuPivot::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -19,7 +19,7 @@ int ImageEncoderCpuPivot::addLine (const vec2 &l0, const vec2 &l1, int *ptrObjCe
   return nodeOffset;
 }
 
-int ImageEncoderCpuPivot::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell)
+int EncoderCpuPivot::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q2, int *ptrObjCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -40,7 +40,7 @@ int ImageEncoderCpuPivot::addQuad (const Vec2 &q0, const Vec2 &q1, const Vec2 &q
   return nodeOffset;
 }
 
-int ImageEncoderCpuPivot::addObject (int objectId, int wind, const Vec4 &color, int lastSegmentOffset, int *ptrCell)
+int EncoderCpuPivot::addObject (int objectId, int wind, const Vec4 &color, int lastSegmentOffset, int *ptrCell)
 {
   //Get stream size and previous node offset
   //Store new stream size and current node offset
@@ -73,7 +73,7 @@ static void swapObjects (float *ptrObj1, float *ptrObj2)
   ptrObj2 [4] = tmp4;
 }
 
-void ImageEncoderCpuPivot::frag_encodeInit ()
+void EncoderCpuPivot::frag_encodeInit ()
 {
   ptrInfo[ INFO_COUNTER_STREAMLEN ] = 0; //This should be done only once instead
 
@@ -89,7 +89,7 @@ void ImageEncoderCpuPivot::frag_encodeInit ()
   ptrCell[ CELL_COUNTER_PREV ] = -1;
 }
 
-void ImageEncoderCpuPivot::frag_encodeInitObject ()
+void EncoderCpuPivot::frag_encodeInitObject ()
 {
  //Check grid coordinate in range
  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
@@ -120,7 +120,7 @@ void ImageEncoderCpuPivot::frag_encodeInitObject ()
   ptrObjCell[ OBJCELL_COUNTER_WIND ] = 0;
 }
 
-void ImageEncoderCpuPivot::frag_encodeLine ()
+void EncoderCpuPivot::frag_encodeLine ()
 {
  //Check grid coordinate in range
  if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
@@ -209,7 +209,7 @@ void ImageEncoderCpuPivot::frag_encodeLine ()
   }
 }
 
-void ImageEncoderCpuPivot::frag_encodeQuad ()
+void EncoderCpuPivot::frag_encodeQuad ()
 {
   //Check grid coordinate in range
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
@@ -303,7 +303,7 @@ void ImageEncoderCpuPivot::frag_encodeQuad ()
   }
 }
 
-void ImageEncoderCpuPivot::frag_encodeObject ()
+void EncoderCpuPivot::frag_encodeObject ()
 {
   //Check grid coordinate in range
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
@@ -345,7 +345,7 @@ void ImageEncoderCpuPivot::frag_encodeObject ()
   }
 }
 
-void ImageEncoderCpuPivot::frag_encodeSort ()
+void EncoderCpuPivot::frag_encodeSort ()
 {
   //Check grid coordinate in range
   if (gridCoord.x < 0 || gridCoord.x >= gridSize.x ||
@@ -388,7 +388,7 @@ void ImageEncoderCpuPivot::frag_encodeSort ()
   }
 }
 
-void ImageEncoderCpuPivot::encodeInit ()
+void EncoderCpuPivot::encodeInit ()
 {
   //Walk the cells of the grid
   for (int x=0; x < gridSize.x; ++x) {
@@ -401,7 +401,7 @@ void ImageEncoderCpuPivot::encodeInit ()
   }
 }
 
-void ImageEncoderCpuPivot::encodeInitObject ()
+void EncoderCpuPivot::encodeInitObject ()
 {
   //Transform object bounds into grid space
   ivec2 gridMin = (ivec2) Vec::Floor( (objMin - gridOrigin) / cellSize );
@@ -418,7 +418,7 @@ void ImageEncoderCpuPivot::encodeInitObject ()
   }
 }
 
-void ImageEncoderCpuPivot::encodeLine ()
+void EncoderCpuPivot::encodeLine ()
 {
   //Get object pointer and grid info
   int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
@@ -448,7 +448,7 @@ void ImageEncoderCpuPivot::encodeLine ()
   }//x
 }
 
-void ImageEncoderCpuPivot::encodeQuad ()
+void EncoderCpuPivot::encodeQuad ()
 {
   //Get object pointer and grid info
   int *ptrObj = ptrObjects + objectId * NODE_SIZE_OBJINFO;
@@ -478,7 +478,7 @@ void ImageEncoderCpuPivot::encodeQuad ()
   }//x
 }
 
-void ImageEncoderCpuPivot::encodeObject ()
+void EncoderCpuPivot::encodeObject ()
 {
   //Transform object bounds into grid space
   ivec2 gridMin = (ivec2) Vec::Floor( (objMin - gridOrigin) / cellSize );
@@ -496,7 +496,7 @@ void ImageEncoderCpuPivot::encodeObject ()
   }//x
 }
 
-void ImageEncoderCpuPivot::encodeSort ()
+void EncoderCpuPivot::encodeSort ()
 {
   //Walk the cells of the grid
   for (int x=0; x < gridSize.x; ++x) {
@@ -509,12 +509,12 @@ void ImageEncoderCpuPivot::encodeSort ()
   }
 }
 
-void ImageEncoderCpuPivot::getTotalStreamInfo (Uint32 &length)
+void EncoderCpuPivot::getTotalStreamInfo (Uint32 &length)
 {
   length = ptrInfo[ INFO_COUNTER_STREAMLEN ];
 }
 
-void ImageEncoderCpuPivot::getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments)
+void EncoderCpuPivot::getCellStreamInfo (int x, int y, Uint32 &length, Uint32 &objects, Uint32 &segments)
 {
   length = 0;
   objects = 0;

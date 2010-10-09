@@ -1,7 +1,7 @@
 #ifndef IMAGEENCODERGPU_H
 #define IMAGEENCODERGPU_H 1
 
-class ImageEncoderGpu
+class EncoderGpu
 {
 public:
   Shader *shaderInit;
@@ -13,19 +13,19 @@ public:
   Shader *shaderPivot;
 
 protected:
-  ImageEncoderGpu() {}
+  EncoderGpu() {}
 };
 
-class ImageEncoderGpuAux : public ImageEncoderGpu
+class EncoderGpuAux : public EncoderGpu
 {
 public:
-  ImageEncoderGpuAux();
+  EncoderGpuAux();
 };
 
-class ImageEncoderGpuPivot : public ImageEncoderGpu
+class EncoderGpuPivot : public EncoderGpu
 {
 public:
-  ImageEncoderGpuPivot();
+  EncoderGpuPivot();
 };
 
 #endif
