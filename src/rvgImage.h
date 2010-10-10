@@ -127,7 +127,6 @@ private:
 
 private:
 
-  bool buffersInit;
   DynamicGpuBuffer bufLines;
   DynamicGpuBuffer bufQuads;
 
@@ -187,7 +186,7 @@ private:
   std::vector< Object* > objects;
 
 private:
-
+/*
   bool buffersInit;
 
   GLuint   bufObjs;
@@ -200,7 +199,15 @@ private:
   GLuint64 ptrGpuGrid;
   GLuint   bufGpuStream;
   GLuint64 ptrGpuStream;
-  
+ */
+
+  DynamicGpuBuffer bufObjs;
+  DynamicGpuBuffer bufObjInfos;
+
+  StaticGpuBuffer bufGpuInfo;
+  StaticGpuBuffer bufGpuGrid;
+  StaticGpuBuffer bufGpuStream;
+
   int   *ptrCpuInfo;
   int   *ptrCpuGrid;
   float *ptrCpuStream;

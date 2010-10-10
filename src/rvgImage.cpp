@@ -5,7 +5,6 @@ Object::Object()
   contour = NULL;
   penDown = false;
   pen.set( 0,0 );
-  buffersInit = false;
   color.set( 0, 0, 0, 1 );
 }
 
@@ -329,7 +328,6 @@ void Object::updateBuffers()
 
 Image::Image()
 {
-  buffersInit = false;
   ptrCpuInfo = NULL;
   ptrCpuGrid = NULL;
   ptrCpuStream = NULL;
@@ -422,55 +420,31 @@ void Image::updateBuffers ()
     obj->updateBuffers();
   }
 
-  if (!buffersInit)
-  {
-    glGenBuffers( 1, &bufObjs );
-    glGenBuffers( 1, &bufObjInfos );
-
-    glGenBuffers( 1, &bufGpuInfo );
-    glGenBuffers( 1, &bufGpuGrid );
-    glGenBuffers( 1, &bufGpuStream );
-
-    buffersInit = true;
-  }
-
   ///////////////////////////////////////
   // Object buffers
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufObjs );
-  glBufferData( GL_ARRAY_BUFFER, objs.size() * sizeof(Obj), &objs[0], GL_STATIC_DRAW );
-  
-  checkGlError( "Image::updateBuffers objs" );
+  if (objs.size() > 0)
+  {
+    bufObjs.upload( objs.size() * sizeof(Obj), &objs[0] );
+    checkGlError( "Image::updateBuffers objs" );
+  }
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufObjInfos );
-  glBufferData( GL_ARRAY_BUFFER, objInfos.size() * sizeof(ObjInfo), &objInfos[0], GL_STATIC_DRAW );
-  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
-  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrObjInfos );
-  
-  checkGlError( "Image::updateBuffers gpuobjObjects" );
+  if (objInfos.size() > 0)
+  {
+    bufObjInfos.upload( objInfos.size() * sizeof(ObjInfo), &objInfos[0] );
+    checkGlError( "Image::updateBuffers gpuobjObjects" );
+  }
 
   //////////////////////////////////////
   //Algorithm buffers
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufGpuInfo );
-  glBufferData( GL_ARRAY_BUFFER, NUM_INFO_COUNTERS * sizeof(int), 0, GL_STATIC_DRAW );
-  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
-  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuInfo );
-
+  bufGpuInfo.reserve( NUM_INFO_COUNTERS * sizeof(int) );
   checkGlError( "Image::updateBuffers gpuobjInfo" );
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufGpuGrid );
-  glBufferData( GL_ARRAY_BUFFER, MAX_STREAM_SIZE * sizeof(int), 0, GL_STATIC_DRAW );
-  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
-  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuGrid );
-
+  bufGpuGrid.reserve( MAX_STREAM_SIZE * sizeof(int) );
   checkGlError( "Image::updateBuffers gpuobjGrid" );
 
-  glBindBuffer( GL_ARRAY_BUFFER, bufGpuStream );
-  glBufferData( GL_ARRAY_BUFFER, MAX_STREAM_SIZE * sizeof(float), 0, GL_STATIC_DRAW );
-  glMakeBufferResident( GL_ARRAY_BUFFER, GL_READ_WRITE );
-  glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrGpuStream );
-
+  bufGpuStream.reserve( MAX_STREAM_SIZE * sizeof(float) );
   checkGlError( "Image::updateBuffers gpuobjStream" );
 }
 
@@ -571,11 +545,8 @@ void Image::encodeCpu (EncoderCpu *encoder)
 
   Uint32 streamLen = 0;
   encoder->getTotalStreamInfo( streamLen );
-
-  glBindBuffer( GL_ARRAY_BUFFER, bufGpuGrid );
-  glBufferSubData( GL_ARRAY_BUFFER, 0, gridSize.x * gridSize.y * NUM_CELL_COUNTERS * sizeof(int), ptrCpuGrid );
-  glBindBuffer( GL_ARRAY_BUFFER, bufGpuStream );
-  glBufferSubData( GL_ARRAY_BUFFER, 0, streamLen * sizeof(float), ptrCpuStream );
+  bufGpuGrid.upload( gridSize.x * gridSize.y * NUM_CELL_COUNTERS * sizeof(int), ptrCpuGrid );
+  bufGpuStream.upload( streamLen * sizeof(float), ptrCpuStream );
   checkGlError( "Image::encodeCpu upload" );
 }
 
@@ -596,10 +567,10 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
 
     Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, ptrGpuInfo );
+    glUniformui64( uPtrInfo, bufGpuInfo.getAddress() );
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uGridSize = shader->program->getUniform( "gridSize" );
     glUniform2i( uGridSize, gridSize.x, gridSize.y );
@@ -614,10 +585,10 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
     
     Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, ptrObjInfos );
+    glUniformui64( uPtrObjects, bufObjInfos.getAddress() );
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
     glUniform2f( uGridOrigin, gridOrigin.x, gridOrigin.y );
@@ -629,7 +600,7 @@ void Image::encodeGpu (EncoderGpu *encoder)
     glUniform2f( uCellSize, cellSize.x, cellSize.y );
 
     Int32 aPos = shader->program->getAttribute( "in_pos" );
-    glBindBuffer( GL_ARRAY_BUFFER, bufObjs );
+    glBindBuffer( GL_ARRAY_BUFFER, bufObjs.getId() );
     glVertexAttribPointer( aPos, 3, GL_FLOAT, false, sizeof(vec3), 0 );
 
     glEnableVertexAttribArray( aPos );
@@ -647,16 +618,16 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
 
     Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, ptrObjInfos );
+    glUniformui64( uPtrObjects, bufObjInfos.getAddress() );
 
     Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, ptrGpuInfo );
+    glUniformui64( uPtrInfo, bufGpuInfo.getAddress() );
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, ptrGpuStream );
+    glUniformui64( uPtrStream, bufGpuStream.getAddress() );
 
     Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
     glUniform2f( uGridOrigin, gridOrigin.x, gridOrigin.y );
@@ -691,16 +662,16 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
 
     Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, ptrObjInfos );
+    glUniformui64( uPtrObjects, bufObjInfos.getAddress() );
 
     Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, ptrGpuInfo );
+    glUniformui64( uPtrInfo, bufGpuInfo.getAddress() );
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, ptrGpuStream );
+    glUniformui64( uPtrStream, bufGpuStream.getAddress() );
 
     Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
     glUniform2f( uGridOrigin, gridOrigin.x, gridOrigin.y );
@@ -738,16 +709,16 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
 
     Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-    glUniformui64( uPtrObjects, ptrObjInfos );
+    glUniformui64( uPtrObjects, bufObjInfos.getAddress() );
 
     Int32 uPtrInfo = shader->program->getUniform( "ptrInfo" );
-    glUniformui64( uPtrInfo, ptrGpuInfo );
+    glUniformui64( uPtrInfo, bufGpuInfo.getAddress() );
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, ptrGpuStream );
+    glUniformui64( uPtrStream, bufGpuStream.getAddress() );
 
     Int32 uGridOrigin = shader->program->getUniform( "gridOrigin" );
     glUniform2f( uGridOrigin, gridOrigin.x, gridOrigin.y );
@@ -765,7 +736,7 @@ void Image::encodeGpu (EncoderGpu *encoder)
 
       //
       Int32 uPtrObjGrid = shader->program->getUniform( "ptrObjGrid" );
-      glUniformui64( uPtrObjGrid, ptrGpuGrid + obj.gridOffset * sizeof(int) );
+      glUniformui64( uPtrObjGrid, bufGpuGrid.getAddress() + obj.gridOffset * sizeof(int) );
 
       Int32 uObjGridOrigin = shader->program->getUniform( "objGridOrigin" );
       glUniform2i( uObjGridOrigin, obj.gridOrigin.x, obj.gridOrigin.y );
@@ -802,10 +773,10 @@ void Image::encodeGpu (EncoderGpu *encoder)
     shader->use();
 
     Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-    glUniformui64( uPtrGrid, ptrGpuGrid );
+    glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
     Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-    glUniformui64( uPtrStream, ptrGpuStream );
+    glUniformui64( uPtrStream, bufGpuStream.getAddress() );
 
     Int32 uGridSize = shader->program->getUniform( "gridSize" );
     glUniform2i( uGridSize, gridSize.x, gridSize.y );
@@ -867,13 +838,13 @@ void Image::renderRandom (RendererRandom *renderer, VertexBuffer *buf, GLenum mo
   glUniformMatrix4fv( uMatTexture, 1, false, (GLfloat*) matTexture.top().m );
 
   Int32 uPtrGrid = shader->program->getUniform( "ptrGrid" );
-  glUniformui64( uPtrGrid, ptrGpuGrid );
+  glUniformui64( uPtrGrid, bufGpuGrid.getAddress() );
 
   Int32 uPtrStream = shader->program->getUniform( "ptrStream" );
-  glUniformui64( uPtrStream, ptrGpuStream );
+  glUniformui64( uPtrStream, bufGpuStream.getAddress() );
 
   Int32 uPtrObjects = shader->program->getUniform( "ptrObjects" );
-  glUniformui64( uPtrObjects, ptrObjInfos );
+  glUniformui64( uPtrObjects, bufObjInfos.getAddress() );
 
   Int32 uCellSize = shader->program->getUniform( "cellSize" );
   glUniform2f( uCellSize, cellSize.x, cellSize.y );
