@@ -793,8 +793,7 @@ int main (int argc, char **argv)
     imageTiger->addObject( obj );
   }
 
-  imageTiger->updateBounds( gridResX, gridResY );
-  imageTiger->updateBuffers();
+  imageTiger->setGridResolution( gridResX, gridResY );
   imageTiger->encodeCpu( encoderCpuPivot );
   measureData( encoderCpuPivot );
 
@@ -803,11 +802,9 @@ int main (int argc, char **argv)
 
   Font *f = new Font( "Timeless.ttf" );
   //imageText = f->getWord( "Hello\nWorld" );
-  //imageText->updateBounds( 50, 10 );
+  //imageText->setGridResolution( 50, 10 );
   imageText = f->getWord( loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum );
-  imageText->updateBounds( 200, 200 );
-  imageText->updateBuffers();
-  //imageText->encodeGpu( encoderGpuPivot );
+  imageText->setGridResolution( 200, 200 );
   
   ///////////////////////////////////////////////////////
   // Main loop

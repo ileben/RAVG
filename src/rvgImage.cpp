@@ -331,6 +331,15 @@ Image::Image()
   ptrCpuInfo = NULL;
   ptrCpuGrid = NULL;
   ptrCpuStream = NULL;
+
+  gridResX = 1;
+  gridResY = 1;
+}
+
+void Image::setGridResolution (int x, int y)
+{
+  gridResX = x;
+  gridResY = y;
 }
 
 void Image::addObject (Object *obj)
@@ -338,11 +347,8 @@ void Image::addObject (Object *obj)
   objects.push_back( obj );
 }
 
-void Image::updateBounds (int gridResX, int gridResY)
+void Image::updateBounds ()
 {
-  /////////////////////////////////////////////////////
-  // Find bounds
-
   for (Uint32 o=0; o<objects.size(); ++o)
   {
     Object* obj = objects[o];
@@ -361,7 +367,16 @@ void Image::updateBounds (int gridResX, int gridResY)
     if (obj->max.x > max.x) max.x = obj->max.x;
     if (obj->max.y > max.y) max.y = obj->max.y;
   }
-  
+}
+
+void Image::updateBuffers ()
+{
+  for (Uint32 o=0; o<objects.size(); ++o)
+  {
+    Object* obj = objects[o];
+    obj->updateBuffers();
+  }
+
   //////////////////////////////////////////////////////
   // Format grid
 
@@ -373,7 +388,7 @@ void Image::updateBounds (int gridResX, int gridResY)
   cellSize.y = (max.y - min.y) / gridSize.y;
 
   /////////////////////////////////////////////////////
-  // Init object info
+  // Object buffers
 
   objs.clear();
   objInfos.clear();
@@ -410,18 +425,6 @@ void Image::updateBounds (int gridResX, int gridResY)
     objInfo.color = object->color;
     objInfos.push_back( objInfo );
   }
-}
-
-void Image::updateBuffers ()
-{
-  for (Uint32 o=0; o<objects.size(); ++o)
-  {
-    Object* obj = objects[o];
-    obj->updateBuffers();
-  }
-
-  ///////////////////////////////////////
-  // Object buffers
 
   if (objs.size() > 0)
   {
@@ -451,7 +454,11 @@ void Image::updateBuffers ()
 
 void Image::encodeCpu (EncoderCpu *encoder)
 {
-  //Reset buffers
+  //Prepare encoding input
+  updateBounds();
+  updateBuffers();
+
+  //Reset cpu buffers
   if (ptrCpuInfo)        delete[] ptrCpuInfo;
   if (ptrCpuGrid)        delete[] ptrCpuGrid;
   if (ptrCpuStream)      delete[] ptrCpuStream;
@@ -553,7 +560,8 @@ void Image::encodeCpu (EncoderCpu *encoder)
 
 void Image::encodeGpu (EncoderGpu *encoder)
 {
-  updateBounds (gridSize.x, gridSize.y);
+  //Prepare encoding input
+  updateBounds();
   updateBuffers();
 
   glViewport( 0, 0, gridSize.x, gridSize.y );

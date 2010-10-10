@@ -172,6 +172,11 @@ class Image
 {
 private:
 
+  int gridResX;
+  int gridResY;
+
+private:
+
   Vec2 min;
   Vec2 max;
 
@@ -186,20 +191,6 @@ private:
   std::vector< Object* > objects;
 
 private:
-/*
-  bool buffersInit;
-
-  GLuint   bufObjs;
-  GLuint   bufObjInfos;
-  GLuint64 ptrObjInfos;
-
-  GLuint   bufGpuInfo;
-  GLuint64 ptrGpuInfo;
-  GLuint   bufGpuGrid;
-  GLuint64 ptrGpuGrid;
-  GLuint   bufGpuStream;
-  GLuint64 ptrGpuStream;
- */
 
   DynamicGpuBuffer bufObjs;
   DynamicGpuBuffer bufObjInfos;
@@ -212,24 +203,25 @@ private:
   int   *ptrCpuGrid;
   float *ptrCpuStream;
 
+  void updateBounds ();
+  void updateBuffers ();
+
 public:
 
   Image();
   
   void addObject (Object *obj);
-  
-  void updateBounds (int gridResX, int gridResY);
-  void updateBuffers();
-
-  const Vec2& getMin () { return min; }
-  const Vec2& getMax () { return max; }
-  Vec2 getSize () { return max - min; }
+  void setGridResolution (int x, int y);
 
   void encodeCpu (EncoderCpu *encoder);
   void encodeGpu (EncoderGpu *encoder);
 
   void renderClassic (RendererClassic *renderer);
   void renderRandom (RendererRandom *renderer, VertexBuffer *buf, GLenum mode);
+
+  const Vec2& getMin () { return min; }
+  const Vec2& getMax () { return max; }
+  Vec2 getSize () { return max - min; }
 };
 
 //Defs
