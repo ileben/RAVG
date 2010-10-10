@@ -257,13 +257,13 @@ void renderImageRandom1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool
   matModelView.scale( zoomS, zoomS, zoomS );
   if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
 
-  Vec2 sz = image->max - image->min;
-  matModelView.translate( image->min.x, image->min.y, 0.0f );
+  Vec2 sz = image->getSize();
+  matModelView.translate( image->getMin().x, image->getMin().y, 0.0f );
   matModelView.scale( sz.x, sz.y, 1.0f );
 
   matTexture.push();
   matTexture.identity();
-  matTexture.translate( image->min.x, image->min.y, 0.0f );
+  matTexture.translate( image->getMin().x, image->getMin().y, 0.0f );
   matTexture.scale( sz.x, sz.y, 1.0f );
 
   switch (options[ Opt::Rep ]) {
@@ -331,9 +331,9 @@ void renderImageRandomCylinder (Image *image, bool invert)
   matModelView.rotate( 0.0f, 1.0f, 0.0f, angleX );
   matModelView.scale( 1.0f, 2.0f, 1.0f );
 
-  Vec2 sz = image->max - image->min;
+  Vec2 sz = image->getSize();
   matTexture.identity();
-  matTexture.translate( image->min.x, image->min.y, 0.0f );
+  matTexture.translate( image->getMin().x, image->getMin().y, 0.0f );
   matTexture.scale( sz.x, sz.y, 1.0f );
 
   if (invert) {
@@ -486,7 +486,7 @@ void reportState ()
   case Source::Text:  std::cout << "(F7) Image Text" << std::endl; break;
   }
 
-  ivec2 screenSize = ivec2( (imageTiger->max - imageTiger->min) * zoomS );
+  ivec2 screenSize = ivec2( imageTiger->getSize() * zoomS );
   std::cout << "Image screen size: " << screenSize.x << "x" << screenSize.y << "px" << std::endl;
 
   std::cout << std::endl;
@@ -786,11 +786,11 @@ int main (int argc, char **argv)
     Object *obj = objCubic->cubicsToQuads();
     delete objCubic;
     
-    obj->color.set( style[4], style[5], style[6], style[7] );
+    obj->setColor( style[4], style[5], style[6], style[7] );
     //if (obj->color == Vec4( 1,1,1,1 ))
       //obj->color = Vec4( 0,0,0,1 );
 
-    imageTiger->objects.push_back( obj );
+    imageTiger->addObject( obj );
   }
 
   imageTiger->updateBounds( gridResX, gridResY );

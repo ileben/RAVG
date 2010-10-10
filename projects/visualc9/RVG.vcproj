@@ -221,6 +221,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgGpuBuffer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgGpuBuffer.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgImage.cpp"
 				>
 			</File>

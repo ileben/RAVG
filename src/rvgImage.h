@@ -6,6 +6,7 @@
 
 class Contour;
 class Object;
+class Image;
 class EncoderCpu;
 class EncoderGpu;
 class RendererRandom;
@@ -111,17 +112,20 @@ public:
 
 class Object
 {
+  friend class Image;
+
+private:
   Contour *contour;
   bool penDown;
   Vec2 pen;
   Vec2 start;
 
-public:
+private:
 
   Vec2 min;
   Vec2 max;
 
-public:
+private:
 
   bool buffersInit;
   GLuint bufLines;
@@ -129,7 +133,7 @@ public:
   GLuint bufLinesQuads;
   GLuint64 ptrLinesQuads;
 
-public:
+private:
 
   Vec4 color;
   std::vector< Contour* > contours;
@@ -137,10 +141,18 @@ public:
   std::vector< Cubic > cubics;
   std::vector< Quad > quads;
 
+private:
+
+  void updateBounds();
+  void updateBuffers();
+
 public:
 
   Object();
   ~Object();
+
+  void setColor( float r, float g, float b, float a=1.0f );
+  const Vec4& getColor() { return color; }
 
   void moveTo( Float x, Float y,
     SegSpace::Enum space = SegSpace::Absolute );
@@ -157,19 +169,24 @@ public:
   void close();
 
   Object* cubicsToQuads();
-  void updateBounds();
-  void updateBuffers();
 };
 
 class Image
 {
-public:
+private:
 
   Vec2 min;
   Vec2 max;
+
   ivec2 gridSize;
   Vec2 gridOrigin;
   Vec2 cellSize;
+
+private:
+
+  std::vector< Obj > objs;
+  std::vector< ObjInfo > objInfos;
+  std::vector< Object* > objects;
 
 private:
 
@@ -192,16 +209,16 @@ private:
 
 public:
 
-  std::vector< Obj > objs;
-  std::vector< ObjInfo > objInfos;
-  std::vector< Object* > objects;
-
-public:
-
   Image();
-
+  
+  void addObject (Object *obj);
+  
   void updateBounds (int gridResX, int gridResY);
   void updateBuffers();
+
+  const Vec2& getMin () { return min; }
+  const Vec2& getMax () { return max; }
+  Vec2 getSize () { return max - min; }
 
   void encodeCpu (EncoderCpu *encoder);
   void encodeGpu (EncoderGpu *encoder);

@@ -176,7 +176,7 @@ Image* Font::getWord (const std::string &word)
     }
 
     Object *o = getGlyph( cword[c], off );
-    img->objects.push_back( o->cubicsToQuads() );
+    img->addObject( o->cubicsToQuads() );
     delete o;
 
     off.x += ft266ToFloat( ftFace->glyph->metrics.horiAdvance );

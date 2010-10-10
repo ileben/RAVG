@@ -6,6 +6,7 @@
 
 #include "rvgDefs.h"
 #include "rvgGLHeaders.h"
+#include "rvgGpuBuffer.h"
 #include "rvgShaders.h"
 #include "rvgVectors.h"
 #include "rvgMatrix.h"

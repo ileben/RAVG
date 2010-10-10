@@ -6,12 +6,18 @@ Object::Object()
   penDown = false;
   pen.set( 0,0 );
   buffersInit = false;
+  color.set( 0, 0, 0, 1 );
 }
 
 Object::~Object()
 {
   for (Uint32 c=0; c<contours.size(); ++c)
     delete contours[c];
+}
+
+void Object::setColor( float r, float g, float b, float a )
+{
+  color.set( r,g,b,a );
 }
 
 void Object::moveTo( Float x, Float y,
@@ -349,6 +355,11 @@ Image::Image()
   ptrCpuStream = NULL;
 }
 
+void Image::addObject (Object *obj)
+{
+  objects.push_back( obj );
+}
+
 void Image::updateBounds (int gridResX, int gridResY)
 {
   /////////////////////////////////////////////////////
@@ -590,7 +601,10 @@ void Image::encodeCpu (EncoderCpu *encoder)
 
 
 void Image::encodeGpu (EncoderGpu *encoder)
-{ 
+{
+  updateBounds (gridSize.x, gridSize.y);
+  updateBuffers();
+
   glViewport( 0, 0, gridSize.x, gridSize.y );
   glDisable( GL_DEPTH_TEST );
   glDisable( GL_MULTISAMPLE );
