@@ -98,16 +98,16 @@ struct ObjInfo
 
 class Contour
 {
-public:
   friend class Object;
+  friend class Image;
 
+private:
   std::vector< int > segments;
   std::vector< Vec2 > points;
   std::vector< Vec2 > flatPoints;
-  
-  GLuint bufFlatPoints;
 
-public:
+private:
+  DynamicGpuBuffer bufFlatPoints;
 };
 
 class Object
@@ -128,10 +128,8 @@ private:
 private:
 
   bool buffersInit;
-  GLuint bufLines;
-  GLuint bufQuads;
-  GLuint bufLinesQuads;
-  GLuint64 ptrLinesQuads;
+  DynamicGpuBuffer bufLines;
+  DynamicGpuBuffer bufQuads;
 
 private:
 

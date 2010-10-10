@@ -275,60 +275,39 @@ Object* Object::cubicsToQuads()
 
 void Object::updateBuffers()
 {
-  if (!buffersInit)
-  {
-    glGenBuffers( 1, &bufLines );
-    glGenBuffers( 1, &bufQuads );
-    glGenBuffers( 1, &bufLinesQuads );
-
-    for (Uint32 c=0; c<contours.size(); ++c)
-      glGenBuffers( 1, &contours[c]->bufFlatPoints );
-
-    buffersInit = true;
-  }
-
-  checkGlError( "Object::updateBuffers init" );
-
   //////////////////////////////////////
   //Contour flat points
   
   for (Uint32 c=0; c<contours.size(); ++c)
   {
-    if (contours[c]->flatPoints.size() > 0)
+    Contour *cnt = contours[c];
+    if (cnt->flatPoints.size() > 0)
     {
-      Contour *cnt = contours[c];
-      glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
-      glBufferData( GL_ARRAY_BUFFER, cnt->flatPoints.size() * sizeof( vec2 ), &cnt->flatPoints[0], GL_STATIC_DRAW );
+      cnt->bufFlatPoints.upload( cnt->flatPoints.size() * sizeof( vec2 ), &cnt->flatPoints[0] );
+      checkGlError( "Object::updateBuffers contours" );
     }
-
-    checkGlError( "Object::updateBuffers contours" );
   }
 
   //////////////////////////////////////
   //Line control points
-  
+
   if (lines.size() > 0)
   {
-    glBindBuffer( GL_ARRAY_BUFFER, bufLines );
-    glBufferData( GL_ARRAY_BUFFER, lines.size() * sizeof( Line ), &lines[0], GL_STATIC_DRAW );
-
+    bufLines.upload( lines.size() * sizeof( Line ), &lines[0] );
     checkGlError( "Object::updateBuffers lines" );
   }
 
   //////////////////////////////////////
   //Quadratic control points
-
   if (quads.size() > 0)
   {
-    glBindBuffer( GL_ARRAY_BUFFER, bufQuads );
-    glBufferData( GL_ARRAY_BUFFER, quads.size() * sizeof( Quad ), &quads[0], GL_STATIC_DRAW );
-
+    bufQuads.upload( quads.size() * sizeof( Quad ), &quads[0] );
     checkGlError( "Object::updateBuffers quads" );
   }
 
   //////////////////////////////////////
   //Line + quad control points
-
+/*
   int countSize = 2 * sizeof( Float );
   int lineSize = lines.size() * sizeof( Line );
   int quadSize = quads.size() * sizeof( Quad );
@@ -345,6 +324,7 @@ void Object::updateBuffers()
   glGetBufferParameterui64v( GL_ARRAY_BUFFER, GL_BUFFER_GPU_ADDRESS_NV, &ptrLinesQuads );
 
   checkGlError( "Object::updateBuffers lines+quads" );
+  */
 }
 
 Image::Image()
@@ -695,7 +675,7 @@ void Image::encodeGpu (EncoderGpu *encoder)
       glUniform1i( uObjectId, o );
 
       Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glBindBuffer( GL_ARRAY_BUFFER, object->bufLines );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufLines.getId() );
       glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
       glEnableVertexAttribArray( aPos );      
@@ -739,7 +719,7 @@ void Image::encodeGpu (EncoderGpu *encoder)
       glUniform1i( uObjectId, o );
 
       Int32 aPos = shader->program->getAttribute( "in_pos" );
-      glBindBuffer( GL_ARRAY_BUFFER, object->bufQuads );
+      glBindBuffer( GL_ARRAY_BUFFER, object->bufQuads.getId() );
       glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
       glEnableVertexAttribArray( aPos );
@@ -943,7 +923,7 @@ void Image::renderClassic (RendererClassic *renderer)
       
       Int32 aPos = shader->program->getAttribute( "in_pos" );
       glEnableVertexAttribArray( aPos );
-      glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads );
+      glBindBuffer( GL_ARRAY_BUFFER, obj->bufQuads.getId() );
       glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
       
       glDrawArrays( GL_TRIANGLES, 0, obj->quads.size() * 3 );
@@ -968,7 +948,7 @@ void Image::renderClassic (RendererClassic *renderer)
 
         Int32 aPos = shader->program->getAttribute( "in_pos" );
         glEnableVertexAttribArray( aPos );
-        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints );
+        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints.getId() );
         glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
         glDrawArrays( GL_TRIANGLE_FAN, 0, cnt->flatPoints.size() );
