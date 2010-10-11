@@ -16,43 +16,37 @@ Max cell segments: 61
 Thesis benchmarks:
 =====================
 
-x: lattice resolution, y: total stream length
+image: tiger, x: lattice resolution, y: total data size
 - auxiliary
 - pivot
 - classic RGB image size
 
-x: lattice resolution, y: cell stream length
+image: tiger, x: lattice resolution, y: cell stream length
 - auxiliary, maximum
 - pivot, maximum
 
-x: lattice resolution, y: encoding time
+image: tiger, x: lattice resolution, y: encoding time
 - cpu auxiliary
 - cpu pivot
 - gpu auxiliary
 - gpu pivot
 
-x: lattice resolution, y: rendering time
-- cpu auxiliary
-- cpu pivot
-- gpu auxiliary
-- gpu pivot
+image: tiger, x: lattice resolution, y: rendering time
+- auxiliary
+- pivot
 
-x: lattice resolution, y: encoding + rendering time
+image: tiger, x: lattice resolution, y: encoding + rendering time
 - cpu auxilary
 - cpu pivot
 - gpu auxiliary
 - gpu pivot
 
-x: screen image size, y: rendering time
-- classic
+image: tiger, x: screen image size, y: rendering time
 - auxiliary
 - pivot
+- classic
 
-------------------------------------------
-All of the above for both tiger and text!
-------------------------------------------
-
-x: number of letters in text, y: rendering time
+image: text, x: number of letters in text, y: rendering time
 - classic
 - auxiliary
 - pivot
