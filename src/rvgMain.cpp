@@ -1,98 +1,12 @@
 #include "rvgMain.h"
 
-////////////////////////////////////////////////////////////////////
-// Global vars
-
-int resX = 500;
-int resY = 600;
-int gridResX = 60;
-int gridResY = 60;
-
-namespace Opt {
-  enum Enum {
-    Draw    = 0,
-    Encode  = 1,
-    Proc    = 2,
-    Rep     = 3,
-    Render  = 4,
-    View    = 5,
-    Source  = 6,
-    Count   = 7
-  };
-};
-
-namespace Draw {
-  enum Enum {
-    False = 0,
-    True  = 1,
-    Count = 2
-  };
-};
-
-namespace Encode {
-  enum Enum {
-    False = 0,
-    True  = 1,
-    Count = 2
-  };
-};
-
-namespace Proc {
-  enum Enum {
-    Cpu   = 0,
-    Gpu   = 1,
-    Count = 2
-  };
-};
-
-namespace Rep {
-  enum Enum {
-    Aux   = 0,
-    Pivot = 1,
-    Count = 2
-  };
-};
-
-namespace Render {
-  enum Enum {
-    Classic  = 0,
-    Random   = 1,
-    Count    = 2
-  };
-};
-
-namespace View {
-  enum Enum {
-    Flat      = 0,
-    Cylinder  = 1,
-    Count     = 2
-  };
-};
-
-namespace Source {
-  enum Enum {
-    Tiger  = 0,
-    Text   = 1,
-    Count  = 2
-  };
-};
-
-int options[ Opt::Count ];
-int optionsCount[ Opt::Count ];
+//Matrices
 
 MatrixStack matModelView;
 MatrixStack matProjection;
 MatrixStack matTexture;
 
-Shader *shaderGrid;
-/*
-Shader *shaderRenderAux;
-Shader *shaderRenderPivot;
-
-Shader *shaderClassicQuads;
-Shader *shaderClassicContour;
-Shader *shaderClassic;
-*/
+//Encoders and renderers
 
 EncoderCpu *encoderCpuAux;
 EncoderCpu *encoderCpuPivot;
@@ -103,8 +17,20 @@ RendererRandom *rendererRandomAux;
 RendererRandom *rendererRandomPivot;
 RendererClassic *rendererClassic;
 
+Shader *shaderGrid;
+
+//Data
+
+int gridResX = 60;
+int gridResY = 60;
+
 Image *imageTiger;
 Image *imageText;
+
+//User interface
+
+int resX = 500;
+int resY = 600;
 
 int mouseButton = 0;
 Vec2 mouseDown;
@@ -117,42 +43,17 @@ Float panX = 0.0f;
 Float panY = 0.0f;
 Float zoomS = 1.0f;
 
+// Options
+
+Options options;
+OptionsCount optionsCount;
+
+//Results
+
+Results results;
+
 ///////////////////////////////////////////////////////////////////
 // Functions
-
-void initOptions ()
-{
-  options[ Opt::Encode ]  = Encode::True;
-  options[ Opt::Draw ]    = Draw::True;
-  options[ Opt::Proc ]    = Proc::Gpu;
-  options[ Opt::Rep ]     = Rep::Pivot;
-  options[ Opt::Render ]  = Render::Random;
-  options[ Opt::View ]    = View::Flat;
-  options[ Opt::Source]   = Source::Tiger;
-
-  optionsCount[ Opt::Encode ]  = Encode::Count;
-  optionsCount[ Opt::Draw ]    = Draw::Count;
-  optionsCount[ Opt::Proc ]    = Proc::Count;
-  optionsCount[ Opt::Rep ]     = Rep::Count;
-  optionsCount[ Opt::Render ]  = Render::Count;
-  optionsCount[ Opt::View ]    = View::Count;
-  optionsCount[ Opt::Source]   = Source::Count;
-}
-
-void setOptions (int *optTo, int *optFrom)
-{
-  for (int o=0; o<Opt::Count; ++o)
-    optTo[ o ] = optFrom[ o ];
-}
-
-bool optionsChanged (int *opt1, int *opt2)
-{
-  for (int o=0; o<Opt::Count; ++o)
-    if (opt1[ o ] != opt2[ o ])
-      return true;
-
-  return false;
-}
 
 void checkGlError (const std::string &text)
 {
@@ -383,11 +284,10 @@ void display ()
   {
     //Encode image
     static bool first = true;
-    static int prevOptions[ Opt::Count ];
-    if (first) setOptions( prevOptions, options );
-    if (first || optionsChanged( prevOptions, options ) || options[ Opt::Encode ])
+    static Options prevOptions = options;
+    if (first || (prevOptions != options) || options[ Opt::Encode ])
     {
-      setOptions( prevOptions, options );
+      prevOptions = options;
       first = false;
 
       switch (options[ Opt::Proc ]) {
@@ -705,7 +605,6 @@ const std::string loremIpsum =
 
 int main (int argc, char **argv)
 {
-  initOptions();
   rvgGlutInit( argc, argv );
   rvgGLInit();
   wglSwapInterval( 0 );

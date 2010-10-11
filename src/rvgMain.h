@@ -62,14 +62,15 @@ bool lineInCell (const Vec2 &min, const Vec2 &max, const Line &line);
 
 bool quadInCell (const Vec2 &min, const Vec2 &max, const Quad &quad);
 
-
-//Tiger
 ////////////////////////////////////////////
+//Tiger
 
 extern VGint     pathCount;
 extern VGint     commandCounts[];
 extern const VGubyte*  commandArrays[];
 extern const VGfloat*  dataArrays[];
 extern const VGfloat*  styleArrays[];
+
+#include "rvgBenchmark.h"
 
 #endif//RVGMAIN_H
