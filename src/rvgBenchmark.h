@@ -1,6 +1,10 @@
 #ifndef RVGBENCHMARK_H
 #define RVGBENCHMARK_H 1
 
+class OptVal;
+class Options;
+class Results;
+
 /////////////////////////////////////////////
 //Options
 
@@ -13,7 +17,8 @@ namespace Opt {
     Render  = 4,
     View    = 5,
     Source  = 6,
-    Count   = 7
+    Grid    = 7,
+    Count   = 8
   };
 };
 
@@ -80,8 +85,8 @@ class OptionsCount
 public:
   OptionsCount()
   {
-    counts[ Opt::Encode ]  = Encode::Count;
     counts[ Opt::Draw ]    = Draw::Count;
+    counts[ Opt::Encode ]  = Encode::Count;
     counts[ Opt::Proc ]    = Proc::Count;
     counts[ Opt::Rep ]     = Rep::Count;
     counts[ Opt::Render ]  = Render::Count;
@@ -95,6 +100,17 @@ public:
   }
 };
 
+class OptVal
+{
+public:
+  Opt::Enum type;
+  int value;
+
+  OptVal (Opt::Enum t, int v) {
+    type = t; value = v;
+  }
+};
+
 class Options
 {
   int values[ Opt::Count ];
@@ -102,13 +118,14 @@ class Options
 public:
   Options ()
   {
-    values[ Opt::Encode ]  = Encode::True;
     values[ Opt::Draw ]    = Draw::True;
+    values[ Opt::Encode ]  = Encode::True;
     values[ Opt::Proc ]    = Proc::Gpu;
     values[ Opt::Rep ]     = Rep::Pivot;
     values[ Opt::Render ]  = Render::Random;
     values[ Opt::View ]    = View::Flat;
     values[ Opt::Source]   = Source::Tiger;
+    values[ Opt::Grid]     = 60;
   }
 
   Options (const Options &opt)
@@ -143,12 +160,33 @@ public:
   {
     return values[o];
   }
+
+  Options& operator += (const OptVal &ov)
+  {
+    values[ ov.type ] = ov.value;
+    return *this;
+  }
+
+  Options operator+ (const OptVal &ov)
+  {
+    Options opt = *this;
+    opt += ov;
+    return opt;
+  }
 };
+
+Options operator+ (const OptVal &ov1, const OptVal &ov2)
+{
+  Options opt;
+  opt += ov1;
+  opt += ov2;
+  return opt;
+}
 
 /////////////////////////////////////////////
 //Results
 
-namespace Result {
+namespace Res {
   enum Enum {
     Fps      = 0,
     Memory   = 1,
@@ -158,31 +196,31 @@ namespace Result {
 
 class Results
 {
-  int values[ Result::Count ];
+  int values[ Res::Count ];
 
 public:
 
   Results()
   {
-    for (int r=0; r<Result::Count; ++r)
+    for (int r=0; r<Res::Count; ++r)
       values[r] = 0;
   }
 
   Results (const Results &res)
   {
-    for (int r=0; r<Result::Count; ++r)
+    for (int r=0; r<Res::Count; ++r)
       values[r] = res.values[r];
   }
 
   Results& operator= (const Results &res)
   {
-    for (int r=0; r<Result::Count; ++r)
+    for (int r=0; r<Res::Count; ++r)
       values[r] = res.values[r];
 
     return *this;
   }
 
-  int operator[] (int r) const
+  int& operator[] (int r)
   {
     return values[r];
   }
@@ -205,12 +243,13 @@ private:
 
   //Settings
   int repeatCount;
+  int dropCount;
 
   Opt::Enum domain;
   std::vector< int > arguments;
 
-  Result::Enum codomain;
-  std::vector< Env > environments;
+  Res::Enum codomain;
+  std::vector< Env* > environments;
 
   //Runtime counters
   int repIndex;
@@ -218,86 +257,149 @@ private:
   int argIndex;
   std::vector< int > values;
 
+  void averageValues ()
+  {
+    int avgValue = 0;
+    int numValues = 0;
+
+    //Find average of all values after dropping first few
+    for (Uint32 v=dropCount; v<values.size(); ++v) {
+      std::cout << "Average part: " << values[v] << std::endl;
+      avgValue += values[v];
+      numValues += 1;
+    }
+
+    //Store as value corresponding to current argument
+    environments[ envIndex ]->values[ argIndex ] = avgValue / numValues;
+    std::cout << "Average: " << environments[ envIndex ]->values[ argIndex ] << std::endl;
+  }
+
+  void resizeValues ()
+  {
+    //Make sure the number of temporary values matches the number of repetitions
+    values.resize( repeatCount, 0 );
+
+    //Make sure the number of environment values matches the number of arguments
+    for (Uint32 e=0; e<environments.size(); ++e)
+      environments[e]->values.resize( arguments.size(), 0 );
+  }
+
 public:
 
-  Test (Opt::Enum domain, int repeatCount=1)
-    : domain(domain), repeatCount(repeatCount)
+  Test (Opt::Enum domain, Res::Enum codomain, int repeatCount=1, int dropCount=0)
+    : domain(domain), codomain(codomain), repeatCount(repeatCount), dropCount(dropCount)
   {
+    if (repeatCount <= 0)
+      repeatCount = 1;
+
+    if (dropCount >= repeatCount)
+      dropCount = repeatCount-1;
+
     reset();
+  }
+
+  ~Test()
+  {
+    for (Uint32 e=0; e<environments.size(); ++e)
+      delete environments[e];
   }
 
   void addArgument (int a)
   {
     arguments.push_back(a);
+    resizeValues();
+  }
+
+  void addArguments (int a, ...)
+  {
+    va_list va;
+    va_start (va, a);
+    do
+    {
+      arguments.push_back(a);
+      a = va_arg( va, int );
+    }
+    while (a != -1);
+    va_end( va );
+    resizeValues();
   }
 
   void addEnvironment (const std::string &name, const Options &opt)
   {
-    Env env;
-    env.name = name;
-    env.options = opt;
+    Env *env = new Env;
+    env->name = name;
+    env->options = opt;
     environments.push_back( env );
+    resizeValues();
   }
 
   void reset()
   {
-    repIndex = 0;
-    envIndex = 0;
-    argIndex = 0;
-    values.clear();
-  }
-
-  Options first()
-  {
-    //Reset to first test
-    reset();
-
-    //Get options for the current environment and adjust argument
-    Options opt = environments[ envIndex ].options;
-    opt[ domain ] = arguments[ argIndex ];
-    return opt;
+    repIndex = -1;
+    envIndex = -1;
+    argIndex = -1;
   }
 
   Options next()
   {
-    //Move to next repetition, argument or environment
-    if (++repIndex == repeatCount) {
+    if (running())
+    {
+      //Move to next
+      if (++repIndex >= repeatCount) {
+        repIndex = 0;
+        if (++argIndex >= (int)arguments.size()) {
+          argIndex = 0;
+          if (++envIndex >= (int)environments.size()) {
+            envIndex = 0;
+          }}}
+    }
+    else
+    {
+      //Move to first
       repIndex = 0;
-      if (++argIndex == arguments.size()) {
-        argIndex = 0;
-        if (++envIndex == environments.size()) {
-          return first();
-        }}}
+      argIndex = 0;
+      envIndex = 0;
+    }
+
+    std::cout
+      << "Moving on to env:" <<  environments[ envIndex ]->name
+      << " arg:" << arguments[ argIndex ]
+      << " rep:" << repIndex
+      << std::endl;
 
     //Get options for the current environment and adjust argument
-    Options opt = environments[ envIndex ].options;
+    Options opt = environments[ envIndex ]->options;
     opt[ domain ] = arguments[ argIndex ];
     return opt;
   }
 
-  void results (const Results &res)
+  void results (Results &res)
   {
-    //Store value into list and check if last
-    values.push_back( res[ codomain ] );
-    if (repIndex == repeatCount-1) {
+    if (running())
+    {
+      std::cout << "Storing results for rep:" << repIndex << std::endl;
 
-      //Find average of all values
-      int avgValue = 0;
-      for (Uint32 v=0; v<values.size(); ++v)
-        avgValue += values[v];
-
-      //Store as value corresponding to current argument
-      environments[ envIndex ].values.push_back( avgValue );
-      values.clear();
+      //Store value into list and average if last
+      values[ repIndex ] = res[ codomain ];
+      if (repIndex == repeatCount-1)
+        averageValues();
     }
+  }
+
+  bool running()
+  {
+    //Check if next() has been called since reset
+    return (envIndex > -1 &&
+            argIndex > -1 &&
+            repIndex > -1);
   }
 
   bool done()
   {
     //Check if last repetition of last argument in last environment reached
-    return (envIndex == environments.size()-1 &&
-            argIndex == arguments.size()-1 &&
-            repIndex == repeatCount-1);
+    return (envIndex >= (int) environments.size()-1 &&
+            argIndex >= (int) arguments.size()-1 &&
+            repIndex >= (int) repeatCount-1);
   }
 };
 

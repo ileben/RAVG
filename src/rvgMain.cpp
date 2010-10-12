@@ -1,4 +1,5 @@
 #include "rvgMain.h"
+#include "rvgBenchmark.h"
 
 //Matrices
 
@@ -43,7 +44,7 @@ Float panX = 0.0f;
 Float panY = 0.0f;
 Float zoomS = 1.0f;
 
-// Options
+//Options
 
 Options options;
 OptionsCount optionsCount;
@@ -51,6 +52,15 @@ OptionsCount optionsCount;
 //Results
 
 Results results;
+
+//Tests
+
+std::vector< Test* > tests;
+
+///////////////////////////////////////////////////////////////////
+// Forward declaration
+
+void reportState ();
 
 ///////////////////////////////////////////////////////////////////
 // Functions
@@ -323,9 +333,19 @@ void display ()
 
   int now = glutGet( GLUT_ELAPSED_TIME );
   if (now - lastUpdate > 1000) {
+    results[ Res::Fps ] = fps;
     std::cout << "Fps: " << fps << std::endl;
     lastUpdate = now;
     fps = 0;
+    
+    //Submit results
+    tests[0]->results( results );
+    if (tests[0]->done()) {
+      std::cout << "DONE" << std::endl;
+      tests[0]->reset();
+    }
+    options = tests[0]->next();
+    reportState();
   }
 
   //Check for errors
@@ -704,6 +724,68 @@ int main (int argc, char **argv)
   //imageText->setGridResolution( 50, 10 );
   imageText = f->getWord( loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum );
   imageText->setGridResolution( 200, 200 );
+
+  ///////////////////////////////////////////////////////
+  // Tests
+
+  Options optEncodeTiger = 
+    OptVal( Opt::Draw,   Draw::False ) +
+    OptVal( Opt::Encode, Encode::True ) +
+    OptVal( Opt::Source, Source::Tiger ) +
+    OptVal( Opt::Render, Render::Random );
+
+  Options optCpuAuxE = optEncodeTiger +
+    OptVal( Opt::Proc, Proc::Cpu ) +
+    OptVal( Opt::Rep,  Rep::Aux );
+
+  Options optCpuPivotE = optEncodeTiger +
+    OptVal( Opt::Proc, Proc::Cpu ) +
+    OptVal( Opt::Rep,  Rep::Pivot );
+
+  Options optGpuAuxE = optEncodeTiger +
+    OptVal( Opt::Proc, Proc::Gpu) +
+    OptVal( Opt::Rep,  Rep::Aux );
+
+  Options optGpuPivotE = optEncodeTiger +
+    OptVal( Opt::Proc, Proc::Gpu ) +
+    OptVal( Opt::Rep,  Rep::Pivot );
+
+  Test *testETime = new Test( Opt::Grid, Res::Fps, 4, 1 );
+  //testETime->addArguments( 20, 40, 60, 80, 100, -1 );
+  testETime->addArguments( 20, 40, -1 );
+  testETime->addEnvironment( "Cpu Auxiliary", optCpuAuxE );
+  testETime->addEnvironment( "Cpu Pivot",     optCpuPivotE );
+  testETime->addEnvironment( "Gpu Auxiliary", optGpuAuxE );
+  testETime->addEnvironment( "Gpu Pivot",     optGpuPivotE );
+  //tests.push_back( testETime );
+
+  Options optRenderFlatTiger =
+    OptVal( Opt::Draw,   Draw::True ) +
+    OptVal( Opt::Encode, Encode::False ) +
+    OptVal( Opt::View,   View::Flat ) +
+    OptVal( Opt::Source, Source::Tiger );
+
+  Options optAuxR = optRenderFlatTiger +
+    OptVal( Opt::Render, Render::Random ) +
+    OptVal( Opt::Rep,    Rep::Aux ) +
+    OptVal( Opt::Proc,   Proc::Gpu );
+
+  Options optPivotR = optRenderFlatTiger +
+    OptVal( Opt::Render, Render::Random ) +
+    OptVal( Opt::Rep,    Rep::Pivot ) +
+    OptVal( Opt::Proc,   Proc::Gpu );
+
+  Options optClassicR = optRenderFlatTiger +
+    OptVal( Opt::Render, Render::Classic );
+
+  Test *testRTime = new Test( Opt::Grid, Res::Fps, 4, 1 );
+  //testRTime->addArguments( 20, 40, 60, 80, 100, -1 );
+  testRTime->addArguments( 20, 40, -1 );
+  testRTime->addEnvironment( "Auxiliary", optAuxR );
+  testRTime->addEnvironment( "Pivot",     optPivotR );
+  testRTime->addEnvironment( "Classic",   optClassicR );
+  tests.push_back( testRTime );
+
   
   ///////////////////////////////////////////////////////
   // Main loop

@@ -71,6 +71,4 @@ extern const VGubyte*  commandArrays[];
 extern const VGfloat*  dataArrays[];
 extern const VGfloat*  styleArrays[];
 
-#include "rvgBenchmark.h"
-
 #endif//RVGMAIN_H
