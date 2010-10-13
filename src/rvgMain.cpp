@@ -337,7 +337,7 @@ void display ()
     std::cout << "Fps: " << fps << std::endl;
     lastUpdate = now;
     fps = 0;
-    
+    /*
     //Submit results
     tests[0]->results( results );
     if (tests[0]->done()) {
@@ -345,7 +345,7 @@ void display ()
       tests[0]->reset();
     }
     options = tests[0]->next();
-    reportState();
+    reportState(); */
   }
 
   //Check for errors
