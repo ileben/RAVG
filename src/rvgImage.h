@@ -102,11 +102,10 @@ struct ObjInfo
 class Contour
 {
   friend class Object;
+  friend class ObjectFlatten;
   friend class Image;
 
 private:
-  std::vector< int > segments;
-  std::vector< Vec2 > points;
   std::vector< Vec2 > flatPoints;
 
 private:
@@ -115,6 +114,7 @@ private:
 
 class Object
 {
+  friend class ObjectFlatten;
   friend class Image;
 
 private:
@@ -135,7 +135,12 @@ private:
 
 private:
 
+  //raw data
   Vec4 color;
+  std::vector< int > segments;
+  std::vector< Vec2 > points;
+
+  //processed data
   std::vector< Contour* > contours;
   std::vector< Line > lines;
   std::vector< Cubic > cubics;
@@ -168,9 +173,9 @@ public:
 
   void close();
 
-  Object* cubicsToQuads();
-
   void process (ObjectProcessor &proc);
+
+  Object* cubicsToQuads();
 };
 
 
@@ -199,12 +204,25 @@ public:
 
 class ObjectFlatten : public ObjectProcessor
 {
+  Object *object;
+  Contour *contour;
+
 public:
+  ObjectFlatten (Object *o);
   virtual void moveTo (const Vec2 &p1, int space);
   virtual void lineTo (const Vec2 &p1, int space);
   virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space);
   virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space);
   virtual void close ();
+};
+
+class CubicsToQuads : public ObjectProcessor
+{
+  virtual void moveTo (const Vec2 &p1, int space) = 0;
+  virtual void lineTo (const Vec2 &p1, int space) = 0;
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) = 0;
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) = 0;
+  virtual void close () = 0;
 };
 
 

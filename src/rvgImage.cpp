@@ -19,6 +19,106 @@ void Object::setColor( float r, float g, float b, float a )
   color.set( r,g,b,a );
 }
 
+void Object::moveTo( Float x, Float y, int space )
+{
+  segments.push_back( SegType::MoveTo | space );
+  points.push_back( Vec2(x,y) );
+}
+
+void Object::lineTo( Float x, Float y, int space )
+{
+  segments.push_back( SegType::LineTo | space );
+  points.push_back( Vec2(x,y) );
+}
+
+void Object::quadTo( Float x1, Float y1, Float x2, Float y2, int space )
+{
+  segments.push_back( SegType::QuadTo | space );
+  points.push_back( Vec2(x1,y1) );
+  points.push_back( Vec2(x2,y2) );
+}
+
+void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3, int space )
+{
+  segments.push_back( SegType::CubicTo | space );
+  points.push_back( Vec2(x1,y1) );
+  points.push_back( Vec2(x2,y2) );
+  points.push_back( Vec2(x3,y3) );
+}
+
+void Object::close()
+{
+  segments.push_back( SegType::Close );
+}
+
+void Object::process (ObjectProcessor &proc)
+{
+  int p;
+
+  proc.penDown = false;
+  proc.pen.set( 0, 0 );
+  proc.start.set( 0, 0 );
+
+  for (Uint32 s=0; s<segments.size(); ++s)
+  {
+    int seg = segments[s];
+    int segType = seg & SegType::Mask;
+    int segSpace = seg & SegSpace::Mask;
+    switch (segType)
+    {
+    case SegType::MoveTo:{
+      
+      vec2 p0 = points[ p ];
+      p += 1;
+
+      proc.moveTo( p0, segSpace );
+      proc.pen = (SegSpace::Relative ? proc.pen + p0 : p0);
+      proc.start = proc.pen;
+      proc.penDown = true;
+      break;}
+
+    case SegType::LineTo:{
+
+      vec2 p0 = points[ p ];
+      p += 1;
+
+      proc.lineTo( p0, segSpace );
+      proc.pen = (SegSpace::Relative ? proc.pen + p0 : p0);
+      break;}
+
+    case SegType::QuadTo:{
+
+      vec2 p0 = points[ p+0 ];
+      vec2 p1 = points[ p+1 ];
+      p += 2;
+
+      proc.quadTo( p0, p1, segSpace );
+      proc.pen = (SegSpace::Relative ? proc.pen + p1 : p1);
+      break;}
+
+    case SegType::CubicTo:{
+
+      vec2 p0 = points[ p+0 ];
+      vec2 p1 = points[ p+1 ];
+      vec2 p2 = points[ p+2 ];
+      p += 3;
+
+      proc.cubicTo( p0, p1, p2, segSpace );
+      proc.pen = (SegSpace::Relative ? proc.pen + p2 : p2);
+      break;}
+
+    case SegType::Close:{
+
+      proc.close();
+      proc.pen = proc.start;
+      proc.penDown = false;
+      break;}
+    }
+  }
+}
+
+/*
+
 void Object::moveTo( Float x, Float y,
   int space )
 {
@@ -86,73 +186,77 @@ void Object::close()
   pen.set( start.x, start.y );
   penDown = false;
 }
+*/
 
-void Object::process (ObjectProcessor &proc)
+ObjectFlatten::ObjectFlatten (Object *o)
 {
-  Object *obj = new Object();
-  obj->color = color;
-
-  std::vector< Quad > quadsFromCubic;
-
-  for (Uint32 c=0; c<contours.size(); ++c)
-  {
-    Contour *cnt = contours[c];
-    int p=0;
-
-    for (Uint32 s=0; s<cnt->segments.size(); ++s)
-    {
-      int seg = cnt->segments[s];
-      int segType = seg & SegType::Mask;
-      int segSpace = seg & SegSpace::Mask;
-      switch (segType)
-      {
-      case SegType::MoveTo:{
-
-        vec2 p0 = cnt->points[ p ];
-        obj->moveTo( p0.x, p0.y, segSpace );
-        p += 1;
-
-        break;}
-      case SegType::LineTo:{
-
-        vec2 p0 = cnt->points[ p ];
-        obj->lineTo( p0.x, p0.y, segSpace );
-        p += 1;
-
-        break;}
-      case SegType::QuadTo:{
-
-        vec2 p0 = cnt->points[ p+0 ];
-        vec2 p1 = cnt->points[ p+1 ];
-        obj->quadTo( p0.x, p0.y, p1.x, p1.y, segSpace );
-        p += 2;
-
-        break;}
-      case SegType::CubicTo:{
-
-        vec2 p0 = cnt->points[ p+0 ];
-        vec2 p1 = cnt->points[ p+1 ];
-        vec2 p2 = cnt->points[ p+2 ];
-        obj->cubicTo( p0.x, p0.y, p1.x, p1.y, p2.x, p1.y, segSpace );
-        p += 3;
-
-        break;}
-      case SegType::Close:{
-
-        obj->close();
-        break;}
-      }
-    }//segments
-  }//contours
+  object = o;
+  contour = NULL;
 }
+
+void ObjectFlatten::moveTo (const Vec2 &p1, int space)
+{
+  Vec2 m1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
+
+  contour = new Contour();
+  contour->flatPoints.push_back( m1 );
+  object->contours.push_back( contour );
+}
+
+void ObjectFlatten::lineTo (const Vec2 &p1, int space)
+{
+  if (!isPenDown()) return;
+
+  Vec2 l0 = getPen();
+  Vec2 l1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
+  
+  object->lines.push_back( Line( l0.x,l0.y, l1.x,l1.y ));
+  contour->flatPoints.push_back( l1 );
+}
+
+void ObjectFlatten::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
+{
+  if (!isPenDown()) return;
+
+  Vec2 q0 = getPen();
+  Vec2 q1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
+  Vec2 q2 = (space == SegSpace::Relative ? getPen() + p2 : p2);
+
+  object->quads.push_back( Quad( q0.x,q0.y, q1.x,q1.y, q2.x,q2.y ));
+  contour->flatPoints.push_back( q2 );
+}
+
+void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
+{
+  if (!isPenDown()) return;
+
+  Vec2 c0 = getPen();
+  Vec2 c1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
+  Vec2 c2 = (space == SegSpace::Relative ? getPen() + p2 : p2);
+  Vec2 c3 = (space == SegSpace::Relative ? getPen() + p3 : p3);
+
+  object->cubics.push_back( Cubic( c0.x,c0.y, c1.x,c1.y, c2.x,c2.y, c3.x,c3.y ));
+  contour->flatPoints.push_back( c2 );
+}
+
+void ObjectFlatten::close ()
+{
+  if (!isPenDown()) return;
+
+  Vec2 l0 = getPen();
+  Vec2 l1 = getStart();
+
+  object->lines.push_back( Line( l0.x,l0.y, l1.x,l1.y ));
+}
+
 
 void Object::updateBounds()
 {
   for (Uint32 c=0; c<contours.size(); ++c)
   {
-    for (Uint32 p=0; p<contours[c]->points.size(); ++p)
+    for (Uint32 p=0; p<contours[c]->flatPoints.size(); ++p)
     {
-      Vec2 &point = contours[c]->points[p];
+      Vec2 &point = contours[c]->flatPoints[p];
       if (c==0 && p==0)
       {
         min = max = point;
@@ -270,7 +374,7 @@ Object* Object::cubicsToQuads()
 {
   Object *obj = new Object();
   obj->color = color;
-
+/*
   std::vector< Quad > quadsFromCubic;
 
   for (Uint32 c=0; c<contours.size(); ++c)
@@ -333,7 +437,7 @@ Object* Object::cubicsToQuads()
       }
     }//segments
   }//contours
-
+*/
   return obj;
 }
 
