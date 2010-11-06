@@ -2,16 +2,32 @@
 
 Object::Object()
 {
-  contour = NULL;
-  penDown = false;
-  pen.set( 0,0 );
+  flat = false;
   color.set( 0, 0, 0, 1 );
 }
 
 Object::~Object()
 {
+  clearFlat();
+}
+
+void Object::clearFlat()
+{
   for (Uint32 c=0; c<contours.size(); ++c)
     delete contours[c];
+
+  contours.clear();
+  lines.clear();
+  cubics.clear();
+  quads.clear();
+  flat = false;
+}
+
+void Object::clear()
+{
+  clearFlat();
+  segments.clear();
+  points.clear();
 }
 
 void Object::setColor( float r, float g, float b, float a )
@@ -23,12 +39,14 @@ void Object::moveTo( Float x, Float y, int space )
 {
   segments.push_back( SegType::MoveTo | space );
   points.push_back( Vec2(x,y) );
+  flat = false;
 }
 
 void Object::lineTo( Float x, Float y, int space )
 {
   segments.push_back( SegType::LineTo | space );
   points.push_back( Vec2(x,y) );
+  flat = false;
 }
 
 void Object::quadTo( Float x1, Float y1, Float x2, Float y2, int space )
@@ -36,6 +54,7 @@ void Object::quadTo( Float x1, Float y1, Float x2, Float y2, int space )
   segments.push_back( SegType::QuadTo | space );
   points.push_back( Vec2(x1,y1) );
   points.push_back( Vec2(x2,y2) );
+  flat = false;
 }
 
 void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3, int space )
@@ -44,209 +63,137 @@ void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3
   points.push_back( Vec2(x1,y1) );
   points.push_back( Vec2(x2,y2) );
   points.push_back( Vec2(x3,y3) );
+  flat = false;
 }
 
 void Object::close()
 {
   segments.push_back( SegType::Close );
+  flat = false;
 }
 
-void Object::process (ObjectProcessor &proc)
+void Object::process (ObjectProcessor &proc, ProcessFlags::Enum flags)
 {
-  int p;
+  int p = 0;
 
-  proc.penDown = false;
+  proc.object = this;
   proc.pen.set( 0, 0 );
   proc.start.set( 0, 0 );
+
+  proc.begin();
 
   for (Uint32 s=0; s<segments.size(); ++s)
   {
     int seg = segments[s];
-    int segType = seg & SegType::Mask;
-    int segSpace = seg & SegSpace::Mask;
-    switch (segType)
+    int type = seg & SegType::Mask;
+    int space = seg & SegSpace::Mask;
+
+    Vec2 base( 0,0 );
+    if (space == SegSpace::Relative && (flags & ProcessFlags::Absolute)) {
+      space = SegSpace::Absolute;
+      base = proc.pen;
+    }
+
+    switch (type)
     {
     case SegType::MoveTo:{
       
-      vec2 p0 = points[ p ];
+      vec2 &p0 = points[ p ];
       p += 1;
 
-      proc.moveTo( p0, segSpace );
-      proc.pen = (SegSpace::Relative ? proc.pen + p0 : p0);
+      proc.moveTo( base + p0, space );
+      proc.pen = (space == SegSpace::Relative) ? proc.pen + p0 : p0;
       proc.start = proc.pen;
-      proc.penDown = true;
       break;}
 
     case SegType::LineTo:{
 
-      vec2 p0 = points[ p ];
+      vec2 &p0 = points[ p ];
       p += 1;
 
-      proc.lineTo( p0, segSpace );
-      proc.pen = (SegSpace::Relative ? proc.pen + p0 : p0);
+      proc.lineTo( base + p0, space );
+      proc.pen = (space == SegSpace::Relative) ? proc.pen + p0 : p0;
       break;}
 
     case SegType::QuadTo:{
 
-      vec2 p0 = points[ p+0 ];
-      vec2 p1 = points[ p+1 ];
+      vec2 &p0 = points[ p+0 ];
+      vec2 &p1 = points[ p+1 ];
       p += 2;
 
-      proc.quadTo( p0, p1, segSpace );
-      proc.pen = (SegSpace::Relative ? proc.pen + p1 : p1);
+      proc.quadTo( base + p0, base + p1, space );
+      proc.pen = (space == SegSpace::Relative) ? proc.pen + p1 : p1;
       break;}
 
     case SegType::CubicTo:{
 
-      vec2 p0 = points[ p+0 ];
-      vec2 p1 = points[ p+1 ];
-      vec2 p2 = points[ p+2 ];
+      vec2 &p0 = points[ p+0 ];
+      vec2 &p1 = points[ p+1 ];
+      vec2 &p2 = points[ p+2 ];
       p += 3;
 
-      proc.cubicTo( p0, p1, p2, segSpace );
-      proc.pen = (SegSpace::Relative ? proc.pen + p2 : p2);
+      proc.cubicTo( base + p0, base + p1, base + p2, space );
+      proc.pen = (space == SegSpace::Relative) ? proc.pen + p2 : p2;
       break;}
 
     case SegType::Close:{
 
       proc.close();
       proc.pen = proc.start;
-      proc.penDown = false;
       break;}
     }
   }
+
+  proc.end();
 }
 
-/*
-
-void Object::moveTo( Float x, Float y,
-  int space )
+ObjectFlatten::ObjectFlatten ()
 {
-  contour = new Contour();
-  contours.push_back( contour );
-
-  contour->segments.push_back( SegType::MoveTo | space );
-  contour->points.push_back( Vec2(x,y) );
-  contour->flatPoints.push_back( Vec2(x,y) );
-
-  pen.set( x,y );
-  start.set( x,y );
-  penDown = true;
-}
-
-void Object::lineTo( Float x, Float y,
-  int space )
-{
-  if (!penDown) return;
-
-  contour->segments.push_back( SegType::LineTo | space );
-  contour->points.push_back( Vec2(x,y) );
-  contour->flatPoints.push_back( Vec2(x,y) );
-
-  lines.push_back( Line( pen.x,pen.y, x, y ));
-  pen.set( x,y );
-}
-
-void Object::quadTo( Float x1, Float y1, Float x2, Float y2,
-  int space )
-{
-  if (!penDown) return;
-
-  contour->segments.push_back( SegType::QuadTo | space );
-  contour->points.push_back( Vec2(x1,y1) );
-  contour->points.push_back( Vec2(x2,y2) );
-  contour->flatPoints.push_back( Vec2(x2,y2) );
-
-  quads.push_back( Quad( pen.x,pen.y, x1,y1, x2,y2 ));
-  pen.set( x2,y2 );
-}
-
-void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3,
-  int space )
-{
-  if (!penDown) return;
-
-  contour->segments.push_back( SegType::CubicTo | space );
-  contour->points.push_back( Vec2(x1,y1) );
-  contour->points.push_back( Vec2(x2,y2) );
-  contour->points.push_back( Vec2(x3,y3) );
-  contour->flatPoints.push_back( Vec2(x3,y3) );
-
-  cubics.push_back( Cubic( pen.x,pen.y, x1,y1, x2,y2, x3,y3 ));
-  pen.set( x3,y3 );
-}
-
-void Object::close()
-{
-  if (!penDown) return;
-
-  contour->segments.push_back( SegType::Close );
-
-  lines.push_back( Line( pen.x,pen.y, start.x,start.y ));
-  pen.set( start.x, start.y );
-  penDown = false;
-}
-*/
-
-ObjectFlatten::ObjectFlatten (Object *o)
-{
-  object = o;
   contour = NULL;
 }
 
 void ObjectFlatten::moveTo (const Vec2 &p1, int space)
 {
-  Vec2 m1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
-
   contour = new Contour();
-  contour->flatPoints.push_back( m1 );
-  object->contours.push_back( contour );
+  contour->flatPoints.push_back( p1 );
+  getObject()->contours.push_back( contour );
 }
 
 void ObjectFlatten::lineTo (const Vec2 &p1, int space)
 {
-  if (!isPenDown()) return;
+  if (contour == NULL) return;
 
-  Vec2 l0 = getPen();
-  Vec2 l1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
-  
-  object->lines.push_back( Line( l0.x,l0.y, l1.x,l1.y ));
-  contour->flatPoints.push_back( l1 );
+  Vec2 p0 = getPen();
+  getObject()->lines.push_back( Line( p0.x,p0.y, p1.x,p1.y ));
+  contour->flatPoints.push_back( p1 );
 }
 
 void ObjectFlatten::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
 {
-  if (!isPenDown()) return;
+  if (contour == NULL) return;
 
-  Vec2 q0 = getPen();
-  Vec2 q1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
-  Vec2 q2 = (space == SegSpace::Relative ? getPen() + p2 : p2);
-
-  object->quads.push_back( Quad( q0.x,q0.y, q1.x,q1.y, q2.x,q2.y ));
-  contour->flatPoints.push_back( q2 );
+  Vec2 p0 = getPen();
+  getObject()->quads.push_back( Quad( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y ));
+  contour->flatPoints.push_back( p2 );
 }
 
 void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
 {
-  if (!isPenDown()) return;
+  if (contour == NULL) return;
 
-  Vec2 c0 = getPen();
-  Vec2 c1 = (space == SegSpace::Relative ? getPen() + p1 : p1);
-  Vec2 c2 = (space == SegSpace::Relative ? getPen() + p2 : p2);
-  Vec2 c3 = (space == SegSpace::Relative ? getPen() + p3 : p3);
-
-  object->cubics.push_back( Cubic( c0.x,c0.y, c1.x,c1.y, c2.x,c2.y, c3.x,c3.y ));
-  contour->flatPoints.push_back( c2 );
+  Vec2 p0 = getPen();
+  getObject()->cubics.push_back( Cubic( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y, p3.x,p3.y ));
+  contour->flatPoints.push_back( p2 );
 }
 
 void ObjectFlatten::close ()
 {
-  if (!isPenDown()) return;
+  if (contour == NULL) return;
 
-  Vec2 l0 = getPen();
-  Vec2 l1 = getStart();
-
-  object->lines.push_back( Line( l0.x,l0.y, l1.x,l1.y ));
+  Vec2 p0 = getPen();
+  Vec2 p1 = getStart();
+  getObject()->lines.push_back( Line( p0.x,p0.y, p1.x,p1.y ));
+  contour = NULL;
 }
 
 
@@ -314,6 +261,7 @@ void subdivCubic (const Cubic &c, Cubic &c1, Cubic &c2)
   c2.p3 = c.p3;
 }
 
+
 void cubicToQuads (const Cubic &cu, std::vector< Quad > &out)
 {
   /*
@@ -370,11 +318,33 @@ void cubicToQuads (const Cubic &cu, std::vector< Quad > &out)
   out.push_back( Quad( C, d, cu.p3 ) );
 }
 
+void CubicsToQuads::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
+{
+  Cubic cubic;
+  cubic.p0 = getPen();
+  cubic.p1 = p1;
+  cubic.p2 = p2;
+  cubic.p3 = p3;
+
+  quads.clear();
+  cubicToQuads( cubic, quads );
+  for (Uint32 q=0; q<quads.size(); ++q)
+  {
+    Quad quad = quads[q];
+    ObjectClone::quadTo( quad.p1, quad.p2, space );
+  }
+}
+
 Object* Object::cubicsToQuads()
 {
+  CubicsToQuads proc;
+  process( proc, ProcessFlags::Absolute );
+  return proc.getClone();
+
+  /*
   Object *obj = new Object();
   obj->color = color;
-/*
+
   std::vector< Quad > quadsFromCubic;
 
   for (Uint32 c=0; c<contours.size(); ++c)
@@ -437,8 +407,9 @@ Object* Object::cubicsToQuads()
       }
     }//segments
   }//contours
-*/
+
   return obj;
+  */
 }
 
 void Object::updateBuffers()
@@ -527,6 +498,20 @@ int Image::getNumObjects () {
 
 Object* Image::getObject (int index) {
   return objects[ index ];
+}
+
+void Image::flatten ()
+{
+  for (Uint32 o=0; o<objects.size(); ++o)
+  {
+    Object* obj = objects[o];
+    if (!obj->flat)
+    {
+      ObjectFlatten proc;
+      obj->process( proc, ProcessFlags::Absolute );
+      obj->flat = true;
+    }
+  }
 }
 
 void Image::updateBounds ()
@@ -636,6 +621,7 @@ void Image::updateBuffers ()
 void Image::update ()
 {
   //Prepare image data for rendering
+  flatten();
   updateBounds();
   updateBuffers();
 }
@@ -643,6 +629,7 @@ void Image::update ()
 void Image::encodeCpu (EncoderCpu *encoder)
 {
   //Prepare image data for encoding
+  flatten();
   updateBounds();
   updateBuffers();
 
@@ -749,6 +736,7 @@ void Image::encodeCpu (EncoderCpu *encoder)
 void Image::encodeGpu (EncoderGpu *encoder)
 {
   //Prepare image data for encoding
+  flatten();
   updateBounds();
   updateBuffers();
 

@@ -907,8 +907,8 @@ int main (int argc, char **argv)
   ///////////////////////////////////////////////////////
   // SVG
 
-  imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
-  imageWorld->setGridResolution( 200, 200 );
+  //imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
+  //imageWorld->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////
   // Tests

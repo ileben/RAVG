@@ -45,6 +45,12 @@ namespace SegType {
   };
 };
 
+namespace ProcessFlags {
+  enum Enum {
+    Absolute = (1 << 0)
+  };
+};
+
 struct Line
 {
   Vec2 p0;
@@ -114,17 +120,13 @@ private:
 
 class Object
 {
+  friend class ObjectProcessor;
   friend class ObjectFlatten;
   friend class Image;
 
 private:
-  Contour *contour;
-  bool penDown;
-  Vec2 pen;
-  Vec2 start;
 
-private:
-
+  bool flat;
   Vec2 min;
   Vec2 max;
 
@@ -140,7 +142,7 @@ private:
   std::vector< int > segments;
   std::vector< Vec2 > points;
 
-  //processed data
+  //flat data
   std::vector< Contour* > contours;
   std::vector< Line > lines;
   std::vector< Cubic > cubics;
@@ -150,6 +152,7 @@ private:
 
   void updateBounds();
   void updateBuffers();
+  void clearFlat();
 
 public:
 
@@ -173,7 +176,9 @@ public:
 
   void close();
 
-  void process (ObjectProcessor &proc);
+  void clear();
+
+  void process (ObjectProcessor &proc, ProcessFlags::Enum flags);
 
   Object* cubicsToQuads();
 };
@@ -184,31 +189,34 @@ class ObjectProcessor
   friend class Object;
 
 private:
-  bool penDown;
+  Object *object;
   Vec2 pen;
   Vec2 start;
 
 protected:
-  const Vec2& getPen ();
-  const Vec2& getStart ();
-  const bool isPenDown ();
+  Object *getObject() { return object; }
+  const Vec2& getPen () { return pen; }
+  const Vec2& getStart () { return start; }
 
 public:
-  virtual void moveTo (const Vec2 &p1, int space) = 0;
-  virtual void lineTo (const Vec2 &p1, int space) = 0;
-  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) = 0;
-  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) = 0;
-  virtual void close () = 0;
+
+  virtual void begin() {}
+  virtual void moveTo (const Vec2 &p1, int space) {}
+  virtual void lineTo (const Vec2 &p1, int space) {}
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) {}
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) {}
+  virtual void close () {}
+  virtual void end() {}
 };
 
 
 class ObjectFlatten : public ObjectProcessor
 {
-  Object *object;
   Contour *contour;
+  bool penDown;
 
 public:
-  ObjectFlatten (Object *o);
+  ObjectFlatten ();
   virtual void moveTo (const Vec2 &p1, int space);
   virtual void lineTo (const Vec2 &p1, int space);
   virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space);
@@ -216,13 +224,40 @@ public:
   virtual void close ();
 };
 
-class CubicsToQuads : public ObjectProcessor
+class ObjectClone : public ObjectProcessor
 {
-  virtual void moveTo (const Vec2 &p1, int space) = 0;
-  virtual void lineTo (const Vec2 &p1, int space) = 0;
-  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) = 0;
-  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) = 0;
-  virtual void close () = 0;
+protected:
+  Object *clone;
+
+public:
+  virtual void begin ()
+  { clone = new Object(); }
+
+  virtual void moveTo (const Vec2 &p1, int space)
+  { clone->moveTo( p1.x, p1.y, space ); }
+
+  virtual void lineTo (const Vec2 &p1, int space)
+  { clone->lineTo( p1.x, p1.y, space ); }
+
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space)
+  { clone->quadTo( p1.x, p1.y, p2.x, p2.y, space ); }
+
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
+  { clone->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, space ); }
+
+  virtual void close ()
+  { clone->close(); }
+
+  Object* getClone()
+  { return clone; }
+};
+
+class CubicsToQuads : public ObjectClone
+{
+  std::vector< Quad > quads;
+
+public:
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space);
 };
 
 
@@ -261,6 +296,7 @@ private:
   int   *ptrCpuGrid;
   float *ptrCpuStream;
 
+  void flatten ();
   void updateBounds ();
   void updateBuffers ();
 

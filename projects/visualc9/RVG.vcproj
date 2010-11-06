@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="freeglut.lib freetype243.lib"
+				AdditionalDependencies="freeglut.lib freetype243.lib pugixml_s.lib"
 				ShowProgress="0"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
