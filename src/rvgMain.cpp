@@ -22,15 +22,14 @@ Shader *shaderGrid;
 
 //Data
 
-int gridResX = 60;
-int gridResY = 60;
-
 Image *imageTiger;
 Image *imageText;
+Image *imageTextPart;
+Image *imageWorld;
 
 //User interface
 
-int resX = 500;
+int resX = 550;
 int resY = 600;
 
 int mouseButton = 0;
@@ -39,10 +38,6 @@ Vec2 mouseDown;
 Float angleX = 0.0f;
 Float angleY = 0.0f;
 Float zoomZ = 6.0f;
-
-Float panX = 0.0f;
-Float panY = 0.0f;
-Float zoomS = 1.0f;
 
 //Options
 
@@ -55,7 +50,24 @@ Results results;
 
 //Tests
 
-std::vector< Test* > tests;
+TestGroup tests( "output.txt" );
+
+//Lorem Ipsum
+
+const std::string loremIpsum =
+"Lorem ipsum dolor sit amet, consectetur adipisicing elit,\n"
+"sed do eiusmod tempor incididunt ut labore et dolore magna\n"
+"aliqua. Ut enim ad minim veniam, quis nostrud exercitation\n"
+"ullamco laboris nisi ut aliquip ex ea commodo consequat.\n"
+"Duis aute irure dolor in reprehenderit in voluptate velit\n"
+"esse cillum dolore eu fugiat nulla pariatur. Excepteur sint\n"
+"occaecat cupidatat non proident, sunt in culpa qui officia\n"
+"deserunt mollit anim id est laborum.";
+
+const std::string loremIpsum3 =
+  loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum;
+
+
 
 ///////////////////////////////////////////////////////////////////
 // Forward declaration
@@ -113,25 +125,38 @@ void renderQuad (Shader *shader, Vec2 min, Vec2 max)
   glDisableVertexAttribArray( pos );
 }
 
-void renderImageClassic1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool invert=false)
+void renderImageClassicFlat (Image *image, bool invert=false)
 {
-  //Render using current pan and zoom
-
   glViewport( 0,0, resX, resY );
   glDisable( GL_DEPTH_TEST );
+
+  //Get zoom and pan values from settings
+  float zoomS = options[ Opt::ZoomS ].toFloat();
+  float panX = options[ Opt::PanX ].toFloat();
+  float panY = options[ Opt::PanY ].toFloat();
   
+  //Translate image according to settings
   matModelView.push();
-  matModelView.translate( offX, offY, 0 );
   matModelView.translate( panX, panY, 0 );
+
+  //Center image to screen
+  matModelView.translate( resX * 0.5f, resY * 0.5f, 0 );
+
+  //Scale image according to settings
   matModelView.scale( zoomS, zoomS, zoomS );
   if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
+
+  //Center image to origin
+  Vec2 sz = image->getSize();
+  matModelView.translate( -sz.x * 0.5f, -sz.y * 0.5f, 0.0f );
+  matModelView.translate( -image->getMin().x, -image->getMin().y, 0.0f );
 
   image->renderClassic( rendererClassic );
 
   matModelView.pop();
 }
 
-void renderImageRandom1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool invert=false)
+void renderImageRandomFlat (Image *image, bool invert=false)
 {
   //Setup quad buffer
 
@@ -157,27 +182,37 @@ void renderImageRandom1to1 (Image *image, float offX=0.0f, float offY=0.0f, bool
     buf.toGpu();
   }
 
-  //Render using current pan and zoom
-
   glViewport( 0,0, resX, resY );
   glDisable( GL_DEPTH_TEST );
 
+  //Get zoom and pan values from settings
+  float zoomS = options[ Opt::ZoomS ].toFloat();
+  float panX = options[ Opt::PanX ].toFloat();
+  float panY = options[ Opt::PanY ].toFloat();
+
+  //Translate image according to settings
   matModelView.push();
-  matModelView.translate( offX, offY, 0 );
   matModelView.translate( panX, panY, 0 );
+
+  //Center image to screen
+  matModelView.translate( resX * 0.5f, resY * 0.5f, 0 );
+
+  //Scale image according to settings
   matModelView.scale( zoomS, zoomS, zoomS );
   if (invert) matModelView.scale( 1.0f, -1.0f, 1.0f );
 
+  //Scale [0,1] quad to match image and center to origin
   Vec2 sz = image->getSize();
-  matModelView.translate( image->getMin().x, image->getMin().y, 0.0f );
+  matModelView.translate( -sz.x * 0.5f, -sz.y * 0.5f, 0.0f );
   matModelView.scale( sz.x, sz.y, 1.0f );
 
+  //Transform [0,1] texture coordinates into image position
   matTexture.push();
   matTexture.identity();
   matTexture.translate( image->getMin().x, image->getMin().y, 0.0f );
   matTexture.scale( sz.x, sz.y, 1.0f );
 
-  switch (options[ Opt::Rep ]) {
+  switch (options[ Opt::Rep ].toInt()) {
   case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_QUADS );  break;
   case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_QUADS ); break;
   }
@@ -252,7 +287,7 @@ void renderImageRandomCylinder (Image *image, bool invert)
     matTexture.scale( 1.0f, -1.0, 1.0f );
   }
 
-  switch (options[ Opt::Rep ]) {
+  switch (options[ Opt::Rep ].toInt()) {
   case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_TRIANGLE_STRIP );  break;
   case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_TRIANGLE_STRIP ); break;
   }
@@ -262,55 +297,173 @@ void renderImageRandomCylinder (Image *image, bool invert)
   matTexture.pop();
 }
 
+std::string bytesToString (Uint64 bytes)
+{
+  double f = (double)bytes;
+  int u = 0;
+  std::string units[] = { "b", "KB", "MB", "GB", "TB" };
+
+  while (f > 1024.0)
+  {
+    f /= 1024;
+    u++;
+  }
+
+  std::ostringstream out;
+  out.precision( 2 );
+  out << std::fixed << f << units[ u ];
+  return out.str();
+}
+
+void measureData (EncoderCpu *encoder)
+{
+  Uint32 totalStreamLen;
+  encoder->getTotalStreamInfo( totalStreamLen );
+  
+  Uint32 maxCellLen = 0;
+  Uint32 maxCellObjects = 0;
+  Uint32 maxCellSegments = 0;
+
+  for (int x=0; x < encoder->gridSize.x; ++x) {
+    for (int y=0; y < encoder->gridSize.y; ++y) {
+
+      Uint32 cellLen = 0, cellObjects = 0, cellSegments = 0;
+      encoder->getCellStreamInfo( x, y, cellLen, cellObjects, cellSegments );
+
+      if (cellLen > maxCellLen) maxCellLen = cellLen;
+      if (cellObjects > maxCellObjects) maxCellObjects = cellObjects;
+      if (cellSegments > maxCellSegments) maxCellSegments = cellSegments;
+    }}
+
+  results[ Res::StreamMegaBytes ]  = (float) (totalStreamLen * 4) / (1024 * 1024);
+  results[ Res::CellBytes ]    = (int) maxCellLen * 4;
+  results[ Res::CellWords ]    = (int) maxCellLen;
+  results[ Res::CellObjects ]  = (int) maxCellObjects;
+  results[ Res::CellSegments ] = (int) maxCellSegments;
+}
+
+void adjustTigerImage ()
+{
+  //Adjust grid resolution to match settings
+  int g = options[ Opt::GridSize ].toInt();
+  imageTiger->setGridResolution( g, g );
+}
+
+void adjustTextImage ()
+{
+  //Get limit on number of glyphs from the settings
+  int numGlyphs = options[ Opt::NumGlyphs ].toInt();
+
+  //Clear the partial text image
+  imageTextPart->removeAllObjects();
+
+  //Iterate glyphs in the original image until limit met
+  int g=0, w=0, numLines = 1, maxWidth = 1;
+  for (Uint c=0; g<numGlyphs && c<loremIpsum3.length(); ++c)
+  {
+    //Check for line break and increase line count
+    const char& chr = loremIpsum3[ c ];
+    if (chr == '\n') {
+      numLines++;
+      w = 0;
+      continue;
+    }
+
+    //Copy glyph from original to partial image
+    imageTextPart->addObject( imageText->getObject(g) );
+    g++; w++;
+
+    //Update longest line
+    if (w > maxWidth)
+      maxWidth = w;
+  }
+
+  //Adjust grid resolution to keep a constant number of cells per glyph
+  //imageTextPart->setGridResolution( maxWidth * 4, numLines * 4 );
+  imageTextPart->setGridResolution( maxWidth * 2, numLines * 2 );
+  //imageTextPart->setGridResolution( maxWidth, numLines );
+}
+
 void display ()
 {
   glClearColor( 1,1,1,1 );
   glClear( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
   Image *image;
-  float offX=0.0f, offY=0.0f;
   bool invert=false;
 
-  switch (options[ Opt::Source ]) {
-  case Source::Tiger:
+  //Pick image to match settings
+  switch (options[ Opt::Source ].toInt()) {
+  case Source::Tiger:{
     image = imageTiger;
-    offX = 180.0f;
-    offY = 400.0f;
+    adjustTigerImage();
     invert = true;
-    break;
+    break;}
   
   case Source::Text:
-    image = imageText;
+    image = imageTextPart;
+    adjustTextImage();
+    break;
+
+  case Source::World:
+    image = imageWorld;
     break;
   }
-  
+
+  //Calculate image screen size
+  float zoomS = options[ Opt::ZoomS ].toFloat();
+  ivec2 screenSize = ivec2( image->getSize() * zoomS );
+  results[ Res::ScreenWidth ] = screenSize.x;
+  results[ Res::ScreenHeight ] = screenSize.y;
+
+
+  //Check selected renderer type
   if (options[ Opt::Render ] == Render::Classic)
   {
+    //Update image
+    static bool first = true;
+    static Options prevOptions = options;
+    if (first || (prevOptions != options))
+    {
+      image->update();
+      prevOptions = options;
+      first = false;
+    }
+
     //Render image classic
-    if (options[ Opt::Draw ])
-      renderImageClassic1to1( image, offX, offY, invert );
+    if (options[ Opt::Draw ].toInt())
+      renderImageClassicFlat( image, invert );
   }
   else if (options[ Opt::Render ] == Render::Random)
   {
     //Encode image
     static bool first = true;
     static Options prevOptions = options;
-    if (first || (prevOptions != options) || options[ Opt::Encode ])
+    if (first || (prevOptions != options) || options[ Opt::Encode ].toInt())
     {
       prevOptions = options;
       first = false;
 
-      switch (options[ Opt::Proc ]) {
+      switch (options[ Opt::Proc ].toInt()) {
       case Proc::Cpu:
 
-        switch (options[ Opt::Rep ]) {
+        switch (options[ Opt::Rep ].toInt()) {
         case Rep::Aux:   image->encodeCpu( encoderCpuAux ); break;
         case Rep::Pivot: image->encodeCpu( encoderCpuPivot ); break;
-        } break;
+        }
 
+        //Measure size of image data
+        if (options[ Opt::Measure ].toInt()) {
+          switch (options[ Opt::Rep ].toInt()) {
+          case Rep::Aux:   measureData( encoderCpuAux ); break;
+          case Rep::Pivot: measureData( encoderCpuPivot ); break;
+          }
+        }
+
+        break;
       case Proc::Gpu:
 
-        switch (options[ Opt::Rep ]) {
+        switch (options[ Opt::Rep ].toInt()) {
         case Rep::Aux:   image->encodeGpu( encoderGpuAux ); break;
         case Rep::Pivot: image->encodeGpu( encoderGpuPivot ); break;
         } break;
@@ -318,34 +471,43 @@ void display ()
     }
 
     //Render image random-access
-    if (options[ Opt::Draw ]) {
-      switch (options[ Opt::View ]) {
-      case View::Flat:     renderImageRandom1to1( image, offX, offY, invert ); break;
+    if (options[ Opt::Draw ].toInt()) {
+      switch (options[ Opt::View ].toInt()) {
+      case View::Flat:     renderImageRandomFlat( image, invert ); break;
       case View::Cylinder: renderImageRandomCylinder( image, invert ); break;
       }
     }
   }
 
-  //Check fps
+  //Add to fps
   static int fps = 0;
-  static int lastUpdate = glutGet( GLUT_ELAPSED_TIME );
   fps++;
 
+  //Check if 1 second elapsed
+  static int lastUpdate = glutGet( GLUT_ELAPSED_TIME );
   int now = glutGet( GLUT_ELAPSED_TIME );
-  if (now - lastUpdate > 1000) {
+  if (now - lastUpdate > 1000)
+  {
+    //Write out FPS result
     results[ Res::Fps ] = fps;
     std::cout << "Fps: " << fps << std::endl;
+    
+    //Submit results
+    if (tests.running())
+    {
+      tests.results( results );
+      if (tests.done()) {
+        std::cout << "~~~~~~~~~ TESTS DONE ~~~~~~~~~" << std::endl;
+        tests.reset();
+      }else{
+        options = tests.next();
+        reportState();
+      }
+    }
+
+    //Reset fps
     lastUpdate = now;
     fps = 0;
-    /*
-    //Submit results
-    tests[0]->results( results );
-    if (tests[0]->done()) {
-      std::cout << "DONE" << std::endl;
-      tests[0]->reset();
-    }
-    options = tests[0]->next();
-    reportState(); */
   }
 
   //Check for errors
@@ -378,33 +540,44 @@ void reportState ()
 {
   std::cout << std::endl;
 
-  std::cout << (options[ Opt::Draw ] ? "(F1) Drawing ON" : "(F1) Drawing OFF" ) << std::endl;
-  std::cout << (options[ Opt::Encode ] ? "(F2) Encoding ON" : "(F2) Encoding OFF" ) << std::endl;
+  std::cout << (options[ Opt::Draw ].toInt() ? "(F1) Drawing ON" : "(F1) Drawing OFF" ) << std::endl;
+  std::cout << (options[ Opt::Encode ].toInt() ? "(F2) Encoding ON" : "(F2) Encoding OFF" ) << std::endl;
 
-  switch (options[ Opt::Proc ]) {
+  switch (options[ Opt::Proc ].toInt()) {
   case Proc::Cpu: std::cout << "(F3) Encoding with CPU" << std::endl; break;
   case Proc::Gpu: std::cout << "(F3) Encoding with GPU" << std::endl; break;
   }
 
-  switch (options[ Opt::Rep ]) {
+  switch (options[ Opt::Rep ].toInt()) {
   case Rep::Aux:   std::cout << "(F4) Representation AUX" << std::endl; break;
   case Rep::Pivot: std::cout << "(F4) Representation PIVOT" << std::endl; break;
   }
 
-  switch (options[ Opt::Render ]) {
+  switch (options[ Opt::Render ].toInt()) {
   case Render::Classic:  std::cout << "(F5) Renderer Classic" << std::endl; break;
   case Render::Random:   std::cout << "(F5) Renderer Random-Access" << std::endl; break;
   }
 
-  switch (options[ Opt::View ]) {
+  switch (options[ Opt::View ].toInt()) {
   case View::Flat:     std::cout << "(F6) View Flat" << std::endl; break;
   case View::Cylinder: std::cout << "(F6) View Cylinder" << std::endl; break;
   }
 
-  switch (options[ Opt::Source ]) {
+  switch (options[ Opt::Source ].toInt()) {
   case Source::Tiger: std::cout << "(F7) Image Tiger" << std::endl; break;
   case Source::Text:  std::cout << "(F7) Image Text" << std::endl; break;
   }
+
+  std::cout << (options[ Opt::Measure ].toInt() ? "(F8) Measure ON" : "(F8) Measure OFF" ) << std::endl;
+
+  float zoomS = options[ Opt::ZoomS ].toFloat();
+  std::cout << "Zoom: " << zoomS << std::endl;
+
+  int gridSize = options[ Opt::GridSize ].toInt();
+  std::cout << "Grid: " << gridSize << "x" << gridSize << std::endl;
+
+  int numGlyphs = options[ Opt::NumGlyphs ].toInt();
+  std::cout << "Glyphs: " << numGlyphs << std::endl;
 
   ivec2 screenSize = ivec2( imageTiger->getSize() * zoomS );
   std::cout << "Image screen size: " << screenSize.x << "x" << screenSize.y << "px" << std::endl;
@@ -412,7 +585,37 @@ void reportState ()
   std::cout << std::endl;
 }
 
-void specialKey (int key, int x, int y)
+void keyDown (unsigned char key, int x, int y)
+{
+  if (key == '+')
+  {
+    int gridSize = options[ Opt::GridSize ].toInt();
+    gridSize += 10;
+    options[ Opt::GridSize ] = gridSize;
+  }
+  else if (key == '-')
+  {
+    int gridSize = options[ Opt::GridSize ].toInt();
+    if (gridSize >= 10) gridSize -= 10;
+    options[ Opt::GridSize ] = gridSize;
+  }
+  else if (key == '*')
+  {
+    int numGlyphs = options[ Opt::NumGlyphs ].toInt();
+    numGlyphs += 10;
+    options[ Opt::NumGlyphs ] = numGlyphs;
+  }
+  else if (key == '/')
+  {
+    int numGlyphs = options[ Opt::NumGlyphs ].toInt();
+    if (numGlyphs > 10) numGlyphs -= 10;
+    options[ Opt::NumGlyphs ] = numGlyphs;
+  }
+
+  reportState();
+}
+
+void specialKeyDown (int key, int x, int y)
 {
   /*
   if (key == GLUT_KEY_F7)
@@ -423,11 +626,25 @@ void specialKey (int key, int x, int y)
     //shaderStream->load();
   }*/
 
-  if (key >= GLUT_KEY_F1 && key < GLUT_KEY_F1 + Opt::Count)
+  //if (key >= GLUT_KEY_F1 && key < GLUT_KEY_F1 + Opt::Count)
+  if (key >= GLUT_KEY_F1 && key <= GLUT_KEY_F8)
   {
     int opt = key - GLUT_KEY_F1;
-    options[ opt ] = (options[ opt ] + 1) % optionsCount[ opt ];
+    options[ opt ] = (options[ opt ].toInt() + 1) % optionsCount[ opt ];
     reportState();
+  }
+
+  if (key == GLUT_KEY_F12)
+  {
+    //Stop tests if running
+    if (tests.running())
+      tests.reset();
+    else
+    {
+      //Begin tests if not
+      options = tests.next();
+      reportState();
+    }
   }
 }
 
@@ -459,12 +676,18 @@ void mouseMove (int x, int y)
   {
     if (mouseButton == GLUT_LEFT_BUTTON)
     {
+      float panX = options[ Opt::PanX ].toFloat();
+      float panY = options[ Opt::PanY ].toFloat();
       panX += mouseDiff.x;
       panY += -mouseDiff.y;
+      options[ Opt::PanX ] = panX;
+      options[ Opt::PanY ] = panY;
     }
     else if (mouseButton == GLUT_RIGHT_BUTTON)
     {
+      float zoomS = options[ Opt::ZoomS ].toFloat();
       zoomS *= 1.0f + mouseDiff.y / 100.0f;
+      options[ Opt::ZoomS ] = zoomS;
     }
   }
 }
@@ -485,9 +708,9 @@ void rvgGlutInit (int argc, char **argv)
   
   glutReshapeFunc( reshape );
   glutDisplayFunc( display );
-  //glutKeyboardFunc( keyDown );
+  glutKeyboardFunc( keyDown );
   //glutKeyboardUpFunc( keyUp );
-  glutSpecialFunc( specialKey );
+  glutSpecialFunc( specialKeyDown );
   glutMouseFunc( mouseClick );
   glutMotionFunc( mouseMove );
   //glutPassiveMotionFunc( mouseMove );
@@ -567,61 +790,6 @@ void processCommands (Object *o, int i)
   //if (commands[ numCommands-1 ] != VG_CLOSE_PATH)
     //o->close();
 }
-
-std::string bytesToString (Uint64 bytes)
-{
-  double f = (double)bytes;
-  int u = 0;
-  std::string units[] = { "b", "KB", "MB", "GB", "TB" };
-
-  while (f > 1024.0)
-  {
-    f /= 1024;
-    u++;
-  }
-
-  std::ostringstream out;
-  out.precision( 2 );
-  out << std::fixed << f << units[ u ];
-  return out.str();
-}
-
-void measureData (EncoderCpu *encoder)
-{
-  Uint32 cpuTotalStreamLen;
-  encoder->getTotalStreamInfo( cpuTotalStreamLen );
-  
-  Uint32 cpuMaxCellLen = 0;
-  Uint32 cpuMaxCellObjects = 0;
-  Uint32 cpuMaxCellSegments = 0;
-
-  for (int x=0; x < gridResX; ++x) {
-    for (int y=0; y < gridResY; ++y) {
-
-      Uint32 cellLen = 0, cellObjects = 0, cellSegments = 0;
-      encoder->getCellStreamInfo( x, y, cellLen, cellObjects, cellSegments );
-
-      if (cellLen > cpuMaxCellLen) cpuMaxCellLen = cellLen;
-      if (cellObjects > cpuMaxCellObjects) cpuMaxCellObjects = cellObjects;
-      if (cellSegments > cpuMaxCellSegments) cpuMaxCellSegments = cellSegments;
-    }}
-
-  std::cout << "Total stream bytes: " << bytesToString( cpuTotalStreamLen * 4 ) << std::endl;
-  std::cout << "Max cell bytes: " << bytesToString( cpuMaxCellLen * 4 ) << std::endl;
-  std::cout << "Max cell words: " << cpuMaxCellLen << std::endl;
-  std::cout << "Max cell objects: " << cpuMaxCellObjects << std::endl;
-  std::cout << "Max cell segments: " << cpuMaxCellSegments << std::endl;
-}
-
-const std::string loremIpsum =
-"Lorem ipsum dolor sit amet, consectetur adipisicing elit,\n"
-"sed do eiusmod tempor incididunt ut labore et dolore magna\n"
-"aliqua. Ut enim ad minim veniam, quis nostrud exercitation\n"
-"ullamco laboris nisi ut aliquip ex ea commodo consequat.\n"
-"Duis aute irure dolor in reprehenderit in voluptate velit\n"
-"esse cillum dolore eu fugiat nulla pariatur. Excepteur sint\n"
-"occaecat cupidatat non proident, sunt in culpa qui officia\n"
-"deserunt mollit anim id est laborum.";
 
 int main (int argc, char **argv)
 {
@@ -712,80 +880,40 @@ int main (int argc, char **argv)
     imageTiger->addObject( obj );
   }
 
-  imageTiger->setGridResolution( gridResX, gridResY );
+  int g = options[ Opt::GridSize ].toInt();
+  imageTiger->setGridResolution( g, g );
   imageTiger->encodeCpu( encoderCpuPivot );
   measureData( encoderCpuPivot );
+
+  int streamBytes = (int) results[ Res::StreamMegaBytes ].toFloat() * 1024 * 1024;
+  std::cout << "Total stream bytes: " << bytesToString( streamBytes ) << std::endl;
+  std::cout << "Max cell bytes: " << bytesToString( results[ Res::CellBytes ].toInt() ) << std::endl;
+  std::cout << "Max cell words: " << results[ Res::CellWords ] << std::endl;
+  std::cout << "Max cell objects: " << results[ Res::CellObjects ] << std::endl;
+  std::cout << "Max cell segments: " << results[ Res::CellSegments ] << std::endl;
 
   ///////////////////////////////////////////////////////
   // Text
 
-  Font *f = new Font( "Timeless.ttf" );
+  Font *f = new Font( "Timeless.ttf", 20 );
   //imageText = f->getWord( "Hello\nWorld" );
   //imageText->setGridResolution( 50, 10 );
-  imageText = f->getWord( loremIpsum+"\n\n"+loremIpsum+"\n\n"+loremIpsum );
+  imageText = f->getWord( loremIpsum3 );
   imageText->setGridResolution( 200, 200 );
+
+  imageTextPart = new Image();
+  imageTextPart->setGridResolution( 200, 200 );
+
+  ///////////////////////////////////////////////////////
+  // SVG
+
+  imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
+  imageWorld->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////
   // Tests
 
-  Options optEncodeTiger = 
-    OptVal( Opt::Draw,   Draw::False ) +
-    OptVal( Opt::Encode, Encode::True ) +
-    OptVal( Opt::Source, Source::Tiger ) +
-    OptVal( Opt::Render, Render::Random );
-
-  Options optCpuAuxE = optEncodeTiger +
-    OptVal( Opt::Proc, Proc::Cpu ) +
-    OptVal( Opt::Rep,  Rep::Aux );
-
-  Options optCpuPivotE = optEncodeTiger +
-    OptVal( Opt::Proc, Proc::Cpu ) +
-    OptVal( Opt::Rep,  Rep::Pivot );
-
-  Options optGpuAuxE = optEncodeTiger +
-    OptVal( Opt::Proc, Proc::Gpu) +
-    OptVal( Opt::Rep,  Rep::Aux );
-
-  Options optGpuPivotE = optEncodeTiger +
-    OptVal( Opt::Proc, Proc::Gpu ) +
-    OptVal( Opt::Rep,  Rep::Pivot );
-
-  Test *testETime = new Test( Opt::Grid, Res::Fps, 4, 1 );
-  //testETime->addArguments( 20, 40, 60, 80, 100, -1 );
-  testETime->addArguments( 20, 40, -1 );
-  testETime->addEnvironment( "Cpu Auxiliary", optCpuAuxE );
-  testETime->addEnvironment( "Cpu Pivot",     optCpuPivotE );
-  testETime->addEnvironment( "Gpu Auxiliary", optGpuAuxE );
-  testETime->addEnvironment( "Gpu Pivot",     optGpuPivotE );
-  //tests.push_back( testETime );
-
-  Options optRenderFlatTiger =
-    OptVal( Opt::Draw,   Draw::True ) +
-    OptVal( Opt::Encode, Encode::False ) +
-    OptVal( Opt::View,   View::Flat ) +
-    OptVal( Opt::Source, Source::Tiger );
-
-  Options optAuxR = optRenderFlatTiger +
-    OptVal( Opt::Render, Render::Random ) +
-    OptVal( Opt::Rep,    Rep::Aux ) +
-    OptVal( Opt::Proc,   Proc::Gpu );
-
-  Options optPivotR = optRenderFlatTiger +
-    OptVal( Opt::Render, Render::Random ) +
-    OptVal( Opt::Rep,    Rep::Pivot ) +
-    OptVal( Opt::Proc,   Proc::Gpu );
-
-  Options optClassicR = optRenderFlatTiger +
-    OptVal( Opt::Render, Render::Classic );
-
-  Test *testRTime = new Test( Opt::Grid, Res::Fps, 4, 1 );
-  //testRTime->addArguments( 20, 40, 60, 80, 100, -1 );
-  testRTime->addArguments( 20, 40, -1 );
-  testRTime->addEnvironment( "Auxiliary", optAuxR );
-  testRTime->addEnvironment( "Pivot",     optPivotR );
-  testRTime->addEnvironment( "Classic",   optClassicR );
-  tests.push_back( testRTime );
-
+  initTests( tests );
   
   ///////////////////////////////////////////////////////
   // Main loop

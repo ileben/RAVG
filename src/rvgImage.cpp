@@ -20,7 +20,7 @@ void Object::setColor( float r, float g, float b, float a )
 }
 
 void Object::moveTo( Float x, Float y,
-  SegSpace::Enum space )
+  int space )
 {
   contour = new Contour();
   contours.push_back( contour );
@@ -35,7 +35,7 @@ void Object::moveTo( Float x, Float y,
 }
 
 void Object::lineTo( Float x, Float y,
-  SegSpace::Enum space )
+  int space )
 {
   if (!penDown) return;
 
@@ -48,7 +48,7 @@ void Object::lineTo( Float x, Float y,
 }
 
 void Object::quadTo( Float x1, Float y1, Float x2, Float y2,
-  SegSpace::Enum space )
+  int space )
 {
   if (!penDown) return;
 
@@ -62,7 +62,7 @@ void Object::quadTo( Float x1, Float y1, Float x2, Float y2,
 }
 
 void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3,
-  SegSpace::Enum space )
+  int space )
 {
   if (!penDown) return;
 
@@ -85,6 +85,65 @@ void Object::close()
   lines.push_back( Line( pen.x,pen.y, start.x,start.y ));
   pen.set( start.x, start.y );
   penDown = false;
+}
+
+void Object::process (ObjectProcessor &proc)
+{
+  Object *obj = new Object();
+  obj->color = color;
+
+  std::vector< Quad > quadsFromCubic;
+
+  for (Uint32 c=0; c<contours.size(); ++c)
+  {
+    Contour *cnt = contours[c];
+    int p=0;
+
+    for (Uint32 s=0; s<cnt->segments.size(); ++s)
+    {
+      int seg = cnt->segments[s];
+      int segType = seg & SegType::Mask;
+      int segSpace = seg & SegSpace::Mask;
+      switch (segType)
+      {
+      case SegType::MoveTo:{
+
+        vec2 p0 = cnt->points[ p ];
+        obj->moveTo( p0.x, p0.y, segSpace );
+        p += 1;
+
+        break;}
+      case SegType::LineTo:{
+
+        vec2 p0 = cnt->points[ p ];
+        obj->lineTo( p0.x, p0.y, segSpace );
+        p += 1;
+
+        break;}
+      case SegType::QuadTo:{
+
+        vec2 p0 = cnt->points[ p+0 ];
+        vec2 p1 = cnt->points[ p+1 ];
+        obj->quadTo( p0.x, p0.y, p1.x, p1.y, segSpace );
+        p += 2;
+
+        break;}
+      case SegType::CubicTo:{
+
+        vec2 p0 = cnt->points[ p+0 ];
+        vec2 p1 = cnt->points[ p+1 ];
+        vec2 p2 = cnt->points[ p+2 ];
+        obj->cubicTo( p0.x, p0.y, p1.x, p1.y, p2.x, p1.y, segSpace );
+        p += 3;
+
+        break;}
+      case SegType::Close:{
+
+        obj->close();
+        break;}
+      }
+    }//segments
+  }//contours
 }
 
 void Object::updateBounds()
@@ -222,20 +281,21 @@ Object* Object::cubicsToQuads()
     for (Uint32 s=0; s<cnt->segments.size(); ++s)
     {
       int seg = cnt->segments[s];
-      int segType = seg & 0x7F;
+      int segType = seg & SegType::Mask;
+      int segSpace = seg & SegSpace::Mask;
       switch (segType)
       {
       case SegType::MoveTo:{
 
         vec2 p0 = cnt->points[ p ];
-        obj->moveTo( p0.x, p0.y );
+        obj->moveTo( p0.x, p0.y, segSpace );
         p += 1;
 
         break;}
       case SegType::LineTo:{
 
         vec2 p0 = cnt->points[ p ];
-        obj->lineTo( p0.x, p0.y );
+        obj->lineTo( p0.x, p0.y, segSpace );
         p += 1;
 
         break;}
@@ -243,7 +303,7 @@ Object* Object::cubicsToQuads()
 
         vec2 p0 = cnt->points[ p+0 ];
         vec2 p1 = cnt->points[ p+1 ];
-        obj->quadTo( p0.x, p0.y, p1.x, p1.y );
+        obj->quadTo( p0.x, p0.y, p1.x, p1.y, segSpace );
         p += 2;
 
         break;}
@@ -264,6 +324,11 @@ Object* Object::cubicsToQuads()
           obj->quadTo( quad.p1.x, quad.p1.y, quad.p2.x, quad.p2.y );
         }
         
+        break;}
+
+      case SegType::Close:{
+
+        obj->close();
         break;}
       }
     }//segments
@@ -345,6 +410,19 @@ void Image::setGridResolution (int x, int y)
 void Image::addObject (Object *obj)
 {
   objects.push_back( obj );
+}
+
+void Image::removeAllObjects ()
+{
+  objects.clear();
+}
+
+int Image::getNumObjects () {
+  return objects.size();
+}
+
+Object* Image::getObject (int index) {
+  return objects[ index ];
 }
 
 void Image::updateBounds ()
@@ -451,10 +529,16 @@ void Image::updateBuffers ()
   checkGlError( "Image::updateBuffers gpuobjStream" );
 }
 
+void Image::update ()
+{
+  //Prepare image data for rendering
+  updateBounds();
+  updateBuffers();
+}
 
 void Image::encodeCpu (EncoderCpu *encoder)
 {
-  //Prepare encoding input
+  //Prepare image data for encoding
   updateBounds();
   updateBuffers();
 
@@ -560,7 +644,7 @@ void Image::encodeCpu (EncoderCpu *encoder)
 
 void Image::encodeGpu (EncoderGpu *encoder)
 {
-  //Prepare encoding input
+  //Prepare image data for encoding
   updateBounds();
   updateBuffers();
 

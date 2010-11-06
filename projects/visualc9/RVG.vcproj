@@ -136,7 +136,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="freeglut.lib freetype243.lib"
+				AdditionalDependencies="freeglut.lib freetype243.lib pugixml_s.lib"
 				ShowProgress="0"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
@@ -176,6 +176,10 @@
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
+			<File
+				RelativePath="..\..\src\rvgBenchmark.cpp"
+				>
+			</File>
 			<File
 				RelativePath="..\..\src\rvgBenchmark.h"
 				>
@@ -241,6 +245,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\rvgIntFloat.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\rvgMain.cpp"
 				>
 			</File>
@@ -278,6 +286,14 @@
 			</File>
 			<File
 				RelativePath="..\..\src\rvgShaders.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgSvg.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\rvgSvg.h"
 				>
 			</File>
 			<File

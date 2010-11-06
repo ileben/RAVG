@@ -36,10 +36,10 @@ Vec2 ftVecToFloat (const FT_Vector *v)
 }
 
 
-Font::Font (const std::string &filename)
+Font::Font (const std::string &filename, float size)
 {
   //Init size
-  size = 100.0f;
+  this->size = size;
 
   //Init FreeType lib
   if (!ftInit) initFreetype();

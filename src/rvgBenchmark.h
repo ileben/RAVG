@@ -1,7 +1,10 @@
 #ifndef RVGBENCHMARK_H
 #define RVGBENCHMARK_H 1
 
-class OptVal;
+#include "rvgIntFloat.h"
+
+class Option;
+class OptionSet;
 class Options;
 class Results;
 
@@ -10,15 +13,20 @@ class Results;
 
 namespace Opt {
   enum Enum {
-    Draw    = 0,
-    Encode  = 1,
-    Proc    = 2,
-    Rep     = 3,
-    Render  = 4,
-    View    = 5,
-    Source  = 6,
-    Grid    = 7,
-    Count   = 8
+    Draw        = 0,
+    Encode      = 1,
+    Proc        = 2,
+    Rep         = 3,
+    Render      = 4,
+    View        = 5,
+    Source      = 6,
+    Measure     = 7,
+    GridSize    = 8,
+    ZoomS       = 9,
+    PanX        = 10,
+    PanY        = 11,
+    NumGlyphs   = 12,
+    Count       = 13
   };
 };
 
@@ -31,6 +39,14 @@ namespace Draw {
 };
 
 namespace Encode {
+  enum Enum {
+    False = 0,
+    True  = 1,
+    Count = 2
+  };
+};
+
+namespace Measure {
   enum Enum {
     False = 0,
     True  = 1,
@@ -74,7 +90,8 @@ namespace Source {
   enum Enum {
     Tiger  = 0,
     Text   = 1,
-    Count  = 2
+    World  = 2,
+    Count  = 3
   };
 };
 
@@ -91,7 +108,8 @@ public:
     counts[ Opt::Rep ]     = Rep::Count;
     counts[ Opt::Render ]  = Render::Count;
     counts[ Opt::View ]    = View::Count;
-    counts[ Opt::Source]   = Source::Count;
+    counts[ Opt::Source ]  = Source::Count;
+    counts[ Opt::Measure ] = Measure::Count;
   }
 
   int operator[] (int o)
@@ -100,33 +118,122 @@ public:
   }
 };
 
-class OptVal
+////////////////////////////////////////////////////////////////
+// Option holds a value for a specific option type
+
+class Option
 {
 public:
-  Opt::Enum type;
-  int value;
+  int type;
+  IntFloat value;
 
-  OptVal (Opt::Enum t, int v) {
-    type = t; value = v;
+  Option () {
+    type = 0; value = 0;
+  }
+
+  Option (int t, int i) {
+    type = t; value = i;
+  }
+
+  Option (int t, float f) {
+    type = t; value = f;
   }
 };
 
-class Options
+////////////////////////////////////////////////////////////////
+// OptionSet holds a set of values for specific options types
+
+class OptionSet
 {
-  int values[ Opt::Count ];
+  friend class Options;
+  std::vector< Option > options;
 
 public:
-  Options ()
+
+  OptionSet (const Option &opt)
   {
-    values[ Opt::Draw ]    = Draw::True;
-    values[ Opt::Encode ]  = Encode::True;
-    values[ Opt::Proc ]    = Proc::Gpu;
-    values[ Opt::Rep ]     = Rep::Pivot;
-    values[ Opt::Render ]  = Render::Random;
-    values[ Opt::View ]    = View::Flat;
-    values[ Opt::Source]   = Source::Tiger;
-    values[ Opt::Grid]     = 60;
+    //Init with a single option
+    options.push_back( opt );
   }
+
+  OptionSet& operator+= (const Option &opt)
+  {
+    //Search for existing option of the same type
+    for (Uint o=0; o<options.size(); ++o) {
+      if (options[o].type == opt.type) {
+
+        //Set value of existing option
+        options[o].value = opt.value;        
+        return *this;
+      }
+    }
+
+    //Insert new option
+    options.push_back( opt );
+    return *this;
+  }
+
+  OptionSet operator+ (const Option &opt)
+  {
+    OptionSet newset = *this;
+    newset += opt;
+    return newset;
+  }
+
+  OptionSet& operator+= (const OptionSet &set)
+  {
+    //Insert all the options from the other set
+    for (Uint s=0; s<set.options.size(); ++s)
+      *this += set.options[ s ];
+    return *this;
+  }
+
+  OptionSet operator+ (const OptionSet &set)
+  {
+    OptionSet newset = *this;
+    newset += set;
+    return newset;
+  }
+};
+
+//Creation from two Options
+inline OptionSet operator+ (const Option& opt1, const Option &opt2)
+{
+  return OptionSet(opt1) + OptionSet(opt2);
+}
+
+
+////////////////////////////////////////////////////////////////
+// Options hold entire universe of option values
+
+class Options
+{
+  IntFloat values[ Opt::Count ];
+
+  //Default values
+
+  void setDefaults()
+  {
+    values[ Opt::Draw ]      = Draw::True;
+    values[ Opt::Encode ]    = Encode::True;
+    values[ Opt::Proc ]      = Proc::Gpu;
+    values[ Opt::Rep ]       = Rep::Pivot;
+    values[ Opt::Render ]    = Render::Random;
+    values[ Opt::View ]      = View::Flat;
+    values[ Opt::Source ]    = Source::Tiger;
+    values[ Opt::Measure ]   = Measure::False;
+    values[ Opt::GridSize ]  = 60;
+    values[ Opt::ZoomS ]     = 1.0f;
+    values[ Opt::PanX ]      = 0.0f;
+    values[ Opt::PanY ]      = 0.0f;
+    values[ Opt::NumGlyphs ] = 100;
+  }
+
+public:
+
+  Options () { setDefaults(); }
+
+  //Construction, assignment and comparison
 
   Options (const Options &opt)
   {
@@ -153,50 +260,64 @@ public:
 
   bool operator!= (const Options &opt) const
   {
-    return ! (*this == opt);
+    return !(this->operator==(opt));
   }
 
-  int& operator[] (int o)
+  IntFloat& operator[] (int o)
   {
     return values[o];
   }
 
-  Options& operator += (const OptVal &ov)
+  //Interaction with OptionSet
+
+  Options (const OptionSet &set)
   {
-    values[ ov.type ] = ov.value;
+    setDefaults();
+    *this += set;
+  }
+
+  Options& operator+= (const OptionSet &set)
+  {
+    for (Uint s=0; s<set.options.size(); ++s)
+      values[ set.options[s].type ] = set.options[s].value;
+
     return *this;
   }
 
-  Options operator+ (const OptVal &ov)
+  Options& operator= (const OptionSet &set)
+  {
+    return *this += set;
+  }
+
+  Options operator+ (const OptionSet &set)
   {
     Options opt = *this;
-    opt += ov;
+    opt += set;
     return opt;
   }
 };
 
-Options operator+ (const OptVal &ov1, const OptVal &ov2)
-{
-  Options opt;
-  opt += ov1;
-  opt += ov2;
-  return opt;
-}
 
 /////////////////////////////////////////////
 //Results
 
 namespace Res {
   enum Enum {
-    Fps      = 0,
-    Memory   = 1,
-    Count    = 2
+    Fps             = 0,
+    ScreenWidth     = 1,
+    ScreenHeight    = 2,
+    StreamMegaBytes = 3,
+    CellBytes       = 4,
+    CellWords       = 5,
+    CellObjects     = 6,
+    CellSegments    = 7,
+    Count           = 8
   };
 };
 
 class Results
 {
-  int values[ Res::Count ];
+  IntFloat values[ Res::Count ];
 
 public:
 
@@ -220,7 +341,7 @@ public:
     return *this;
   }
 
-  int& operator[] (int r)
+  IntFloat& operator[] (int r)
   {
     return values[r];
   }
@@ -234,93 +355,54 @@ struct Env
 {
   std::string name;
   Options options;
-  std::vector< int > values;
+  std::vector< IntFloat > values;
 };
 
 class Test
-{ 
+{
+  friend class TestGroup;
+
 private:
 
   //Settings
+  std::string name;
   int repeatCount;
   int dropCount;
 
-  Opt::Enum domain;
-  std::vector< int > arguments;
+  int domain;
+  std::vector< IntFloat > arguments;
 
-  Res::Enum codomain;
+  int codomain;
   std::vector< Env* > environments;
 
   //Runtime counters
   int repIndex;
   int envIndex;
   int argIndex;
-  std::vector< int > values;
+  std::vector< IntFloat > values;
 
-  void averageValues ()
-  {
-    int avgValue = 0;
-    int numValues = 0;
-
-    //Find average of all values after dropping first few
-    for (Uint32 v=dropCount; v<values.size(); ++v) {
-      std::cout << "Average part: " << values[v] << std::endl;
-      avgValue += values[v];
-      numValues += 1;
-    }
-
-    //Store as value corresponding to current argument
-    environments[ envIndex ]->values[ argIndex ] = avgValue / numValues;
-    std::cout << "Average: " << environments[ envIndex ]->values[ argIndex ] << std::endl;
-  }
-
-  void resizeValues ()
-  {
-    //Make sure the number of temporary values matches the number of repetitions
-    values.resize( repeatCount, 0 );
-
-    //Make sure the number of environment values matches the number of arguments
-    for (Uint32 e=0; e<environments.size(); ++e)
-      environments[e]->values.resize( arguments.size(), 0 );
-  }
+  void averageValues ();
+  void resizeValues ();
 
 public:
 
-  Test (Opt::Enum domain, Res::Enum codomain, int repeatCount=1, int dropCount=0)
-    : domain(domain), codomain(codomain), repeatCount(repeatCount), dropCount(dropCount)
+  //Setup functions
+  Test (const std::string &name, Opt::Enum domain, Res::Enum codomain, int repeatCount=1, int dropCount=0);
+  ~Test();
+
+  template <class T>
+  void addArgument (T a)
   {
-    if (repeatCount <= 0)
-      repeatCount = 1;
-
-    if (dropCount >= repeatCount)
-      dropCount = repeatCount-1;
-
-    reset();
-  }
-
-  ~Test()
-  {
-    for (Uint32 e=0; e<environments.size(); ++e)
-      delete environments[e];
-  }
-
-  void addArgument (int a)
-  {
-    arguments.push_back(a);
+    arguments.push_back( a );
     resizeValues();
   }
 
-  void addArguments (int a, ...)
+  template <class T>
+  void addArguments (T *a, int size)
   {
-    va_list va;
-    va_start (va, a);
-    do
-    {
-      arguments.push_back(a);
-      a = va_arg( va, int );
-    }
-    while (a != -1);
-    va_end( va );
+    int count = size / sizeof(T);
+    for (int c=0; c<count; ++c)
+      arguments.push_back( a[c] );
     resizeValues();
   }
 
@@ -333,75 +415,47 @@ public:
     resizeValues();
   }
 
-  void reset()
-  {
-    repIndex = -1;
-    envIndex = -1;
-    argIndex = -1;
-  }
-
-  Options next()
-  {
-    if (running())
-    {
-      //Move to next
-      if (++repIndex >= repeatCount) {
-        repIndex = 0;
-        if (++argIndex >= (int)arguments.size()) {
-          argIndex = 0;
-          if (++envIndex >= (int)environments.size()) {
-            envIndex = 0;
-          }}}
-    }
-    else
-    {
-      //Move to first
-      repIndex = 0;
-      argIndex = 0;
-      envIndex = 0;
-    }
-
-    std::cout
-      << "Moving on to env:" <<  environments[ envIndex ]->name
-      << " arg:" << arguments[ argIndex ]
-      << " rep:" << repIndex
-      << std::endl;
-
-    //Get options for the current environment and adjust argument
-    Options opt = environments[ envIndex ]->options;
-    opt[ domain ] = arguments[ argIndex ];
-    return opt;
-  }
-
-  void results (Results &res)
-  {
-    if (running())
-    {
-      std::cout << "Storing results for rep:" << repIndex << std::endl;
-
-      //Store value into list and average if last
-      values[ repIndex ] = res[ codomain ];
-      if (repIndex == repeatCount-1)
-        averageValues();
-    }
-  }
-
-  bool running()
-  {
-    //Check if next() has been called since reset
-    return (envIndex > -1 &&
-            argIndex > -1 &&
-            repIndex > -1);
-  }
-
-  bool done()
-  {
-    //Check if last repetition of last argument in last environment reached
-    return (envIndex >= (int) environments.size()-1 &&
-            argIndex >= (int) arguments.size()-1 &&
-            repIndex >= (int) repeatCount-1);
-  }
+  //Run functions
+  void reset();
+  Options next();
+  void results (Results &res);
+  bool running();
+  bool done();
+  
+  //Query functions
+  int getDomain() { return domain; }
+  int getCodomain() { return codomain; }
 };
 
+///////////////////////////////////////////////////
+//TestGroup - maps all the arguments in the domain
+//to values in codomain for every environment
+
+class TestGroup
+{
+  int index;
+  std::string file;
+  std::vector< Test* > tests;
+
+  void fileClear ();
+  void fileOutput (Test *test);
+
+public:
+
+  //Setup functions
+  TestGroup (const std::string &file);
+  void addTest (Test *test);
+  
+  //Run functions
+  void reset();
+  Options next();
+  void results (Results &res);
+  bool running ();
+  bool done ();
+};
+
+
+
+void initTests (TestGroup &group);
 
 #endif//RVGBENCHMARK_h

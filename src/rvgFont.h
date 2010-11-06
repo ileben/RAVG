@@ -16,7 +16,7 @@ public:
   Object *object;
   Vec2 offset;
 
-  Font (const std::string &filename);
+  Font (const std::string &filename, float size);
   ~Font();
 
   void setSize (float size);

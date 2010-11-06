@@ -6,6 +6,7 @@
 
 class Contour;
 class Object;
+class ObjectProcessor;
 class Image;
 class EncoderCpu;
 class EncoderGpu;
@@ -17,7 +18,8 @@ class RendererClassic;
 namespace SegSpace {
   enum Enum {
     Absolute = (1 << 7),
-    Relative = (1 << 7)
+    Relative = (1 << 6),
+    Mask     = 0xC0
   };
 };
 
@@ -29,6 +31,7 @@ namespace SegType {
     LineTo       = 2,
     QuadTo       = 3,
     CubicTo      = 4,
+    Mask         = 0x3F,
 
     MoveToAbs    = (SegType::MoveTo  | SegSpace::Absolute),
     LineToAbs    = (SegType::LineTo  | SegSpace::Absolute),
@@ -152,21 +155,58 @@ public:
   const Vec4& getColor() { return color; }
 
   void moveTo( Float x, Float y,
-    SegSpace::Enum space = SegSpace::Absolute );
+    int space = SegSpace::Absolute );
 
   void lineTo( Float x, Float y,
-    SegSpace::Enum space = SegSpace::Absolute );
+    int space = SegSpace::Absolute );
 
   void quadTo( Float x1, Float y1, Float x2, Float y2,
-    SegSpace::Enum space = SegSpace::Absolute );
+    int space = SegSpace::Absolute );
 
   void cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3,
-    SegSpace::Enum space = SegSpace::Absolute );
+    int space = SegSpace::Absolute );
 
   void close();
 
   Object* cubicsToQuads();
+
+  void process (ObjectProcessor &proc);
 };
+
+
+class ObjectProcessor
+{
+  friend class Object;
+
+private:
+  bool penDown;
+  Vec2 pen;
+  Vec2 start;
+
+protected:
+  const Vec2& getPen ();
+  const Vec2& getStart ();
+  const bool isPenDown ();
+
+public:
+  virtual void moveTo (const Vec2 &p1, int space) = 0;
+  virtual void lineTo (const Vec2 &p1, int space) = 0;
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) = 0;
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) = 0;
+  virtual void close () = 0;
+};
+
+
+class ObjectFlatten : public ObjectProcessor
+{
+public:
+  virtual void moveTo (const Vec2 &p1, int space);
+  virtual void lineTo (const Vec2 &p1, int space);
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space);
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space);
+  virtual void close ();
+};
+
 
 class Image
 {
@@ -211,8 +251,14 @@ public:
   Image();
   
   void addObject (Object *obj);
+  void removeAllObjects ();
+
+  int getNumObjects ();
+  Object* getObject (int index);
+
   void setGridResolution (int x, int y);
 
+  void update ();
   void encodeCpu (EncoderCpu *encoder);
   void encodeGpu (EncoderGpu *encoder);
 
@@ -251,7 +297,7 @@ public:
 #define NODE_SIZE_QUAD           //TODO
 #define NODE_SIZE_OBJECT         //TODO
 
-#define MAX_STREAM_SIZE          1000000
+#define MAX_STREAM_SIZE          2000000
 
 //Memory layout============================
 //ptrInfo:        |StreamSize|

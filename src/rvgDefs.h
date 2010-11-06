@@ -33,6 +33,8 @@ typedef unsigned int             Uint32;
 typedef char                     Int8;
 typedef unsigned char            Uint8;
 typedef float                    Float;
+typedef int                      Int;
+typedef unsigned int             Uint;
 
 //Functions
 #define PI              3.1415926535f

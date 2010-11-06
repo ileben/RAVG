@@ -36,6 +36,7 @@ extern MatrixStack matTexture;
 #include "rvgEncoderGpu.h"
 #include "rvgRenderer.h"
 #include "rvgFont.h"
+#include "rvgSvg.h"
 
 /////////////////////////////////////////////////////////////////////
 //GL utilities
