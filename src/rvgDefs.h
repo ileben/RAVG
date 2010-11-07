@@ -46,16 +46,4 @@ typedef unsigned int             Uint;
 #define FLOOR(x)        std::floorf(x)
 #define CEIL(x)         std::ceilf(x)
 
-
-//OpenVG
-#define VG_MOVE_TO_ABS     0
-#define VG_LINE_TO_ABS     1
-#define VG_QUAD_TO_ABS     2
-#define VG_CUBIC_TO_ABS    3
-#define VG_CLOSE_PATH      4
-
-typedef Uint8 VGubyte;
-typedef Float VGfloat;
-typedef Int32 VGint;
-
 #endif//RVGDEFS_H
