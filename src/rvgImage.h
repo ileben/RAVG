@@ -26,28 +26,35 @@ namespace SegSpace {
 namespace SegType {
   enum Enum {
 
-    Close        = 0,
-    MoveTo       = 1,
-    LineTo       = 2,
-    QuadTo       = 3,
-    CubicTo      = 4,
-    Mask         = 0x3F,
+    Close      = 0,
+    MoveTo     = 1,
+    LineTo     = 2,
+    QuadTo     = 3,
+    CubicTo    = 4,
+    HorizTo    = 5,
+    VertTo     = 6,
+    Mask       = 0x3F,
 
-    MoveToAbs    = (SegType::MoveTo  | SegSpace::Absolute),
-    LineToAbs    = (SegType::LineTo  | SegSpace::Absolute),
-    QuadToAbs    = (SegType::QuadTo  | SegSpace::Absolute),
-    CubicToAbs   = (SegType::CubicTo | SegSpace::Absolute),
+    MoveToAbs  = (SegType::MoveTo  | SegSpace::Absolute),
+    LineToAbs  = (SegType::LineTo  | SegSpace::Absolute),
+    QuadToAbs  = (SegType::QuadTo  | SegSpace::Absolute),
+    CubicToAbs = (SegType::CubicTo | SegSpace::Absolute),
+    HorizToAbs = (SegType::HorizTo | SegSpace::Absolute),
+    VertToAbs  = (SegType::VertTo  | SegSpace::Absolute),
 
-    MoveToRel    = (SegType::MoveTo  | SegSpace::Relative),
-    LineToRel    = (SegType::LineTo  | SegSpace::Relative),
-    QuadToRel    = (SegType::QuadTo  | SegSpace::Relative),
-    CubicToRel   = (SegType::CubicTo | SegSpace::Relative)
+    MoveToRel  = (SegType::MoveTo  | SegSpace::Relative),
+    LineToRel  = (SegType::LineTo  | SegSpace::Relative),
+    QuadToRel  = (SegType::QuadTo  | SegSpace::Relative),
+    CubicToRel = (SegType::CubicTo | SegSpace::Relative),
+    HorizToRel = (SegType::HorizTo | SegSpace::Relative),
+    VertToRel  = (SegType::VertTo  | SegSpace::Relative),
   };
 };
 
 namespace ProcessFlags {
   enum Enum {
-    Absolute = (1 << 0)
+    Absolute = (1 << 0),
+    Simplify = (1 << 1)
   };
 };
 
@@ -150,9 +157,11 @@ private:
 
 private:
 
+  void updateFlat();
+  void clearFlat();
+
   void updateBounds();
   void updateBuffers();
-  void clearFlat();
 
 public:
 
@@ -162,10 +171,10 @@ public:
   void setColor( float r, float g, float b, float a=1.0f );
   const Vec4& getColor() { return color; }
 
-  void moveTo( Float x, Float y,
+  void moveTo( Float x1, Float y1,
     int space = SegSpace::Absolute );
 
-  void lineTo( Float x, Float y,
+  void lineTo( Float x1, Float y1,
     int space = SegSpace::Absolute );
 
   void quadTo( Float x1, Float y1, Float x2, Float y2,
@@ -174,11 +183,17 @@ public:
   void cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3,
     int space = SegSpace::Absolute );
 
+  void horizTo( Float x1,
+    int space = SegSpace::Absolute);
+
+  void vertTo (Float y1,
+    int space = SegSpace::Absolute);
+
   void close();
 
   void clear();
 
-  void process (ObjectProcessor &proc, ProcessFlags::Enum flags);
+  void process (ObjectProcessor &proc, int flags);
 
   Object* cubicsToQuads();
 };
@@ -205,6 +220,8 @@ public:
   virtual void lineTo (const Vec2 &p1, int space) {}
   virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space) {}
   virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space) {}
+  virtual void horizTo (float x1, int space) {}
+  virtual void vertTo (float y1, int space) {}
   virtual void close () {}
   virtual void end() {}
 };
@@ -213,10 +230,9 @@ public:
 class ObjectFlatten : public ObjectProcessor
 {
   Contour *contour;
-  bool penDown;
 
 public:
-  ObjectFlatten ();
+  virtual void begin ();
   virtual void moveTo (const Vec2 &p1, int space);
   virtual void lineTo (const Vec2 &p1, int space);
   virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space);
@@ -230,26 +246,13 @@ protected:
   Object *clone;
 
 public:
-  virtual void begin ()
-  { clone = new Object(); }
-
-  virtual void moveTo (const Vec2 &p1, int space)
-  { clone->moveTo( p1.x, p1.y, space ); }
-
-  virtual void lineTo (const Vec2 &p1, int space)
-  { clone->lineTo( p1.x, p1.y, space ); }
-
-  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space)
-  { clone->quadTo( p1.x, p1.y, p2.x, p2.y, space ); }
-
-  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
-  { clone->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, space ); }
-
-  virtual void close ()
-  { clone->close(); }
-
-  Object* getClone()
-  { return clone; }
+  virtual void begin ();
+  virtual void moveTo (const Vec2 &p1, int space);
+  virtual void lineTo (const Vec2 &p1, int space);
+  virtual void quadTo (const Vec2 &p1, const Vec2 &p2, int space);
+  virtual void cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space);
+  virtual void close ();
+  Object* getClone();
 };
 
 class CubicsToQuads : public ObjectClone
@@ -296,7 +299,7 @@ private:
   int   *ptrCpuGrid;
   float *ptrCpuStream;
 
-  void flatten ();
+  void updateFlat ();
   void updateBounds ();
   void updateBuffers ();
 

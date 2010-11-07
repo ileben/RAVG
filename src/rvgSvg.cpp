@@ -1,6 +1,182 @@
 #include <pugixml.hpp>
 #include "rvgMain.h"
 
+void parseFill (const std::string &value, Object *obj)
+{
+  //Only accept hex color fill for now
+  if (value.at(0) != '#') return;
+
+  //Break values apart
+  std::istringstream ssr( value.substr( 1,2 ) );
+  std::istringstream ssg( value.substr( 3,2 ) );
+  std::istringstream ssb( value.substr( 5,2 ) );
+
+  //Parse hex values
+  int r=0, g=0, b=0;
+  ssr >> std::hex >> r;
+  ssg >> std::hex >> g;
+  ssb >> std::hex >> b;
+
+  //Assign to object
+  obj->setColor( (float) r/255, (float) g/255, (float) b/255 );
+}
+
+void parseStyle (pugi::xml_node node, Object *obj)
+{
+  //Get style attribute
+  pugi::xml_attribute aStyle = node.attribute( "style" );
+  std::string style( aStyle.value() );
+
+  //Tokenize parameters
+  std::string param;
+  std::istringstream ssStyle( style );
+  while (getline( ssStyle, param, ';'))
+  {
+    //Parse name and value of parameter
+    std::string name, value;
+    std::istringstream ssParam( param );
+    getline( ssParam, name, ':' );
+    getline( ssParam, value );
+
+    //Process parameter
+    if (name == "fill")
+      parseFill( value, obj );
+  }
+}
+
+void parsePath (pugi::xml_node node, Object *obj)
+{
+  //Get data attribute
+  pugi::xml_attribute aData = node.attribute( "d" );
+  std::string data( aData.value() );
+  std::istringstream ss( data );
+
+  //Parse path into object
+  char cmd = '\0';
+  while (ss.good())
+  {
+    //Parse new command character
+    char newCmd = '\0';
+    if (!(ss >> newCmd))
+      break;
+
+    //Accept new command if alphabetical, otherwise return to stream
+    if (isalpha( newCmd ))
+      cmd = newCmd;
+    else ss.putback( newCmd );
+
+    //Check command type
+    if (cmd == 'M' || cmd == 'm')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'M')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      Vec2 p1;
+
+      ss >> p1.x;
+      ss.ignore( 256,',' );
+      ss >> p1.y;
+
+      //Add to object
+      obj->moveTo( p1.x, p1.y, space );
+    }
+    else if (cmd == 'L' || cmd == 'l')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'L')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      Vec2 p1;
+
+      ss >> p1.x;
+      ss.ignore( 256, ',' );
+      ss >> p1.y;
+
+      //Add to object
+      obj->lineTo( p1.x, p1.y, space );
+    }
+    else if (cmd == 'Q' || cmd == 'q')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'Q')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      Vec2 p1, p2;
+      
+      ss >> p1.x;
+      ss.ignore( 256, ',' );
+      ss >> p1.y;
+      
+      ss >> p2.x;
+      ss.ignore( 256, ',' );
+      ss >> p2.y;
+
+      //Add to object
+      obj->quadTo( p1.x, p1.y, p2.x, p2.y, space );
+    }
+    else if (cmd == 'C' || cmd == 'c')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'C')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      Vec2 p1, p2, p3;
+
+      ss >> p1.x;
+      ss.ignore( 256, ',' );
+      ss >> p1.y;
+      
+      ss >> p2.x;
+      ss.ignore( 256, ',' );
+      ss >> p2.y;
+      
+      ss >> p3.x;
+      ss.ignore( 256, ',' );
+      ss >> p3.y;
+
+      //Add to object
+      obj->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, space );
+    }
+    else if (cmd == 'H' || cmd == 'h')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'H')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      float x1 = 0;
+      ss >> x1;
+
+      //Add to object
+      obj->horizTo( x1, space );
+    }
+    else if (cmd == 'V' || cmd == 'v')
+    {
+      //Find space
+      SegSpace::Enum space = (cmd == 'V')
+        ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Parse coordinates
+      float y1 = 0;
+      ss >> y1;
+
+      //Add to object
+      obj->vertTo( y1, space );
+    }
+    else if (cmd == 'Z' || cmd == 'z')
+    {
+      //Add to object
+      obj->close();
+    }
+    else break;
+  }
+}
+
 Image* loadSvg (const std::string &filename)
 {
   pugi::xml_document doc;
@@ -26,69 +202,18 @@ Image* loadSvg (const std::string &filename)
   //Iterate all the children of the top node
   for (pugi::xml_node_iterator it = svg.begin(); it != svg.end(); ++it)
   {
-    //Check if path found
+    //Check if path node found
     if (strcmp( it->name(), "path" ) == 0)
     {
-      //Get path description attribute
-      pugi::xml_attribute ad = it->attribute( "d" );
-      std::string d = ad.value();
-      std::istringstream dss( d );
-
-      //Parse path into object
+      //Parse path
       Object *obj = new Object();
-      std::string cmd = "";
-      while (dss.good())
-      {
-        //Try to parse new command or keep the old one
-        std::string newCmd;
-        if (dss >> newCmd)
-          cmd = newCmd;
-
-        //Parse command parameters
-        if (cmd == "M" || cmd == "m")
-        {
-          SegSpace::Enum space = (cmd == "M")
-            ? SegSpace::Absolute : SegSpace::Relative;
-
-          Vec2 p1;
-          dss >> p1.x >> p1.y;
-          obj->moveTo( p1.x, p1.y, space );
-        }
-        else if (cmd == "L" || cmd == "l")
-        {
-          SegSpace::Enum space = (cmd == "L")
-            ? SegSpace::Absolute : SegSpace::Relative;
-
-          Vec2 p1;
-          dss >> p1.x >> p1.y;
-          obj->lineTo( p1.x, p1.y, space );
-        }
-        else if (cmd == "Q" || cmd == "q")
-        {
-          SegSpace::Enum space = (cmd == "Q")
-            ? SegSpace::Absolute : SegSpace::Relative;
-
-          Vec2 p1, p2;
-          dss >> p1.x >> p1.y >> p2.x >> p2.y;
-          obj->quadTo( p1.x, p1.y, p2.x, p2.y, space );
-        }
-        else if (cmd == "C" || cmd == "c")
-        {
-          SegSpace::Enum space = (cmd == "C")
-            ? SegSpace::Absolute : SegSpace::Relative;
-
-          Vec2 p1, p2, p3;
-          dss >> p1.x >> p1.y >> p2.x >> p2.y >> p3.x >> p3.y;
-          obj->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, space );
-        }
-        else if (cmd == "Z" || cmd == "z")
-        {
-          obj->close();
-        }
-        else break;
-      }
+      parsePath( *it, obj );
+      parseStyle( *it, obj );
       
-      image->addObject( obj );
+      //Add to image
+      Object *oo = obj->cubicsToQuads();
+      image->addObject( oo );
+      delete obj;
     }
   }
 

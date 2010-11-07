@@ -2,13 +2,13 @@
 
 Object::Object()
 {
-  flat = false;
   color.set( 0, 0, 0, 1 );
+  flat = false;
 }
 
 Object::~Object()
 {
-  clearFlat();
+  clear();
 }
 
 void Object::clearFlat()
@@ -66,13 +66,27 @@ void Object::cubicTo( Float x1, Float y1, Float x2, Float y2, Float x3, Float y3
   flat = false;
 }
 
+void Object::horizTo( Float x1, int space)
+{
+  segments.push_back( SegType::HorizTo | space );
+  points.push_back( Vec2(x1,0) );
+  flat = false;
+}
+
+void Object::vertTo (Float y1, int space)
+{
+  segments.push_back( SegType::VertTo | space );
+  points.push_back( Vec2(0,y1) );
+  flat = false;
+}
+
 void Object::close()
 {
   segments.push_back( SegType::Close );
   flat = false;
 }
 
-void Object::process (ObjectProcessor &proc, ProcessFlags::Enum flags)
+void Object::process (ObjectProcessor &proc, int flags)
 {
   int p = 0;
 
@@ -84,60 +98,117 @@ void Object::process (ObjectProcessor &proc, ProcessFlags::Enum flags)
 
   for (Uint32 s=0; s<segments.size(); ++s)
   {
+    //Get segment type and space
     int seg = segments[s];
     int type = seg & SegType::Mask;
     int space = seg & SegSpace::Mask;
 
-    Vec2 base( 0,0 );
-    if (space == SegSpace::Relative && (flags & ProcessFlags::Absolute)) {
-      space = SegSpace::Absolute;
-      base = proc.pen;
+    //If space relative,
+    //current pen is base for next pen
+    Vec2 penBase( 0,0 );
+    if (space == SegSpace::Relative) {
+      penBase = proc.pen;
     }
 
+    //If space relative and absolute space requested,
+    //current pen is base for output coordinates
+    int coordSpace = space;
+    Vec2 coordBase( 0,0 );
+    if (space == SegSpace::Relative && (flags & ProcessFlags::Absolute)) {
+      coordSpace = SegSpace::Absolute;
+      coordBase = proc.pen;
+    }
+
+    //Invoke respective callback for segment type
     switch (type)
     {
     case SegType::MoveTo:{
       
-      vec2 &p0 = points[ p ];
+      //Get coordinates
+      vec2 &p1 = points[ p ];
       p += 1;
 
-      proc.moveTo( base + p0, space );
-      proc.pen = (space == SegSpace::Relative) ? proc.pen + p0 : p0;
+      //Invoke callback and update state
+      proc.moveTo( coordBase + p1, coordSpace );
+      proc.pen = penBase + p1;
       proc.start = proc.pen;
       break;}
 
     case SegType::LineTo:{
 
-      vec2 &p0 = points[ p ];
+      //Get coordinates
+      vec2 &p1 = points[ p ];
       p += 1;
 
-      proc.lineTo( base + p0, space );
-      proc.pen = (space == SegSpace::Relative) ? proc.pen + p0 : p0;
+      //Invoke callback and update state
+      proc.lineTo( coordBase + p1, coordSpace );
+      proc.pen = penBase + p1;
       break;}
 
     case SegType::QuadTo:{
 
-      vec2 &p0 = points[ p+0 ];
-      vec2 &p1 = points[ p+1 ];
+      //Get coordinates
+      vec2 &p1 = points[ p+0 ];
+      vec2 &p2 = points[ p+1 ];
       p += 2;
 
-      proc.quadTo( base + p0, base + p1, space );
-      proc.pen = (space == SegSpace::Relative) ? proc.pen + p1 : p1;
+      //Invoke callback and update state
+      proc.quadTo( coordBase + p1, coordBase + p2, coordSpace );
+      proc.pen = penBase + p2;
       break;}
 
     case SegType::CubicTo:{
 
-      vec2 &p0 = points[ p+0 ];
-      vec2 &p1 = points[ p+1 ];
-      vec2 &p2 = points[ p+2 ];
+      //Get coordinates
+      vec2 &p1 = points[ p+0 ];
+      vec2 &p2 = points[ p+1 ];
+      vec2 &p3 = points[ p+2 ];
       p += 3;
 
-      proc.cubicTo( base + p0, base + p1, base + p2, space );
-      proc.pen = (space == SegSpace::Relative) ? proc.pen + p2 : p2;
+      //Invoke callback and update state
+      proc.cubicTo( coordBase + p1, coordBase + p2, coordBase + p3, coordSpace );
+      proc.pen = penBase + p3;
+      break;}
+
+    case SegType::HorizTo:{
+
+      //Get coordinates
+      vec2 p1 = points[ p+0 ];
+      p += 1;
+
+      //Resolve implicit value
+      p1.y = (space == SegSpace::Relative) ? 0 : proc.pen.y;
+
+      //Invoke callback
+      if (flags | ProcessFlags::Simplify)
+        proc.lineTo( coordBase + p1, coordSpace );
+      else proc.horizTo( coordBase.x + p1.x, coordSpace );
+
+      //Update state
+      proc.pen = penBase + p1;
+      break;}
+
+    case SegType::VertTo:{
+
+      //Get coordinates
+      vec2 p1 = points[ p+0 ];
+      p += 1;
+
+      //Resolve implicit values
+      p1.x = (space == SegSpace::Relative) ? 0 : proc.pen.x;
+
+      //Invoke callback
+      if (flags | ProcessFlags::Simplify)
+        proc.lineTo( coordBase + p1, coordSpace );
+      else proc.horizTo( coordBase.x + p1.x, coordSpace );
+
+      //Update state
+      proc.pen = penBase + p1;
       break;}
 
     case SegType::Close:{
 
+      //Invoke callback
       proc.close();
       proc.pen = proc.start;
       break;}
@@ -147,7 +218,10 @@ void Object::process (ObjectProcessor &proc, ProcessFlags::Enum flags)
   proc.end();
 }
 
-ObjectFlatten::ObjectFlatten ()
+//////////////////////////////////////////////////////////////////////
+// Flatten object processor
+
+void ObjectFlatten::begin ()
 {
   contour = NULL;
 }
@@ -163,7 +237,7 @@ void ObjectFlatten::lineTo (const Vec2 &p1, int space)
 {
   if (contour == NULL) return;
 
-  Vec2 p0 = getPen();
+  const Vec2& p0 = getPen();
   getObject()->lines.push_back( Line( p0.x,p0.y, p1.x,p1.y ));
   contour->flatPoints.push_back( p1 );
 }
@@ -172,7 +246,7 @@ void ObjectFlatten::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
 {
   if (contour == NULL) return;
 
-  Vec2 p0 = getPen();
+  const Vec2& p0 = getPen();
   getObject()->quads.push_back( Quad( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y ));
   contour->flatPoints.push_back( p2 );
 }
@@ -181,7 +255,7 @@ void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int
 {
   if (contour == NULL) return;
 
-  Vec2 p0 = getPen();
+  const Vec2& p0 = getPen();
   getObject()->cubics.push_back( Cubic( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y, p3.x,p3.y ));
   contour->flatPoints.push_back( p2 );
 }
@@ -196,28 +270,36 @@ void ObjectFlatten::close ()
   contour = NULL;
 }
 
+//////////////////////////////////////////////////////////////////////
+// Clone object processor
 
-void Object::updateBounds()
+void ObjectClone::begin ()
 {
-  for (Uint32 c=0; c<contours.size(); ++c)
-  {
-    for (Uint32 p=0; p<contours[c]->flatPoints.size(); ++p)
-    {
-      Vec2 &point = contours[c]->flatPoints[p];
-      if (c==0 && p==0)
-      {
-        min = max = point;
-        continue;
-      }
-
-      if (point.x < min.x) min.x = point.x;
-      if (point.y < min.y) min.y = point.y;
-
-      if (point.x > max.x) max.x = point.x;
-      if (point.y > max.y) max.y = point.y;
-    }
-  }
+  clone = new Object();
+  Vec4 c = getObject()->getColor();
+  clone->setColor( c.x, c.y, c.z, c.w );
 }
+
+void ObjectClone::moveTo (const Vec2 &p1, int space)
+{ clone->moveTo( p1.x, p1.y, space ); }
+
+void ObjectClone::lineTo (const Vec2 &p1, int space)
+{ clone->lineTo( p1.x, p1.y, space ); }
+
+void ObjectClone::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
+{ clone->quadTo( p1.x, p1.y, p2.x, p2.y, space ); }
+
+void ObjectClone::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
+{ clone->cubicTo( p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, space ); }
+
+void ObjectClone::close ()
+{ clone->close(); }
+
+Object* ObjectClone::getClone()
+{ return clone; }
+
+//////////////////////////////////////////////////////////////////////
+// Cubic-to-quad objet processor
 
 bool intersectLines (const Vec2 &o1, const Vec2 &p1, const Vec2 &o2, const Vec2 &p2, Vec2 &pout)
 {
@@ -338,78 +420,41 @@ void CubicsToQuads::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int
 Object* Object::cubicsToQuads()
 {
   CubicsToQuads proc;
-  process( proc, ProcessFlags::Absolute );
+  process( proc, ProcessFlags::Absolute | ProcessFlags::Simplify );
   return proc.getClone();
+}
 
-  /*
-  Object *obj = new Object();
-  obj->color = color;
+//////////////////////////////////////////////////////////////////////
+// Update object functions
 
-  std::vector< Quad > quadsFromCubic;
+void Object::updateFlat()
+{
+  if (flat) return;
+  ObjectFlatten proc;
+  process( proc, ProcessFlags::Absolute | ProcessFlags::Simplify);
+  flat = true;
+}
 
+void Object::updateBounds()
+{
   for (Uint32 c=0; c<contours.size(); ++c)
   {
-    Contour *cnt = contours[c];
-    int p=0;
-
-    for (Uint32 s=0; s<cnt->segments.size(); ++s)
+    for (Uint32 p=0; p<contours[c]->flatPoints.size(); ++p)
     {
-      int seg = cnt->segments[s];
-      int segType = seg & SegType::Mask;
-      int segSpace = seg & SegSpace::Mask;
-      switch (segType)
+      Vec2 &point = contours[c]->flatPoints[p];
+      if (c==0 && p==0)
       {
-      case SegType::MoveTo:{
-
-        vec2 p0 = cnt->points[ p ];
-        obj->moveTo( p0.x, p0.y, segSpace );
-        p += 1;
-
-        break;}
-      case SegType::LineTo:{
-
-        vec2 p0 = cnt->points[ p ];
-        obj->lineTo( p0.x, p0.y, segSpace );
-        p += 1;
-
-        break;}
-      case SegType::QuadTo:{
-
-        vec2 p0 = cnt->points[ p+0 ];
-        vec2 p1 = cnt->points[ p+1 ];
-        obj->quadTo( p0.x, p0.y, p1.x, p1.y, segSpace );
-        p += 2;
-
-        break;}
-      case SegType::CubicTo:{
-
-        Cubic cubic;
-        cubic.p0 = cnt->points[ p-1 ];
-        cubic.p1 = cnt->points[ p+0 ];
-        cubic.p2 = cnt->points[ p+1 ];
-        cubic.p3 = cnt->points[ p+2 ];
-        p += 3;
-
-        quadsFromCubic.clear();
-        cubicToQuads( cubic, quadsFromCubic );
-        for (Uint32 q=0; q<quadsFromCubic.size(); ++q) {
-
-          Quad quad = quadsFromCubic[q];
-          obj->quadTo( quad.p1.x, quad.p1.y, quad.p2.x, quad.p2.y );
-        }
-        
-        break;}
-
-      case SegType::Close:{
-
-        obj->close();
-        break;}
+        min = max = point;
+        continue;
       }
-    }//segments
-  }//contours
 
-  return obj;
-  */
+      if (point.x < min.x) min.x = point.x;
+      if (point.y < min.y) min.y = point.y;
+
+      if (point.x > max.x) max.x = point.x;
+      if (point.y > max.y) max.y = point.y;
+    }
+  }
 }
 
 void Object::updateBuffers()
@@ -500,17 +545,12 @@ Object* Image::getObject (int index) {
   return objects[ index ];
 }
 
-void Image::flatten ()
+void Image::updateFlat ()
 {
   for (Uint32 o=0; o<objects.size(); ++o)
   {
     Object* obj = objects[o];
-    if (!obj->flat)
-    {
-      ObjectFlatten proc;
-      obj->process( proc, ProcessFlags::Absolute );
-      obj->flat = true;
-    }
+    obj->updateFlat();
   }
 }
 
@@ -621,7 +661,7 @@ void Image::updateBuffers ()
 void Image::update ()
 {
   //Prepare image data for rendering
-  flatten();
+  updateFlat();
   updateBounds();
   updateBuffers();
 }
@@ -629,7 +669,7 @@ void Image::update ()
 void Image::encodeCpu (EncoderCpu *encoder)
 {
   //Prepare image data for encoding
-  flatten();
+  updateFlat();
   updateBounds();
   updateBuffers();
 
@@ -736,7 +776,7 @@ void Image::encodeCpu (EncoderCpu *encoder)
 void Image::encodeGpu (EncoderGpu *encoder)
 {
   //Prepare image data for encoding
-  flatten();
+  updateFlat();
   updateBounds();
   updateBuffers();
 
