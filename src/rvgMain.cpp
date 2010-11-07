@@ -349,6 +349,13 @@ void adjustTigerImage ()
   imageTiger->setGridResolution( g, g );
 }
 
+void adjustWorldImage()
+{
+  //Adjust grid resolution to match settings
+  //int g = options[ Opt::GridSize ].toInt();
+  //imageWorld->setGridResolution( g, g );
+}
+
 void adjustTextImage ()
 {
   //Get limit on number of glyphs from the settings
@@ -407,6 +414,7 @@ void display ()
 
   case Source::World:
     image = imageWorld;
+    adjustWorldImage();
     invert = true;
     break;
   }
@@ -908,7 +916,9 @@ int main (int argc, char **argv)
   ///////////////////////////////////////////////////////
   // SVG
 
-  imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
+  //imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
+  imageWorld = loadSvg( "../svg/tiger.svg" );
+  //imageWorld = loadSvg( "../svg/tiger_inkscape.svg" );
   imageWorld->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////
