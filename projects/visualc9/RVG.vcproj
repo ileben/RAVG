@@ -316,10 +316,6 @@
 				RelativePath="..\..\src\rvgWinding.cpp"
 				>
 			</File>
-			<File
-				RelativePath="..\..\src\test_tiger_paths.cpp"
-				>
-			</File>
 			<Filter
 				Name="shader"
 				>

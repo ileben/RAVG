@@ -77,6 +77,31 @@ void reportState ();
 ///////////////////////////////////////////////////////////////////
 // Functions
 
+/*
+void calcSamples()
+{
+  float off[4] = { -0.3f, -0.1f, +0.1f, +0.3f };
+  float a = PI / 6;
+
+  std::ofstream file( "samples.txt", std::ios::out | std::ios::binary );
+  if (!file.is_open())
+    return;
+
+  int s=0;
+  for (int x=0; x<4; ++x) {
+    for (int y=0; y<4; ++y) {
+
+      float newx = COS(a) * off[x] - SIN(a) * off[y];
+      float newy = SIN(a) * off[x] + COS(a) * off[y];
+      file << "samples[" << s << "] = vec2( " << newx << ", " << newy << " );\r\n";
+      s++;
+    }
+  }
+
+  file.close();
+}
+*/
+
 void checkGlError (const std::string &text)
 {
   static GLenum err = GL_NO_ERROR;
@@ -352,8 +377,8 @@ void adjustTigerImage ()
 void adjustWorldImage()
 {
   //Adjust grid resolution to match settings
-  //int g = options[ Opt::GridSize ].toInt();
-  //imageWorld->setGridResolution( g, g );
+  int g = options[ Opt::GridSize ].toInt();
+  imageWorld->setGridResolution( g, g );
 }
 
 void adjustTextImage ()
@@ -730,76 +755,6 @@ void rvgGlutInit (int argc, char **argv)
   std::cout << "Number of FSAA samples: " << numSamples << std::endl;
 }
 
-void calcSamples()
-{
-  float off[4] = { -0.3f, -0.1f, +0.1f, +0.3f };
-  float a = PI / 6;
-
-  std::ofstream file( "samples.txt", std::ios::out | std::ios::binary );
-  if (!file.is_open())
-    return;
-
-  int s=0;
-  for (int x=0; x<4; ++x) {
-    for (int y=0; y<4; ++y) {
-
-      float newx = COS(a) * off[x] - SIN(a) * off[y];
-      float newy = SIN(a) * off[x] + COS(a) * off[y];
-      file << "samples[" << s << "] = vec2( " << newx << ", " << newy << " );\r\n";
-      s++;
-    }
-  }
-
-  file.close();
-}
-
-void processCommands (Object *o, int i)
-{
-  int numCommands = commandCounts[ i ];
-  const VGfloat *data = dataArrays[ i ];
-  const VGubyte *commands = commandArrays[ i ];
- 
-  int d = 0;
-  for (int c=0; c<numCommands; c++)
-  {
-    VGubyte cmd = commands[ c ];
-    switch (cmd)
-    {
-    case VG_MOVE_TO_ABS:
-      {
-      float x = data[ d++ ];
-      float y = data[ d++ ];
-      o->moveTo( x, y );
-      break;
-      }
-    case VG_LINE_TO_ABS:
-      {
-      float x0 = data[ d++ ];
-      float y0 = data[ d++ ];
-      o->lineTo( x0, y0 );
-      break;
-      }
-    case VG_CUBIC_TO_ABS:
-      {
-      float x0 = data[ d++ ];
-      float y0 = data[ d++ ];
-      float x1 = data[ d++ ];
-      float y1 = data[ d++ ];
-      float x2 = data[ d++ ];
-      float y2 = data[ d++ ];
-      o->cubicTo( x0,y0, x1,y1, x2,y2 );
-      break;
-      }
-    case VG_CLOSE_PATH:
-      o->close();
-      break;
-    }
-  }
-
-  //if (commands[ numCommands-1 ] != VG_CLOSE_PATH)
-    //o->close();
-}
-
 int main (int argc, char **argv)
 {
   rvgGlutInit( argc, argv );
@@ -863,31 +818,7 @@ int main (int argc, char **argv)
   ///////////////////////////////////////////////////////
   // Tiger
 
-  imageTiger = new Image();
-  
-  GLint param;
-  glGetIntegerv( GL_MAX_TEXTURE_SIZE, &param);
-
-  const int VG_FILL_PATH  (1 << 1);
-  for (int i=0; i<pathCount; ++i)
-  //for (int i=100; i<102; ++i)
-  //for (int i=12; i<13; ++i)
-  {
-    const float *style = styleArrays[i];
-    if (! (((int)style[9]) & VG_FILL_PATH)) continue;
-
-    Object *objCubic = new Object();
-    processCommands( objCubic, i );
-
-    Object *obj = objCubic->cubicsToQuads();
-    delete objCubic;
-    
-    obj->setColor( style[4], style[5], style[6], style[7] );
-    //if (obj->color == Vec4( 1,1,1,1 ))
-      //obj->color = Vec4( 0,0,0,1 );
-
-    imageTiger->addObject( obj );
-  }
+  imageTiger = loadSvg( "../svg/tiger.svg" );
 
   int g = options[ Opt::GridSize ].toInt();
   imageTiger->setGridResolution( g, g );
@@ -914,11 +845,9 @@ int main (int argc, char **argv)
   imageTextPart->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////
-  // SVG
+  // World
 
-  //imageWorld = loadSvg( "../svg/worldmap_tweak.svg" );
-  imageWorld = loadSvg( "../svg/tiger.svg" );
-  //imageWorld = loadSvg( "../svg/tiger_inkscape.svg" );
+  imageWorld = loadSvg( "../svg/worldmap.svg" );
   imageWorld->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////
