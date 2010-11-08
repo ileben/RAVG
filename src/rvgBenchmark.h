@@ -82,7 +82,8 @@ namespace View {
   enum Enum {
     Flat      = 0,
     Cylinder  = 1,
-    Count     = 2
+    PaperFold = 2,
+    Count     = 3
   };
 };
 

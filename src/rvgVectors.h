@@ -72,6 +72,8 @@ public:
   explicit TVec3 (const TVec3<T> &v);
   
   TVec2<S> xy () const;
+  TVec2<S> xz () const;
+  TVec2<S> yz () const;
   TVec4<S> xyz (S w) const;
   
   TVec3 ();
@@ -302,14 +304,23 @@ template <class S>
 inline TVec4<S> TVec2<S>::xy (S z, S w) const
   { return TVec4<S> (x,y,z,w); }
 
+template <class S>
+inline TVec4<S> TVec3<S>::xyz (S w) const
+  { return TVec4<S> (x,y,z,w); }
+
 
 template <class S>
 inline TVec2<S> TVec3<S>::xy () const
   { return TVec2<S> (x,y); }
 
 template <class S>
-inline TVec4<S> TVec3<S>::xyz (S w) const
-  { return TVec4<S> (x,y,z,w); }
+inline TVec2<S> TVec3<S>::yz () const
+  { return TVec2<S> (y,z); }
+
+template <class S>
+inline TVec2<S> TVec3<S>::xz () const
+  { return TVec2<S> (x,z); }
+
 
 template <class S>
 inline TVec2<S> TVec4<S>::xy () const

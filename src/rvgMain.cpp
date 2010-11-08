@@ -288,8 +288,6 @@ void renderImageRandomCylinder (Image *image, bool invert)
     buf.toGpu();
   }
 
-  //Render using current rotation and zoom
-
   glViewport( 0,0, resX, resY );
   glEnable( GL_DEPTH_TEST );
   glDisable( GL_CULL_FACE );
@@ -298,21 +296,27 @@ void renderImageRandomCylinder (Image *image, bool invert)
   matModelView.push();
   matTexture.push();
 
+  //Setup perspective projection
   Matrix4x4 mproj;
   mproj.setPerspectiveFovLH( PI/4, (float)resX/resY, 0.01f, 1000.0f );
   matProjection.load( mproj );
 
+  //Rotate model according to view settings
   matModelView.identity();
   matModelView.translate( 0.0f, 0.0f, zoomZ );
   matModelView.rotate( 1.0f, 0.0f, 0.0f, angleY );
   matModelView.rotate( 0.0f, 1.0f, 0.0f, angleX );
+
+  //Scale cylinder vertically
   matModelView.scale( 1.0f, 2.0f, 1.0f );
 
+  //Transform [0,1] texture coordinates into image position
   Vec2 sz = image->getSize();
   matTexture.identity();
   matTexture.translate( image->getMin().x, image->getMin().y, 0.0f );
   matTexture.scale( sz.x, sz.y, 1.0f );
 
+  //Invert coordinates vertically if needed
   if (invert) {
     matTexture.translate( 0.0f, 1.0f, 0.0f );
     matTexture.scale( 1.0f, -1.0, 1.0f );
@@ -322,6 +326,117 @@ void renderImageRandomCylinder (Image *image, bool invert)
   case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_TRIANGLE_STRIP );  break;
   //case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_TRIANGLE_STRIP ); break;
   case Rep::Pivot: image->renderRandom( rendererRandomPivotLight, &buf, GL_TRIANGLE_STRIP ); break;
+  }
+
+  matProjection.pop();
+  matModelView.pop();
+  matTexture.pop();
+}
+
+void renderImageRandomFold (Image *image, bool invert=false)
+{
+  //Setup paper fold buffer
+
+  static bool bufInit = false;
+  static VertexBuffer buf;
+  if (!bufInit)
+  {
+    bufInit = true;
+
+    //Coordinates
+    const int numCoords = 7;
+    float xCoords[ numCoords ] = { -1.0f, -0.8f, -0.6f, -0.2f, 0.0f, 0.5f, 1.0f };
+    //float yCoords[ numCoords ] = { -1, 1, -1, 1, -1, 1, -1 };
+    float yCoords[ numCoords ] = { -1, 2, -1, 1.4f, -1, 0.8f, -1 };
+    float zCoords[ 2 ] = { -1.0f, 1.0f };
+    float yScale = 0.2f;
+    //float yScale = 1.0f;
+
+    //Calculate unfolded width of the paper sheet
+    float totalWidth = 0.0f;
+    for (int c=0; c<numCoords-1; ++c)
+    {
+      Vec3 p1( xCoords[c+0], yCoords[c+0] * yScale, 0.0f );
+      Vec3 p2( xCoords[c+1], yCoords[c+1] * yScale, 0.0f );
+      totalWidth += (p2 - p1).norm();
+    }
+
+    //Generate a quad for every fold
+    float curWidth = 0.0f, nextWidth = 0.0f;
+    for (int c=0; c<numCoords-1; ++c, curWidth = nextWidth)
+    {
+      //Four vertices of the quad
+      Vec3 coords[4] = {
+        Vec3( xCoords[c+0], yCoords[c+0] * yScale, zCoords[0] ),
+        Vec3( xCoords[c+1], yCoords[c+1] * yScale, zCoords[0] ),
+        Vec3( xCoords[c+1], yCoords[c+1] * yScale, zCoords[1] ),
+        Vec3( xCoords[c+0], yCoords[c+0] * yScale, zCoords[1] )
+      };
+
+      //Single normal for the entire quad
+      Vec3 side1 = coords[1] - coords[0];
+      Vec3 side2 = coords[3] - coords[0];
+      Vec3 normal = Vec::Cross( side1, side2 );
+      normal.normalize();
+
+      //Texture coordinates as a fraction of unfolded width
+      nextWidth = curWidth + side1.norm();
+      Vec2 texcoords[4] = {
+        Vec2( curWidth  / totalWidth, 0.0f ),
+        Vec2( nextWidth / totalWidth, 0.0f ),
+        Vec2( nextWidth / totalWidth, 1.0f ),
+        Vec2( curWidth  / totalWidth, 1.0f )
+      };
+
+      //Add vertices to buffer
+      for (int v=0; v<4; ++v)
+      {
+        Vertex vert;
+        vert.coord = coords[v];
+        vert.texcoord = texcoords[v];
+        vert.normal = normal;
+        buf.verts.push_back( vert );
+      }
+    }
+
+    buf.toGpu();
+  }
+
+  glViewport( 0,0, resX, resY );
+  glEnable( GL_DEPTH_TEST );
+  glDisable( GL_CULL_FACE );
+
+  matProjection.push();
+  matModelView.push();
+  matTexture.push();
+
+  //Setup perspective projection
+  Matrix4x4 mproj;
+  mproj.setPerspectiveFovLH( PI/4, (float)resX/resY, 0.01f, 1000.0f );
+  matProjection.load( mproj );
+
+  //Rotate model according to view settings
+  matModelView.identity();
+  matModelView.translate( 0.0f, 0.0f, zoomZ );
+  matModelView.rotate( 1.0f, 0.0f, 0.0f, angleY );
+  matModelView.rotate( 0.0f, 1.0f, 0.0f, angleX );
+
+  //Transform [0,1] texture coordinates into image position
+  Vec2 sz = image->getSize();
+  matTexture.identity();
+  matTexture.translate( image->getMin().x, image->getMin().y, 0.0f );
+  matTexture.scale( sz.x, sz.y, 1.0f );
+
+  //Invert coordinates vertically if needed
+  if (invert) {
+    matTexture.translate( 0.0f, 1.0f, 0.0f );
+    matTexture.scale( 1.0f, -1.0, 1.0f );
+  }
+
+  switch (options[ Opt::Rep ].toInt()) {
+  case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_QUADS );  break;
+  //case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_QUADS ); break;
+  case Rep::Pivot: image->renderRandom( rendererRandomPivotLight, &buf, GL_QUADS ); break;
   }
 
   matProjection.pop();
@@ -516,6 +631,7 @@ void display ()
       switch (options[ Opt::View ].toInt()) {
       case View::Flat:     renderImageRandomFlat( image, invert ); break;
       case View::Cylinder: renderImageRandomCylinder( image, invert ); break;
+      case View::PaperFold: renderImageRandomFold( image, invert ); break;
       }
     }
   }
@@ -701,7 +817,8 @@ void mouseMove (int x, int y)
   Vec2 mouseDiff = mouse - mouseDown;
   mouseDown = mouse;
 
-  if (options[ Opt::View ] == View::Cylinder)
+  if (options[ Opt::View ] == View::Cylinder ||
+      options[ Opt::View ] == View::PaperFold )
   {
     if (mouseButton == GLUT_LEFT_BUTTON)
     {
