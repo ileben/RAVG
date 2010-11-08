@@ -987,6 +987,26 @@
 						</FileConfiguration>
 					</File>
 					<File
+						RelativePath="..\..\src\shaders_pivot\render_pivot.lookup.c"
+						>
+						<FileConfiguration
+							Name="Debug|Win32"
+							ExcludedFromBuild="true"
+							>
+							<Tool
+								Name="VCCLCompilerTool"
+							/>
+						</FileConfiguration>
+						<FileConfiguration
+							Name="Release|Win32"
+							ExcludedFromBuild="true"
+							>
+							<Tool
+								Name="VCCLCompilerTool"
+							/>
+						</FileConfiguration>
+					</File>
+					<File
 						RelativePath="..\..\src\shaders_pivot\render_pivot.vert.c"
 						>
 						<FileConfiguration

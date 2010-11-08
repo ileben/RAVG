@@ -151,7 +151,7 @@ Int32 GLProgram::getUniform (const char *name) const
 High-level Shader
 
 ==========================================*/
-
+/*
 std::vector< Shader::Def > Shader::defs;
 
 void Shader::Define (const std::string &key, const std::string &value)
@@ -328,6 +328,176 @@ bool Shader::load()
     ; //std::cout << "Program linked successfully" << std::endl;
   else std::cout << "Program link FAILED" << std::endl;
 
+  std::string linkLog = program->getInfoLog();
+  if (linkLog.length() > 0)
+    std::cout << linkLog << std::endl;
+
+  return true;
+}
+
+void Shader::use()
+{
+  if (program) program->use();
+}
+*/
+
+std::vector< Shader::Def > Shader::defs;
+
+void Shader::Define (const std::string &key, const std::string &value)
+{
+  Def def;
+  def.key = key;
+  def.value = value;
+  defs.push_back( def );
+}
+
+void Shader::Define (const std::string &key, int value)
+{
+  std::ostringstream s;
+  if (s << value)
+  {
+    Def def;
+    def.key = key;
+    def.value = s.str();
+    defs.push_back( def );
+  }
+}
+
+std::string Shader::ApplyDefs (const std::string &source)
+{
+  std::string str = source;
+  
+  for (Uint32 d=0; d<defs.size(); ++d)
+  {
+    std::size_t x = 0;
+    while ((x = str.find( defs[d].key )) != std::string::npos)
+      str = str.replace( x, defs[d].key.length(), defs[d].value );
+  }
+
+  return str;
+}
+
+Shader::Shader()
+{
+  program = NULL;
+}
+
+Shader::Shader (const std::string &vertFile, const std::string &fragFile)
+{
+  addSource( ShaderType::Vertex, vertFile );
+  addSource( ShaderType::Fragment, fragFile );
+  program = NULL;
+}
+
+Shader::Shader (const std::string &vertFile, const std::string &geomFile, const std::string &fragFile)
+{
+  addSource( ShaderType::Vertex, vertFile );
+  addSource( ShaderType::Geometry, geomFile );
+  addSource( ShaderType::Fragment, fragFile );
+  program = NULL;
+}
+
+void Shader::addSource (ShaderType::Enum type, const std::string &file)
+{
+  Source s;
+  s.type = type;
+  s.file = file;
+  sources.push_back( s );
+}
+
+Shader::~Shader ()
+{
+  freeShaders();
+}
+
+void Shader::freeShaders()
+{
+  for (Uint s=0; s<shaders.size(); ++s)
+    delete shaders[s];
+
+  if (program)
+    delete program;
+}
+
+std::string readFile (const std::string &filename)
+{
+  std::ifstream f;
+  f.open( filename.c_str(), std::ios::binary );
+  
+  if (!f.is_open()) {
+    throw std::string( "Shader '" ) + filename + "': Failed opening file!";
+  }
+
+  long begin = f.tellg();
+  f.seekg( 0, std::ios::end );
+  long end = f.tellg();
+  f.seekg( 0, std::ios::beg );
+  long size = end - begin;
+
+  if (size == 0) {
+    throw std::string( "Shader '" ) + filename + "': Zero file size!";
+  }
+
+  char *cstr = new char[ size+1 ];
+  f.read( cstr, size );
+  f.close();
+  cstr[ size ] = '\0';
+
+  std::string str( cstr );
+  delete[] cstr;
+
+  return str;
+}
+
+bool Shader::load()
+{
+  //Cleanup
+  freeShaders();
+
+  //Program
+  program = new GLProgram();
+  program->create();
+
+  //Shaders
+  for (Uint s=0; s<sources.size(); ++s)
+  {
+    //Load source
+    std::cout << "Loading shader " << sources[s].file << "..." << std::endl;
+    std::string source;
+    try
+    {
+      source = readFile( sources[s].file );
+      source = Shader::ApplyDefs( source );
+    }
+    catch (std::string e)
+    {
+      std::cout << e << std::endl;
+      continue;
+    }
+
+    //Compile shader
+    GLShader *shader = new GLShader();
+    shader->create( sources[s].type );
+    shaders.push_back( shader );
+    if (shader->compile( source ))
+    {
+      //std::cout << "Shader compiled successfuly" << std::endl;
+      program->attach( shader );
+    }
+    else std::cout << "Shader compilation FAILED" << std::endl;
+
+    //Report log
+    std::string shaderLog = shader->getInfoLog();
+    if (shaderLog.length() > 0)
+      std::cout << shaderLog << std::endl;
+  }
+
+  //Link program
+  if (program->link())
+    ; //std::cout << "Program linked successfully" << std::endl;
+  else std::cout << "Program link FAILED" << std::endl;
+
+  //Report log
   std::string linkLog = program->getInfoLog();
   if (linkLog.length() > 0)
     std::cout << linkLog << std::endl;

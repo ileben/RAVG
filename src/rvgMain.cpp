@@ -735,7 +735,7 @@ void rvgGlutInit (int argc, char **argv)
 
   glutInitWindowPosition( 100,100 );
   glutInitWindowSize( resX,resY );
-  int ret = glutCreateWindow( "Random-access Vector Graphics" );
+  int ret = glutCreateWindow( "Random Access Vector Graphics" );
 
   //glutGameModeString( "1280x1024:32@60" );
   //glutEnterGameMode();

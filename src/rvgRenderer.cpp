@@ -30,9 +30,9 @@ RendererRandomAux::RendererRandomAux()
 
 RendererRandomPivot::RendererRandomPivot()
 {
-  shader = new Shader(
-    "shaders_pivot/render_pivot.vert.c",
-    "shaders_pivot/render_pivot.frag.c" );
-
+  shader = new Shader();
+  shader->addSource( ShaderType::Vertex,   "shaders_pivot/render_pivot.vert.c" );
+  shader->addSource( ShaderType::Fragment, "shaders_pivot/render_pivot.lookup.c" );
+  shader->addSource( ShaderType::Fragment, "shaders_pivot/render_pivot.frag.c" );
   shader->load();
 }
