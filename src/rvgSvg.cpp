@@ -392,6 +392,7 @@ struct ParseNode
   pugi::xml_node node;
   SvgStyle style;
   Matrix4x4 transform;
+  std::string id;
 };
 
 Image* loadSvg (const std::string &filename)
@@ -445,6 +446,7 @@ Image* loadSvg (const std::string &filename)
       //Parse style / transform and combine with current one
       SvgStyle groupStyle = top.style + parseStyle( top.node );
       Matrix4x4 groupTransform = top.transform * parseTransform( top.node );
+      std::string groupId = top.id + id;
 
       //Insert all the children in temp list
       for (pugi::xml_node_iterator it = top.node.begin(); it != top.node.end(); ++it)
@@ -456,6 +458,7 @@ Image* loadSvg (const std::string &filename)
         child.node = temp.back();
         child.style = groupStyle;
         child.transform = groupTransform;
+        child.id = groupId;
         stack.push( child );
         temp.pop_back();
       }
@@ -465,10 +468,12 @@ Image* loadSvg (const std::string &filename)
       //Parse style / transform and combine with current one
       SvgStyle pathStyle = top.style + parseStyle( top.node );
       Matrix4x4 pathTransform = top.transform * parseTransform( top.node );
+      std::string pathId = top.id + id;
       if (!pathStyle.hasFill) continue;
 
       //Parse path and apply style to object
       Object *obj = parsePath( top.node );
+      obj->setId( pathId );
       obj->setTransform( pathTransform );
       applyStyle( pathStyle, obj );
 

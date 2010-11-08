@@ -13,13 +13,11 @@ Object::~Object()
 
 void Object::clearFlat()
 {
-  for (Uint32 c=0; c<contours.size(); ++c)
-    delete contours[c];
-
-  contours.clear();
   lines.clear();
   cubics.clear();
   quads.clear();
+  contours.clear();
+  contourPoints.clear();
   flat = false;
 }
 
@@ -28,6 +26,11 @@ void Object::clear()
   clearFlat();
   segments.clear();
   points.clear();
+}
+
+void Object::setId( const std::string &i )
+{
+  id = i;
 }
 
 void Object::setColor( float r, float g, float b, float a )
@@ -233,45 +236,52 @@ Vec2 ObjectFlatten::transform (const Vec2 &p)
 
 void ObjectFlatten::begin ()
 {
-  contour = NULL;
+  penDown = false;
 }
 
 void ObjectFlatten::moveTo (const Vec2 &p1, int space)
 {
-  contour = new Contour();
+  Contour contour;
+  contour.length = 0;
+  contour.start = getObject()->contourPoints.size();
   getObject()->contours.push_back( contour );
 
   Vec2 t0 = transform( p1 );
 
-  contour->flatPoints.push_back( t0 );
+  getObject()->contourPoints.push_back( t0 );
+  getObject()->contours.back().length++;
+
+  penDown = true;
 }
 
 void ObjectFlatten::lineTo (const Vec2 &p1, int space)
 {
-  if (contour == NULL) return;
+  if (!penDown) return;
 
   Vec2 t0 = transform( getPen() );
   Vec2 t1 = transform( p1 );
 
   getObject()->lines.push_back( Line( t0.x,t0.y, t1.x,t1.y ));
-  contour->flatPoints.push_back( t1 );
+  getObject()->contourPoints.push_back( t1 );
+  getObject()->contours.back().length++;
 }
 
 void ObjectFlatten::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
 {
-  if (contour == NULL) return;
+  if (!penDown) return;
 
   Vec2 t0 = transform( getPen() );
   Vec2 t1 = transform( p1 );
   Vec2 t2 = transform( p2 );
 
   getObject()->quads.push_back( Quad( t0.x,t0.y, t1.x,t1.y, t2.x,t2.y ));
-  contour->flatPoints.push_back( t2 );
+  getObject()->contourPoints.push_back( t2 );
+  getObject()->contours.back().length++;
 }
 
 void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
 {
-  if (contour == NULL) return;
+  if (!penDown) return;
 
   Vec2 t0 = transform( getPen() );
   Vec2 t1 = transform( p1 );
@@ -279,18 +289,19 @@ void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int
   Vec2 t3 = transform( p3 );
 
   getObject()->cubics.push_back( Cubic( t0.x,t0.y, t1.x,t1.y, t2.x,t2.y, t3.x,t3.y ));
-  contour->flatPoints.push_back( t2 );
+  getObject()->contourPoints.push_back( t2 );
+  getObject()->contours.back().length++;
 }
 
 void ObjectFlatten::close ()
 {
-  if (contour == NULL) return;
+  if (!penDown) return;
 
   Vec2 t0 = transform( getPen() );
   Vec2 t1 = transform( getStart() );
 
   getObject()->lines.push_back( Line( t0.x,t0.y, t1.x,t1.y ));
-  contour = NULL;
+  penDown = false;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -300,6 +311,8 @@ void ObjectClone::begin ()
 {
   clone = new Object();
   Vec4 c = getObject()->getColor();
+
+  clone->setId( getObject()->getId() );
   clone->setColor( c.x, c.y, c.z, c.w );
   clone->setTransform( getObject()->getTransform() );
 }
@@ -462,39 +475,32 @@ void Object::updateFlat()
 
 void Object::updateBounds()
 {
-  for (Uint32 c=0; c<contours.size(); ++c)
+  for (Uint32 p=0; p<contourPoints.size(); ++p)
   {
-    for (Uint32 p=0; p<contours[c]->flatPoints.size(); ++p)
+    Vec2 &point = contourPoints[p];
+    if (p==0)
     {
-      Vec2 &point = contours[c]->flatPoints[p];
-      if (c==0 && p==0)
-      {
-        min = max = point;
-        continue;
-      }
-
-      if (point.x < min.x) min.x = point.x;
-      if (point.y < min.y) min.y = point.y;
-
-      if (point.x > max.x) max.x = point.x;
-      if (point.y > max.y) max.y = point.y;
+      min = max = point;
+      continue;
     }
+
+    if (point.x < min.x) min.x = point.x;
+    if (point.y < min.y) min.y = point.y;
+
+    if (point.x > max.x) max.x = point.x;
+    if (point.y > max.y) max.y = point.y;
   }
 }
 
 void Object::updateBuffers()
 {
   //////////////////////////////////////
-  //Contour flat points
-  
-  for (Uint32 c=0; c<contours.size(); ++c)
+  //Contour points
+
+  if (contourPoints.size() > 0)
   {
-    Contour *cnt = contours[c];
-    if (cnt->flatPoints.size() > 0)
-    {
-      cnt->bufFlatPoints.upload( cnt->flatPoints.size() * sizeof( vec2 ), &cnt->flatPoints[0] );
-      checkGlError( "Object::updateBuffers contours" );
-    }
+    bufContourPoints.upload( contourPoints.size() * sizeof( vec2 ), &contourPoints[0] );
+    checkGlError( "Object::updateBuffers contours" );
   }
 
   //////////////////////////////////////
@@ -568,6 +574,22 @@ int Image::getNumObjects () {
 
 Object* Image::getObject (int index) {
   return objects[ index ];
+}
+
+Object* Image::getObjectById (const std::string &id)
+{
+  for (Uint o=0; o<objects.size(); ++o)
+    if (objects[o]->getId() == id)
+      return objects[o];
+
+  return NULL;
+}
+
+void Image::getObjectsBySubId (const std::string &id, std::vector<Object*> &list)
+{
+  for (Uint o=0; o<objects.size(); ++o)
+    if (objects[o]->getId().find( id ) != std::string::npos)
+      list.push_back( objects[o] );
 }
 
 void Image::updateFlat ()
@@ -1164,14 +1186,14 @@ void Image::renderClassic (RendererClassic *renderer)
 
       for (Uint32 c=0; c<obj->contours.size(); ++c)
       {
-        Contour *cnt = obj->contours[c];
+        Contour &cnt = obj->contours[c];
 
         Int32 aPos = shader->program->getAttribute( "in_pos" );
         glEnableVertexAttribArray( aPos );
-        glBindBuffer( GL_ARRAY_BUFFER, cnt->bufFlatPoints.getId() );
+        glBindBuffer( GL_ARRAY_BUFFER, obj->bufContourPoints.getId() );
         glVertexAttribPointer( aPos, 2, GL_FLOAT, false, sizeof( Vec2 ), 0 );
 
-        glDrawArrays( GL_TRIANGLE_FAN, 0, cnt->flatPoints.size() );
+        glDrawArrays( GL_TRIANGLE_FAN, cnt.start, cnt.length );
         glDisableVertexAttribArray( aPos );
       }
     }

@@ -4,7 +4,6 @@
 ///////////////////////////////////////////////////////////////////
 // Forward declarations
 
-class Contour;
 class Object;
 class ObjectProcessor;
 class Image;
@@ -112,17 +111,10 @@ struct ObjInfo
   vec4  color;
 };
 
-class Contour
+struct Contour
 {
-  friend class Object;
-  friend class ObjectFlatten;
-  friend class Image;
-
-private:
-  std::vector< Vec2 > flatPoints;
-
-private:
-  DynamicGpuBuffer bufFlatPoints;
+  int start;
+  int length;
 };
 
 class Object
@@ -141,20 +133,23 @@ private:
 
   DynamicGpuBuffer bufLines;
   DynamicGpuBuffer bufQuads;
+  DynamicGpuBuffer bufContourPoints;
 
 private:
 
   //raw data
+  std::string id;
   Vec4 color;
   Matrix4x4 transform;
   std::vector< int > segments;
   std::vector< Vec2 > points;
 
   //flat data
-  std::vector< Contour* > contours;
   std::vector< Line > lines;
   std::vector< Cubic > cubics;
   std::vector< Quad > quads;
+  std::vector< Contour > contours;
+  std::vector< Vec2 > contourPoints;
 
 private:
 
@@ -168,6 +163,9 @@ public:
 
   Object();
   ~Object();
+
+  void setId( const std::string &i );
+  const std::string& getId() { return id; }
 
   void setColor( float r, float g, float b, float a=1.0f );
   const Vec4& getColor() { return color; }
@@ -233,7 +231,7 @@ public:
 
 class ObjectFlatten : public ObjectProcessor
 {
-  Contour *contour;
+  bool penDown;
   Vec2 transform (const Vec2 &p);
 
 public:
@@ -317,6 +315,8 @@ public:
 
   int getNumObjects ();
   Object* getObject (int index);
+  Object* getObjectById (const std::string &id);
+  void getObjectsBySubId (const std::string &id, std::vector<Object*> &list);
 
   void setGridResolution (int x, int y);
 

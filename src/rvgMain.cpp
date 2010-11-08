@@ -27,6 +27,7 @@ Image *imageTiger;
 Image *imageText;
 Image *imageTextPart;
 Image *imageWorld;
+std::vector< Object* > planeObjects;
 
 //User interface
 
@@ -690,6 +691,31 @@ void reshape (int w, int h)
 
 void animate ()
 {
+  static int before = glutGet( GLUT_ELAPSED_TIME );
+  int now = glutGet( GLUT_ELAPSED_TIME );
+  float interval = (float) (now - before) / 1000.0f;
+  before = now;
+
+  if (options[ Opt::Source ].toInt() == Source::World)
+  {
+    static float max = imageWorld->getMax().x;
+    static float min = imageWorld->getMin().x;
+    static float x = max;
+    
+    float dx = 0.0f;
+    if (x <= min + 100) dx = max - min - 100;
+    else dx = -1.0f * interval * 100.0f;
+    x += dx;
+    
+    Matrix4x4 m;
+    m.setTranslation( dx, 0, 0 );
+
+    for (Uint p=0; p<planeObjects.size(); ++p) {
+      Matrix4x4 mo = planeObjects[p]->getTransform();
+      planeObjects[p]->setTransform( m * mo );
+    }
+  }
+
   glutPostRedisplay();
 }
 
@@ -976,6 +1002,8 @@ int main (int argc, char **argv)
   //imageWorld = loadSvg( "../svg/worldmap.svg" );
   //imageWorld = loadSvg( "../svg/plane_only.svg" );
   imageWorld->setGridResolution( 200, 200 );
+
+  imageWorld->getObjectsBySubId( "plane", planeObjects );
 
   ///////////////////////////////////////////////////////
   // Tests
