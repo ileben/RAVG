@@ -13,7 +13,8 @@ smooth out vec3 f_normal;
 
 void main (void)
 {
-  f_normal = in_normal;
+  mat3 normalview = transpose( inverse( mat3( modelview )));
+  f_normal = normalview * in_normal;
 
   f_tex = (matTexture * vec4( in_tex, 0.0, 1.0 )).xy;
   gl_Position = projection * modelview * vec4( in_pos, 1 );

@@ -6,18 +6,29 @@ out vec4 out_color;
 
 vec4 lookup (vec2 tex);
 
+float lighting (vec3 normal, vec3 light)
+{
+  //float NdotL = max( dot( normal, light ), 0.0 );
+  float NdotL = abs( dot( normal, light ));
+  return NdotL;
+}
+
 void main (void)
 {
-  vec4 tex_color = lookup( f_tex );
+  vec3 normal = normalize( f_normal );
+  vec4 texColor = lookup( f_tex );  
   
-  float ambient = 0.2;
-  vec3 lit_color = ambient * tex_color.rgb;
+  //Ambient light
+  vec3 ambientColor = vec3( 0.2, 0.2, 0.2 );
+  vec3 litColor = ambientColor * texColor.rgb;
 
-  vec3 light = normalize( vec3( 1, 1, -1 ) );
-  float NdotL = dot( f_normal, light );
+  //Front light
+  vec3 lightFront = 0.7 * normalize( vec3( 0,1,-1 ));
+  litColor += lighting( normal, lightFront ) * texColor.rgb;
+
+  //Back light
+  vec3 lightBack = 0.7 * normalize( vec3( 0,-1,-1 ));
+  litColor += lighting( normal, lightBack ) * texColor.rgb;
   
-  if (NdotL > 0.0)
-    lit_color += NdotL * tex_color.rgb;
-  
-  out_color = vec4( lit_color.rgb, tex_color.a );
+  out_color = vec4( litColor.rgb, texColor.a );
 }
