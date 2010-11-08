@@ -36,3 +36,12 @@ RendererRandomPivot::RendererRandomPivot()
   shader->addSource( ShaderType::Fragment, "shaders_pivot/render_pivot.frag.c" );
   shader->load();
 }
+
+RendererRandomPivotLight::RendererRandomPivotLight()
+{
+  shader = new Shader();
+  shader->addSource( ShaderType::Vertex,   "shaders_random/render_random_light.vert.c" );
+  shader->addSource( ShaderType::Fragment, "shaders_pivot/render_pivot.lookup.c" );
+  shader->addSource( ShaderType::Fragment, "shaders_random/render_random_light.frag.c" );
+  shader->load();
+}

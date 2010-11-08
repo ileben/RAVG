@@ -6,6 +6,7 @@ class Vertex
 public:
   Vec3 coord;
   Vec2 texcoord;
+  Vec3 normal;
 };
 
 class VertexBuffer

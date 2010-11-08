@@ -32,4 +32,10 @@ public:
   RendererRandomPivot ();
 };
 
+class RendererRandomPivotLight : public RendererRandom
+{
+public:
+  RendererRandomPivotLight ();
+};
+
 #endif//RVGRENDERER_H

@@ -16,6 +16,7 @@ EncoderGpu *encoderGpuPivot;
 
 RendererRandom *rendererRandomAux;
 RendererRandom *rendererRandomPivot;
+RendererRandom *rendererRandomPivotLight;
 RendererClassic *rendererClassic;
 
 Shader *shaderGrid;
@@ -265,16 +266,21 @@ void renderImageRandomCylinder (Image *image, bool invert)
       float t = s * tStep;
       float cosa = COS( a );
       float sina = SIN( a );
+      float x = -sina;
+      float z = cosa;
       
       Vertex vertTop;
       Vertex vertBtm;
 
-      vertTop.coord.set( -sina, +1.0f, cosa );
-      vertBtm.coord.set( -sina, -1.0f, cosa );
+      vertTop.coord.set( x, +1.0f, z );
+      vertBtm.coord.set( x, -1.0f, z );
 
       vertTop.texcoord.set( t, 1.0f );
       vertBtm.texcoord.set( t, 0.0f );
-      
+
+      vertTop.normal.set( x, 0.0f, z );
+      vertBtm.normal.set( x, 0.0f, z );
+
       buf.verts.push_back( vertTop );
       buf.verts.push_back( vertBtm );
     }
@@ -314,7 +320,8 @@ void renderImageRandomCylinder (Image *image, bool invert)
 
   switch (options[ Opt::Rep ].toInt()) {
   case Rep::Aux:   image->renderRandom( rendererRandomAux, &buf, GL_TRIANGLE_STRIP );  break;
-  case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_TRIANGLE_STRIP ); break;
+  //case Rep::Pivot: image->renderRandom( rendererRandomPivot, &buf, GL_TRIANGLE_STRIP ); break;
+  case Rep::Pivot: image->renderRandom( rendererRandomPivotLight, &buf, GL_TRIANGLE_STRIP ); break;
   }
 
   matProjection.pop();
@@ -785,6 +792,7 @@ int main (int argc, char **argv)
 
   rendererRandomAux = new RendererRandomAux;
   rendererRandomPivot = new RendererRandomPivot;
+  rendererRandomPivotLight = new RendererRandomPivotLight;
   rendererClassic = new RendererClassic;
 
   shaderGrid = new Shader(
