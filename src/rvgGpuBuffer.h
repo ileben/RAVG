@@ -24,6 +24,7 @@ private:
 
 public:
   GpuBuffer (BufferType type);
+  ~GpuBuffer ();
 
   Uint64 capacity();
   bool reserve (Uint64 newBufSize);

@@ -219,6 +219,7 @@ public:
   Matrix4x4& operator*= (const Matrix4x4 &r);
   Matrix4x4 operator* (const Matrix4x4 &r) const;
   inline Vec3 operator* (const Vec3 &v) const;
+  inline Vec4 operator* (const Vec4 &v) const;
   
   //Float determinant () const;
   //Matrix4x4 inverse () const;
@@ -245,6 +246,11 @@ inline void Matrix4x4::set (Float m00, Float m10, Float m20, Float m30,
 }
 
 inline Vec3 Matrix4x4::operator* (const Vec3 &v) const
+{
+  return transformPoint (v);
+}
+
+inline Vec4 Matrix4x4::operator* (const Vec4 &v) const
 {
   return transformPoint (v);
 }

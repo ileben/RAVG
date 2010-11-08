@@ -13,6 +13,12 @@ GpuBuffer::GpuBuffer (BufferType type)
   this->dataSize = 0;
 }
 
+GpuBuffer::~GpuBuffer ()
+{
+  if (idValid)
+    glDeleteBuffers( 1, &id );
+}
+
 Uint64 GpuBuffer::capacity ()
 {
   return bufSize;

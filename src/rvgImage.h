@@ -146,6 +146,7 @@ private:
 
   //raw data
   Vec4 color;
+  Matrix4x4 transform;
   std::vector< int > segments;
   std::vector< Vec2 > points;
 
@@ -170,6 +171,9 @@ public:
 
   void setColor( float r, float g, float b, float a=1.0f );
   const Vec4& getColor() { return color; }
+
+  void setTransform( const Matrix4x4 &t );
+  const Matrix4x4& getTransform() { return transform; }
 
   void moveTo( Float x1, Float y1,
     int space = SegSpace::Absolute );
@@ -230,6 +234,7 @@ public:
 class ObjectFlatten : public ObjectProcessor
 {
   Contour *contour;
+  Vec2 transform (const Vec2 &p);
 
 public:
   virtual void begin ();

@@ -43,6 +43,16 @@ public:
   }
 };
 
+void skipUntil (std::istringstream &ss, const std::string &which)
+{
+  while (true)
+  {
+    if (!ss.good()) break;
+    char c = ss.get();
+    if (which.find( c ) != std::string::npos) break;
+  }
+}
+
 void skipChars (std::istringstream &ss, const std::string &which)
 {
   while (true)
@@ -64,6 +74,118 @@ std::string trim (const std::string &s, const std::string &which)
   return s.substr( start, end - start + 1 );
 }
 
+Matrix4x4 parseMatrix (const std::string &value)
+{
+
+  std::istringstream ss( value );
+  skipUntil( ss, "(" );
+
+  float a,b,c,d,e,f;
+
+  ss >> a;
+  skipChars( ss, ", " );
+  ss >> b;
+  skipChars( ss, ", " );
+  ss >> c;
+  skipChars( ss, ", " );
+  ss >> d;
+  skipChars( ss, ", " );
+  ss >> e;
+  skipChars( ss, ", " );
+  ss >> f;
+
+  Matrix4x4 matrix;
+  matrix.set(
+    a, c, 0, e,
+    b, d, 0, f,
+    0, 0, 1, 0,
+    0, 0, 0, 1 );
+  return matrix;
+}
+
+Matrix4x4 parseTranslate (const std::string &value)
+{
+  std::istringstream ss( value );
+  skipUntil( ss, "(" );
+
+  float x=0.0f, y=0.0f;
+
+  ss >> x;
+  skipChars( ss, ", " );
+  ss >> y;
+
+  Matrix4x4 matrix;
+  matrix.setTranslation( x, y, 0 );
+  return matrix;
+}
+
+Matrix4x4 parseScale (const std::string &value)
+{
+  std::istringstream ss( value );
+  skipUntil( ss, "(" );
+
+  float x=0.0f, y=0.0f;
+
+  ss >> x;
+  skipChars( ss, ", " );
+  if (!(ss >> y))
+    y = x;
+
+  Matrix4x4 matrix;
+  matrix.setScale( x, y, 1 );
+  return matrix;
+}
+
+Matrix4x4 parseRotate (const std::string &value)
+{
+  std::istringstream ss( value );
+  skipUntil( ss, "(" );
+
+  float a = 0.0f;
+  ss >> a;
+
+  Matrix4x4 matrix;
+  matrix.setRotationZ( a * PI / 180.0f );
+
+  float cx, cy;
+  bool gotX = (ss >> cx) ? true : false;
+  skipChars( ss, ", " );
+  bool gotY = (ss >> cy) ? true : false;
+
+  if (gotX && gotY)
+  {
+    Matrix4x4 mcenter, pcenter;
+    mcenter.setTranslation( -cx, -cy, 0 );
+    pcenter.setTranslation(  cx,  cy, 0 );
+
+    return pcenter * matrix * mcenter;
+  }
+  else return matrix;
+}
+
+Matrix4x4 parseTransform (pugi::xml_node node)
+{
+  //Get transform attribute
+  pugi::xml_attribute aTransform = node.attribute( "transform" );
+  if (!aTransform) return Matrix4x4();
+
+  //Parse transformation according to type
+  std::string sTransform( aTransform.value() );
+  
+  if (sTransform.find( "matrix" ) != std::string::npos)
+    return parseMatrix( sTransform );
+
+  else if (sTransform.find( "translate" ) != std::string::npos)
+    return parseTranslate( sTransform );
+
+  else if (sTransform.find( "scale" ) != std::string::npos)
+    return parseScale( sTransform );
+
+  else if (sTransform.find( "rotate" ) != std::string::npos)
+    return parseRotate( sTransform );
+
+  return Matrix4x4();
+}
 
 Vec3 parseFill (const std::string &value)
 {
@@ -91,10 +213,11 @@ SvgStyle parseStyle (pugi::xml_node node)
 
   //Get style attribute
   pugi::xml_attribute aStyle = node.attribute( "style" );
-  std::string sStyle( aStyle.value() );
+  if (!aStyle) return style;
 
   //Tokenize parameters
   std::string param;
+  std::string sStyle( aStyle.value() );
   std::istringstream ssStyle( sStyle );
   while (getline( ssStyle, param, ';'))
   {
@@ -148,6 +271,9 @@ Object* parsePath (pugi::xml_node node)
       //Find space
       SegSpace::Enum space = (cmd == 'M')
         ? SegSpace::Absolute : SegSpace::Relative;
+
+      //Command is implicitly changed to line-to
+      cmd = (cmd == 'M') ? 'L' : 'l';
 
       //Parse coordinates
       Vec2 p1;
@@ -261,6 +387,13 @@ void applyStyle (const SvgStyle &s, Object *obj)
   obj->setColor( s.fill.x, s.fill.y, s.fill.z, s.fillAlpha );
 }
 
+struct ParseNode
+{
+  pugi::xml_node node;
+  SvgStyle style;
+  Matrix4x4 transform;
+};
+
 Image* loadSvg (const std::string &filename)
 {
   pugi::xml_document doc;
@@ -284,56 +417,59 @@ Image* loadSvg (const std::string &filename)
   //Create new image object
   Image *image = new Image();
 
-  //Push top node on stack
-  std::stack< pugi::xml_node > nodeStack;
-  nodeStack.push( svg );
+  //Create node for top level
+  ParseNode top;
+  top.node = svg;
 
-  //Push default style on stack
-  std::stack< SvgStyle > styleStack;
-  styleStack.push( SvgStyle() );
+  //Push top node on stack
+  std::stack< ParseNode > stack;
+  stack.push( top );
 
   //Temp list for reversing
-  std::vector< pugi::xml_node > tempList;
+  std::vector< pugi::xml_node > temp;
 
-  while (!nodeStack.empty())
+
+  while (!stack.empty())
   {
     //Pop node from the stack
-    pugi::xml_node node = nodeStack.top();
-    nodeStack.pop();
-
-    //Pop style from the stack
-    SvgStyle style = styleStack.top();
-    styleStack.pop();
+    ParseNode top = stack.top();
+    stack.pop();
 
     //Get node ID
-    std::string id = node.attribute( "id" ).value();
+    std::string id = top.node.attribute( "id" ).value();
 
     //Check node type by name
-    std::string name = node.name();
+    std::string name = top.node.name();
     if (name == "g" || name == "svg")
     {
-      //Parse style and combine with current one
-      SvgStyle groupStyle = style + parseStyle( node );
+      //Parse style / transform and combine with current one
+      SvgStyle groupStyle = top.style + parseStyle( top.node );
+      Matrix4x4 groupTransform = top.transform * parseTransform( top.node );
 
       //Insert all the children in temp list
-      for (pugi::xml_node_iterator it = node.begin(); it != node.end(); ++it)
-        tempList.push_back( *it);
+      for (pugi::xml_node_iterator it = top.node.begin(); it != top.node.end(); ++it)
+        temp.push_back( *it);
 
       //Push all the children on the stack in reverse order
-      while (!tempList.empty()) {
-        nodeStack.push( tempList.back() );
-        styleStack.push( groupStyle );
-        tempList.pop_back();
+      while (!temp.empty()) {
+        ParseNode child;
+        child.node = temp.back();
+        child.style = groupStyle;
+        child.transform = groupTransform;
+        stack.push( child );
+        temp.pop_back();
       }
     }
     else if (name == "path")
     {
-      //Parse style and combine with current one
-      SvgStyle pathStyle = style + parseStyle( node );
+      //Parse style / transform and combine with current one
+      SvgStyle pathStyle = top.style + parseStyle( top.node );
+      Matrix4x4 pathTransform = top.transform * parseTransform( top.node );
       if (!pathStyle.hasFill) continue;
 
       //Parse path and apply style to object
-      Object *obj = parsePath( node );
+      Object *obj = parsePath( top.node );
+      obj->setTransform( pathTransform );
       applyStyle( pathStyle, obj );
 
       //Add to image

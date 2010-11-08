@@ -972,7 +972,9 @@ int main (int argc, char **argv)
   ///////////////////////////////////////////////////////
   // World
 
-  imageWorld = loadSvg( "../svg/worldmap.svg" );
+  imageWorld = loadSvg( "../svg/worldmap_with_plane.svg" );
+  //imageWorld = loadSvg( "../svg/worldmap.svg" );
+  //imageWorld = loadSvg( "../svg/plane_only.svg" );
   imageWorld->setGridResolution( 200, 200 );
 
   ///////////////////////////////////////////////////////

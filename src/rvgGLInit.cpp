@@ -29,6 +29,7 @@ PFNGLMULTITEXCOORD2FPROC           GE_glMultiTexCoord2f = NULL;
 
 //GL_VERSION_1_5
 PFNGLGENBUFFERSPROC                GE_glGenBuffers = NULL;
+PFNGLDELETEBUFFERSPROC             GE_glDeleteBuffers = NULL;
 PFNGLBINDBUFFERPROC                GE_glBindBuffer = NULL;
 PFNGLBUFFERDATAPROC                GE_glBufferData = NULL;
 PFNGLBUFFERSUBDATAPROC             GE_glBufferSubData = NULL;
@@ -286,6 +287,8 @@ void rvgGLInit()
 
     GE_glGenBuffers = (PFNGLGENBUFFERSPROC)
       getProcAddress("glGenBuffersARB");
+    GE_glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)
+      getProcAddress("glDeleteBuffersARB");
     GE_glBindBuffer = (PFNGLBINDBUFFERPROC)
       getProcAddress("glBindBufferARB");
     GE_glBufferData = (PFNGLBUFFERDATAPROC)

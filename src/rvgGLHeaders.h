@@ -42,6 +42,7 @@ extern PFNGLMULTITEXCOORD2FPROC           GE_glMultiTexCoord2f;
 
 //GL_VERSION_1_5
 extern PFNGLGENBUFFERSPROC                GE_glGenBuffers;
+extern PFNGLDELETEBUFFERSPROC             GE_glDeleteBuffers;
 extern PFNGLBINDBUFFERPROC                GE_glBindBuffer;
 extern PFNGLBUFFERDATAPROC                GE_glBufferData;
 extern PFNGLBUFFERSUBDATAPROC             GE_glBufferSubData;
@@ -154,6 +155,7 @@ Function re-routing
 
 //GL_VERSION_1_5
 #define glGenBuffers                GE_glGenBuffers
+#define glDeleteBuffers             GE_glDeleteBuffers
 #define glBindBuffer                GE_glBindBuffer
 #define glBufferData                GE_glBufferData
 #define glBufferSubData             GE_glBufferSubData

@@ -35,6 +35,11 @@ void Object::setColor( float r, float g, float b, float a )
   color.set( r,g,b,a );
 }
 
+void Object::setTransform( const Matrix4x4 &t )
+{
+  transform = t;
+}
+
 void Object::moveTo( Float x, Float y, int space )
 {
   segments.push_back( SegType::MoveTo | space );
@@ -221,6 +226,11 @@ void Object::process (ObjectProcessor &proc, int flags)
 //////////////////////////////////////////////////////////////////////
 // Flatten object processor
 
+Vec2 ObjectFlatten::transform (const Vec2 &p)
+{
+  return (getObject()->getTransform() * Vec4( p, 0, 1 )).xy();
+}
+
 void ObjectFlatten::begin ()
 {
   contour = NULL;
@@ -229,44 +239,57 @@ void ObjectFlatten::begin ()
 void ObjectFlatten::moveTo (const Vec2 &p1, int space)
 {
   contour = new Contour();
-  contour->flatPoints.push_back( p1 );
   getObject()->contours.push_back( contour );
+
+  Vec2 t0 = transform( p1 );
+
+  contour->flatPoints.push_back( t0 );
 }
 
 void ObjectFlatten::lineTo (const Vec2 &p1, int space)
 {
   if (contour == NULL) return;
 
-  const Vec2& p0 = getPen();
-  getObject()->lines.push_back( Line( p0.x,p0.y, p1.x,p1.y ));
-  contour->flatPoints.push_back( p1 );
+  Vec2 t0 = transform( getPen() );
+  Vec2 t1 = transform( p1 );
+
+  getObject()->lines.push_back( Line( t0.x,t0.y, t1.x,t1.y ));
+  contour->flatPoints.push_back( t1 );
 }
 
 void ObjectFlatten::quadTo (const Vec2 &p1, const Vec2 &p2, int space)
 {
   if (contour == NULL) return;
 
-  const Vec2& p0 = getPen();
-  getObject()->quads.push_back( Quad( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y ));
-  contour->flatPoints.push_back( p2 );
+  Vec2 t0 = transform( getPen() );
+  Vec2 t1 = transform( p1 );
+  Vec2 t2 = transform( p2 );
+
+  getObject()->quads.push_back( Quad( t0.x,t0.y, t1.x,t1.y, t2.x,t2.y ));
+  contour->flatPoints.push_back( t2 );
 }
 
 void ObjectFlatten::cubicTo (const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, int space)
 {
   if (contour == NULL) return;
 
-  const Vec2& p0 = getPen();
-  getObject()->cubics.push_back( Cubic( p0.x,p0.y, p1.x,p1.y, p2.x,p2.y, p3.x,p3.y ));
-  contour->flatPoints.push_back( p2 );
+  Vec2 t0 = transform( getPen() );
+  Vec2 t1 = transform( p1 );
+  Vec2 t2 = transform( p2 );
+  Vec2 t3 = transform( p3 );
+
+  getObject()->cubics.push_back( Cubic( t0.x,t0.y, t1.x,t1.y, t2.x,t2.y, t3.x,t3.y ));
+  contour->flatPoints.push_back( t2 );
 }
 
 void ObjectFlatten::close ()
 {
   if (contour == NULL) return;
 
-  Vec2 p0 = getPen();
-  Vec2 p1 = getStart();
-  getObject()->lines.push_back( Line( p0.x,p0.y, p1.x,p1.y ));
+  Vec2 t0 = transform( getPen() );
+  Vec2 t1 = transform( getStart() );
+
+  getObject()->lines.push_back( Line( t0.x,t0.y, t1.x,t1.y ));
   contour = NULL;
 }
 
@@ -278,6 +301,7 @@ void ObjectClone::begin ()
   clone = new Object();
   Vec4 c = getObject()->getColor();
   clone->setColor( c.x, c.y, c.z, c.w );
+  clone->setTransform( getObject()->getTransform() );
 }
 
 void ObjectClone::moveTo (const Vec2 &p1, int space)
@@ -429,7 +453,8 @@ Object* Object::cubicsToQuads()
 
 void Object::updateFlat()
 {
-  if (flat) return;
+  //if (flat) return;
+  clearFlat();
   ObjectFlatten proc;
   process( proc, ProcessFlags::Absolute | ProcessFlags::Simplify);
   flat = true;
