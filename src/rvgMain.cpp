@@ -702,14 +702,17 @@ void animate ()
     static float min = imageWorld->getMin().x;
     static float x = max;
     
+    //Find animation offset
     float dx = 0.0f;
     if (x <= min + 100) dx = max - min - 100;
     else dx = -1.0f * interval * 100.0f;
     x += dx;
     
+    //Setup translation
     Matrix4x4 m;
     m.setTranslation( dx, 0, 0 );
 
+    //Transform all the objects belonging to the plane
     for (Uint p=0; p<planeObjects.size(); ++p) {
       Matrix4x4 mo = planeObjects[p]->getTransform();
       planeObjects[p]->setTransform( m * mo );
